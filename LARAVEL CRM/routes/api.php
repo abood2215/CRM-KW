@@ -1,0 +1,118 @@
+<?php
+
+use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\CampaignController;
+use App\Http\Controllers\Api\CannedResponseController;
+use App\Http\Controllers\Api\ClientController;
+use App\Http\Controllers\Api\ConversationController;
+use App\Http\Controllers\Api\SettingsController;
+use App\Http\Controllers\Api\StatsController;
+use App\Http\Controllers\Api\TaskController;
+use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\Api\WebhookController;
+use App\Http\Controllers\Api\WhatsappNumberController;
+use Illuminate\Support\Facades\Route;
+
+/*
+|--------------------------------------------------------------------------
+| API Routes - مركز مطمئنة للاستشارات اللغوية CRM
+|--------------------------------------------------------------------------
+*/
+
+// ============================
+// 🔓 Public Routes
+// ============================
+
+// Auth
+Route::prefix('auth')->group(function () {
+    Route::post('/login', [AuthController::class, 'login']);
+});
+
+// Webhooks (no auth needed)
+Route::post('/webhooks/chatwoot', [WebhookController::class, 'chatwoot']);
+
+// ============================
+// 🔐 Protected Routes
+// ============================
+
+Route::middleware(['auth:sanctum', 'update.last.seen'])->group(function () {
+
+    // Auth
+    Route::prefix('auth')->group(function () {
+        Route::post('/logout', [AuthController::class, 'logout']);
+        Route::get('/me', [AuthController::class, 'me']);
+        Route::put('/profile', [AuthController::class, 'updateProfile']);
+    });
+
+    // Users (admin/manager only for CUD)
+    Route::get('/users', [UserController::class, 'index']);
+    Route::get('/users/online', [UserController::class, 'online']);
+    Route::middleware('role:admin')->group(function () {
+        Route::post('/users', [UserController::class, 'store']);
+        Route::put('/users/{id}', [UserController::class, 'update']);
+        Route::delete('/users/{id}', [UserController::class, 'destroy']);
+    });
+
+    // Clients
+    Route::get('/clients', [ClientController::class, 'index']);
+    Route::post('/clients', [ClientController::class, 'store']);
+    Route::get('/clients/export/csv', [ClientController::class, 'exportCsv']);
+    Route::get('/clients/pipeline', [ClientController::class, 'pipeline']);
+    Route::get('/clients/{id}', [ClientController::class, 'show']);
+    Route::put('/clients/{id}', [ClientController::class, 'update']);
+    Route::delete('/clients/{id}', [ClientController::class, 'destroy']);
+
+    // Tasks
+    Route::get('/tasks', [TaskController::class, 'index']);
+    Route::post('/tasks', [TaskController::class, 'store']);
+    Route::put('/tasks/{id}', [TaskController::class, 'update']);
+    Route::delete('/tasks/{id}', [TaskController::class, 'destroy']);
+    Route::put('/tasks/{id}/complete', [TaskController::class, 'complete']);
+
+    // Conversations
+    Route::get('/conversations', [ConversationController::class, 'index']);
+    Route::get('/conversations/{id}', [ConversationController::class, 'show']);
+    Route::get('/conversations/{id}/messages', [ConversationController::class, 'messages']);
+    Route::post('/conversations/{id}/messages', [ConversationController::class, 'sendMessage']);
+    Route::put('/conversations/{id}/status', [ConversationController::class, 'updateStatus']);
+    Route::put('/conversations/{id}/assign', [ConversationController::class, 'assign']);
+    Route::post('/conversations/{id}/notes', [ConversationController::class, 'addNote']);
+
+    // Canned Responses
+    Route::get('/canned-responses', [CannedResponseController::class, 'index']);
+    Route::post('/canned-responses', [CannedResponseController::class, 'store']);
+    Route::put('/canned-responses/{id}', [CannedResponseController::class, 'update']);
+    Route::delete('/canned-responses/{id}', [CannedResponseController::class, 'destroy']);
+
+    // Campaigns
+    Route::get('/campaigns', [CampaignController::class, 'index']);
+    Route::post('/campaigns', [CampaignController::class, 'store']);
+    Route::get('/campaigns/{id}', [CampaignController::class, 'show']);
+    Route::put('/campaigns/{id}/pause', [CampaignController::class, 'pause']);
+    Route::put('/campaigns/{id}/resume', [CampaignController::class, 'resume']);
+    Route::delete('/campaigns/{id}', [CampaignController::class, 'destroy']);
+
+    // WhatsApp Numbers
+    Route::get('/whatsapp-numbers', [WhatsappNumberController::class, 'index']);
+    Route::middleware('role:admin')->group(function () {
+        Route::post('/whatsapp-numbers', [WhatsappNumberController::class, 'store']);
+        Route::delete('/whatsapp-numbers/{id}', [WhatsappNumberController::class, 'destroy']);
+    });
+    Route::get('/whatsapp-numbers/{id}/qr', [WhatsappNumberController::class, 'qr']);
+    Route::get('/whatsapp-numbers/{id}/status', [WhatsappNumberController::class, 'status']);
+
+    // Statistics
+    Route::prefix('stats')->group(function () {
+        Route::get('/dashboard', [StatsController::class, 'dashboard']);
+        Route::get('/campaigns', [StatsController::class, 'campaigns']);
+        Route::get('/agents', [StatsController::class, 'agents']);
+    });
+
+    // Settings (admin/manager only)
+    Route::middleware('role:admin,manager')->prefix('settings')->group(function () {
+        Route::get('/business-hours', [SettingsController::class, 'getBusinessHours']);
+        Route::put('/business-hours', [SettingsController::class, 'updateBusinessHours']);
+        Route::get('/auto-replies', [SettingsController::class, 'getAutoReplies']);
+        Route::put('/auto-replies', [SettingsController::class, 'updateAutoReplies']);
+    });
+});
