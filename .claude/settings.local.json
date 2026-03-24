@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(php artisan:*)",
+      "Bash(php -l app/Services/WhatsAppService.php)",
+      "Bash(php -l app/Jobs/ProcessWhatsAppWebhookJob.php)",
+      "Bash(php -l app/Http/Controllers/Api/WebhookController.php)",
+      "Bash(php -l app/Http/Controllers/Api/ConversationController.php)",
+      "Bash(find 'C:\\\\Users\\\\abd-allah\\\\Desktop\\\\CRM\\\\REACT CRM\\\\src' -type f \\\\\\(-name *.jsx -o -name *.js -o -name *.json \\\\\\))",
+      "Bash(npm run:*)"
+    ]
+  }
+}

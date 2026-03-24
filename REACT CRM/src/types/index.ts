@@ -51,11 +51,13 @@ export interface Message {
   id: number;
   conversation_id: number;
   chatwoot_message_id?: string;
+  whatsapp_message_id?: string;
   content: string;
   type: 'text' | 'image' | 'file';
   direction: 'in' | 'out';
   is_private: boolean;
   sender_name?: string;
+  status?: 'pending' | 'sent' | 'delivered' | 'read' | 'failed' | 'received';
   sent_at: string;
   created_at: string;
 }
@@ -102,6 +104,7 @@ export interface WhatsappNumber {
   name: string;
   phone: string;
   session_name: string;
+  phone_number_id?: string;
   status: 'connected' | 'disconnected' | 'banned';
   daily_limit: number;
   sent_today: number;

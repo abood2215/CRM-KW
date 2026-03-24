@@ -13,6 +13,7 @@ class WhatsappNumber extends Model
         'name',
         'phone',
         'session_name',
+        'phone_number_id',
         'status',
         'daily_limit',
         'sent_today',

@@ -30,6 +30,8 @@ Route::prefix('auth')->group(function () {
 
 // Webhooks (no auth needed)
 Route::post('/webhooks/chatwoot', [WebhookController::class, 'chatwoot']);
+Route::get('/webhooks/whatsapp', [WebhookController::class, 'whatsappVerify']);
+Route::post('/webhooks/whatsapp', [WebhookController::class, 'whatsapp']);
 
 // ============================
 // 🔐 Protected Routes

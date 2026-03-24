@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../api/axios';
+import AddTaskModal from '../../components/AddTaskModal';
 import { Task } from '../../types';
 import { 
   CheckSquare, 
@@ -26,6 +27,7 @@ import toast from 'react-hot-toast';
 const TasksPage: React.FC = () => {
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<'pending' | 'completed' | 'all'>('pending');
+  const [addOpen, setAddOpen] = useState(false);
 
   const { data: tasks = [], isLoading } = useQuery<Task[]>({
     queryKey: ['tasks', filter],
@@ -33,6 +35,15 @@ const TasksPage: React.FC = () => {
       const { data } = await api.get('/tasks', { params: { status: filter } });
       return data.tasks;
     },
+  });
+
+  const deleteTaskMutation = useMutation({
+    mutationFn: (id: number) => api.delete(`/tasks/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      toast.success('تم حذف المهمة');
+    },
+    onError: () => toast.error('فشل حذف المهمة'),
   });
 
   const toggleTaskMutation = useMutation({
@@ -59,7 +70,7 @@ const TasksPage: React.FC = () => {
           <p className="text-slate-500 mt-1 font-medium">نظم يومك وتابع المهام المطلوبة للتواصل مع عملاء مركز مطمئنة.</p>
         </div>
         <div className="flex items-center gap-3">
-          <button className="h-11 px-6 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-all flex items-center gap-2">
+          <button onClick={() => setAddOpen(true)} className="h-11 px-6 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-all flex items-center gap-2">
             <Plus size={18} />
             <span>مهمة جديدة</span>
           </button>
@@ -182,8 +193,12 @@ const TasksPage: React.FC = () => {
                </div>
 
                <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
-                  <button className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg"><Edit size={18} /></button>
-                  <button className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg"><Trash2 size={18} /></button>
+                  <button onClick={() => {
+                    if (window.confirm('هل تريد حذف هذه المهمة؟'))
+                      deleteTaskMutation.mutate(task.id);
+                  }} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg">
+                    <Trash2 size={18} />
+                  </button>
                </div>
             </div>
           )) : (
@@ -200,6 +215,8 @@ const TasksPage: React.FC = () => {
         </div>
       </div>
     </div>
+
+    <AddTaskModal open={addOpen} onClose={() => setAddOpen(false)} />
   );
 };
 

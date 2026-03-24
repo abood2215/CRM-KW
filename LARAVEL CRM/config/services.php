@@ -32,9 +32,17 @@ return [
         'account_id' => env('CHATWOOT_ACCOUNT_ID', 1),
     ],
 
-    // Baileys WhatsApp
+    // Baileys WhatsApp (Node.js local service)
     'baileys' => [
         'base_url' => env('BAILEYS_BASE_URL', 'http://localhost:3001'),
+    ],
+
+    // WhatsApp Cloud API (Meta)
+    'whatsapp' => [
+        'access_token'        => env('WHATSAPP_ACCESS_TOKEN'),
+        'phone_number_id'     => env('WHATSAPP_PHONE_NUMBER_ID'),
+        'webhook_verify_token'=> env('WHATSAPP_WEBHOOK_VERIFY_TOKEN', 'my_verify_token'),
+        'api_version'         => env('WHATSAPP_API_VERSION', 'v19.0'),
     ],
 
     // Soketi WebSocket

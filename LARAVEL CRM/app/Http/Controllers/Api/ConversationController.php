@@ -7,16 +7,20 @@ use App\Http\Resources\ConversationResource;
 use App\Http\Resources\MessageResource;
 use App\Models\Conversation;
 use App\Models\Message;
+use App\Models\WhatsappNumber;
 use App\Events\NewMessageEvent;
 use App\Events\ConversationUpdatedEvent;
 use App\Services\ChatwootService;
+use App\Services\WhatsAppService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class ConversationController extends Controller
 {
     public function __construct(
-        protected ChatwootService $chatwoot
+        protected ChatwootService $chatwoot,
+        protected WhatsAppService $whatsapp
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -85,11 +89,14 @@ class ConversationController extends Controller
     public function sendMessage(Request $request, int $id): JsonResponse
     {
         $request->validate([
-            'content' => 'required|string',
-            'type' => 'sometimes|in:text,image,file',
+            'content'    => 'required|string',
+            'type'       => 'sometimes|in:text,image,file',
+            'is_private' => 'sometimes|boolean',
         ]);
 
-        $conversation = Conversation::findOrFail($id);
+        $conversation = Conversation::with('client')->findOrFail($id);
+
+        $waMessageId = null;
 
         // Send via Chatwoot if connected
         if ($conversation->chatwoot_conv_id) {
@@ -99,14 +106,57 @@ class ConversationController extends Controller
             );
         }
 
+        // Send directly via WhatsApp Cloud API for native WhatsApp conversations
+        if (!$conversation->chatwoot_conv_id && $conversation->source === 'whatsapp') {
+            $clientPhone = $conversation->client?->phone ?? null;
+
+            if ($clientPhone) {
+                $whatsappNumber = WhatsappNumber::whereNotNull('phone_number_id')
+                    ->where('status', 'connected')
+                    ->first();
+
+                if ($whatsappNumber) {
+                    try {
+                        $type = $request->type ?? 'text';
+
+                        if ($type === 'image' && $request->content) {
+                            $result = $this->whatsapp->sendImage(
+                                $clientPhone,
+                                $request->content,
+                                null,
+                                $whatsappNumber->phone_number_id
+                            );
+                        } else {
+                            $result = $this->whatsapp->sendMessage(
+                                $clientPhone,
+                                $request->content,
+                                $whatsappNumber->phone_number_id
+                            );
+                        }
+
+                        $waMessageId = $result['messages'][0]['id'] ?? null;
+                        $whatsappNumber->incrementSent();
+
+                    } catch (\Exception $e) {
+                        Log::error('[ConversationController] WhatsApp send failed', [
+                            'conversation_id' => $id,
+                            'error'           => $e->getMessage(),
+                        ]);
+                    }
+                }
+            }
+        }
+
         $message = Message::create([
-            'conversation_id' => $conversation->id,
-            'content' => $request->content,
-            'type' => $request->type ?? 'text',
-            'direction' => 'out',
-            'is_private' => false,
-            'sender_name' => $request->user()->name,
-            'sent_at' => now(),
+            'conversation_id'    => $conversation->id,
+            'whatsapp_message_id'=> $waMessageId,
+            'content'            => $request->content,
+            'type'               => $request->type ?? 'text',
+            'direction'          => 'out',
+            'is_private'         => $request->boolean('is_private', false),
+            'sender_name'        => $request->user()->name,
+            'status'             => $waMessageId ? 'sent' : null,
+            'sent_at'            => now(),
         ]);
 
         $conversation->update([

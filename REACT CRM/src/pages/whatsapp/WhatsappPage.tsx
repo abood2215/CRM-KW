@@ -22,6 +22,7 @@ import {
 import { cn } from '../../utils/cn';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
+import { format } from 'date-fns';
 
 const WhatsappPage: React.FC = () => {
   const queryClient = useQueryClient();
@@ -193,8 +194,11 @@ const WhatsappPage: React.FC = () => {
               </div>
 
               <div className="flex flex-col gap-3">
-                 <button className="h-12 bg-indigo-600 text-white font-black rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-all">
-                   <RefreshCw size={18} className="animate-spin-slow" />
+                 <button
+                   onClick={() => selectedQR && getQRMutation.mutate(selectedQR.id)}
+                   disabled={getQRMutation.isPending}
+                   className="h-12 bg-indigo-600 text-white font-black rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-all disabled:opacity-70">
+                   <RefreshCw size={18} className={getQRMutation.isPending ? 'animate-spin' : ''} />
                    <span>تحديث الرمز</span>
                  </button>
                  <div className="flex items-center gap-2 text-xs font-bold text-emerald-600 bg-emerald-50 px-4 py-2 rounded-xl justify-center border border-emerald-100">

@@ -40,7 +40,7 @@ class ClientController extends Controller
         $clients = $query->orderBy('created_at', 'desc')->paginate($request->per_page ?? 20);
 
         return response()->json([
-            'clients' => ClientResource::collection($clients),
+            'data' => ClientResource::collection($clients),
             'meta' => [
                 'current_page' => $clients->currentPage(),
                 'last_page' => $clients->lastPage(),

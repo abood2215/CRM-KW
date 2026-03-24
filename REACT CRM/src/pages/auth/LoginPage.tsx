@@ -16,25 +16,23 @@ const LoginPage: React.FC = () => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Bypass - Login directly with mock data
-    const mockUser = {
-      id: 1,
-      name: 'مدير النظام (تجريبي)',
-      email: 'admin@mutmaenna.com',
-      role: 'admin' as any,
-      is_active: true,
-      is_online: true,
-      created_at: new Date().toISOString()
-    };
-    
-    setAuth(mockUser, '1|zglVjxTNZtbFYgJhZzVE68YDlb95CZ4dKM8jRReVd7e71d03');
-    toast.success('تم تسجيل الدخول بنجاح (اتصال حقيقي بالخادم)');
-    
-    // Full refresh to force hydration on the new page
-    setTimeout(() => {
-      window.location.href = '/';
-    }, 500);
+    if (!email.trim() || !password.trim()) {
+      toast.error('يرجى إدخال البريد الإلكتروني وكلمة المرور');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { data } = await api.post('/auth/login', { email, password });
+      setAuth(data.user, data.token);
+      toast.success('تم تسجيل الدخول بنجاح');
+      setTimeout(() => { window.location.href = '/'; }, 300);
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || 'فشل تسجيل الدخول. تحقق من البيانات.';
+      toast.error(msg);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

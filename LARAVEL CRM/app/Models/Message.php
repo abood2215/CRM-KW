@@ -12,11 +12,13 @@ class Message extends Model
     protected $fillable = [
         'conversation_id',
         'chatwoot_message_id',
+        'whatsapp_message_id',
         'content',
         'type',
         'direction',
         'is_private',
         'sender_name',
+        'status',
         'sent_at',
     ];
 

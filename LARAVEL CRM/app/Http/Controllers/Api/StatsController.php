@@ -36,6 +36,11 @@ class StatsController extends Controller
             ->groupBy('source')
             ->pluck('count', 'source');
 
+        $statusLabels = [
+            'new' => 'جديد', 'contacted' => 'تم التواصل', 'interested' => 'مهتم',
+            'booked' => 'محجوز', 'active' => 'نشط', 'following' => 'متابعة',
+        ];
+
         $recentClients = CrmClient::with('user')
             ->orderBy('created_at', 'desc')
             ->limit(5)
@@ -44,6 +49,7 @@ class StatsController extends Controller
                 'id' => $c->id,
                 'name' => $c->name,
                 'status' => $c->status,
+                'status_label' => $statusLabels[$c->status] ?? $c->status,
                 'source' => $c->source,
                 'created_at' => $c->created_at->toISOString(),
             ]);

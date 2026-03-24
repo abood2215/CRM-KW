@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../api/axios';
+import CreateCampaignModal from '../../components/CreateCampaignModal';
 import { Campaign } from '../../types';
 import { 
   Megaphone, 
@@ -28,6 +29,7 @@ import { motion } from 'framer-motion';
 const CampaignsPage: React.FC = () => {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<'all' | 'running' | 'completed'>('all');
+  const [createOpen, setCreateOpen] = useState(false);
 
   const { data: campaigns = [], isLoading } = useQuery<Campaign[]>({
     queryKey: ['campaigns', activeTab],
@@ -43,6 +45,15 @@ const CampaignsPage: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['campaigns'] });
       toast.success('تم إيقاف الحملة مؤقتاً');
     },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => api.delete(`/campaigns/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+      toast.success('تم حذف الحملة');
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.message || 'فشل حذف الحملة'),
   });
 
   const resumeMutation = useMutation({
@@ -69,7 +80,7 @@ const CampaignsPage: React.FC = () => {
           <p className="text-slate-500 mt-1 font-medium">أطلق حملات واتساب متطورة للوصول إلى آلاف العملاء بضغطة واحدة.</p>
         </div>
         <div className="flex items-center gap-3">
-          <button className="h-11 px-6 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-all flex items-center gap-2">
+          <button onClick={() => setCreateOpen(true)} className="h-11 px-6 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-all flex items-center gap-2">
             <Plus size={18} />
             <span>حملة جديدة</span>
           </button>
@@ -115,9 +126,14 @@ const CampaignsPage: React.FC = () => {
                       {statusMap[campaign.status].icon}
                       {statusMap[campaign.status].label}
                     </span>
-                    <button className="p-1 px-2 text-slate-300 hover:text-indigo-600 rounded-lg transition-colors">
-                      <MoreVertical size={20} />
-                    </button>
+                    {['draft', 'completed', 'paused'].includes(campaign.status) && (
+                      <button onClick={() => {
+                        if (window.confirm('هل تريد حذف هذه الحملة؟'))
+                          deleteMutation.mutate(campaign.id);
+                      }} className="p-1 px-2 text-slate-300 hover:text-rose-500 rounded-lg transition-colors">
+                        <Trash2 size={16} />
+                      </button>
+                    )}
                   </div>
 
                   <h3 className="text-lg font-black text-slate-800 mb-2 truncate">{campaign.name}</h3>
@@ -200,6 +216,8 @@ const CampaignsPage: React.FC = () => {
         </div>
       </div>
     </div>
+
+    <CreateCampaignModal open={createOpen} onClose={() => setCreateOpen(false)} />
   );
 };
 

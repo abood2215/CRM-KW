@@ -1,21 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import api from '../../api/axios';
 import { Client } from '../../types';
-import { 
-  Users, 
-  Plus, 
-  Search, 
-  Filter, 
-  MoreVertical, 
-  Phone, 
-  Mail, 
-  DollarSign, 
-  Loader2,
-  PhoneCall,
-  CalendarDays
+import {
+  Users, Plus, Search, MoreVertical, DollarSign, Loader2, PhoneCall, CalendarDays
 } from 'lucide-react';
+import AddClientModal from '../../components/AddClientModal';
 import { cn } from '../../utils/cn';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -32,6 +23,8 @@ const STAGES = [
 const Pipeline: React.FC = () => {
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
+  const [addOpen, setAddOpen] = useState(false);
+  const [addStatus, setAddStatus] = useState('new');
   
   const { data: clients = [], isLoading } = useQuery<Client[]>({
     queryKey: ['clients-pipeline'],
@@ -104,7 +97,8 @@ const Pipeline: React.FC = () => {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
            </div>
-           <button className="h-11 px-6 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-all flex items-center gap-2 whitespace-nowrap">
+           <button onClick={() => { setAddStatus('new'); setAddOpen(true); }}
+            className="h-11 px-6 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-all flex items-center gap-2 whitespace-nowrap">
             <Plus size={18} />
             <span>عميل جديد</span>
           </button>
@@ -125,7 +119,8 @@ const Pipeline: React.FC = () => {
                     {getClientsInStage(stage.id).length}
                   </span>
                 </div>
-                <button className="text-current opacity-60 hover:opacity-100 transition-opacity">
+                <button onClick={() => { setAddStatus(stage.id); setAddOpen(true); }}
+                  className="text-current opacity-60 hover:opacity-100 transition-opacity">
                   <Plus size={16} />
                 </button>
               </div>
@@ -213,6 +208,8 @@ const Pipeline: React.FC = () => {
           ))}
         </div>
       </DragDropContext>
+
+      <AddClientModal open={addOpen} onClose={() => setAddOpen(false)} defaultStatus={addStatus} />
     </div>
   );
 };

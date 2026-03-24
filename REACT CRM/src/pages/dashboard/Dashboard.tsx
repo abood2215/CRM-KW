@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
+import AddClientModal from '../../components/AddClientModal';
 import { 
   Users, 
   MessageSquare, 
@@ -34,6 +36,9 @@ import { ar } from 'date-fns/locale';
 import { motion } from 'framer-motion';
 
 const Dashboard: React.FC = () => {
+  const navigate = useNavigate();
+  const [addClientOpen, setAddClientOpen] = useState(false);
+
   const { data: stats, isLoading } = useQuery<DashboardStats>({
     queryKey: ['dashboard-stats'],
     queryFn: async () => {
@@ -104,6 +109,7 @@ const Dashboard: React.FC = () => {
   ];
 
   return (
+    <>
     <div className="space-y-8 animate-in fade-in duration-500">
       {/* Welcome Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -116,7 +122,7 @@ const Dashboard: React.FC = () => {
             <Clock size={18} />
             <span>آخر 7 أيام</span>
           </button>
-          <button className="h-11 px-6 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-all flex items-center gap-2">
+          <button onClick={() => setAddClientOpen(true)} className="h-11 px-6 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-all flex items-center gap-2">
             <Plus size={18} />
             <span>إضافة عميل</span>
           </button>
@@ -249,7 +255,7 @@ const Dashboard: React.FC = () => {
         <div className="bg-white p-8 rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden">
           <div className="flex items-center justify-between mb-6">
             <h4 className="text-lg font-black text-slate-800">آخر العملاء</h4>
-            <button className="text-indigo-600 font-bold text-sm hover:underline flex items-center gap-1">
+            <button onClick={() => navigate('/clients')} className="text-indigo-600 font-bold text-sm hover:underline flex items-center gap-1">
               مشاهدة الكل <ExternalLink size={14} />
             </button>
           </div>
@@ -317,7 +323,8 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
       </div>
-    </div>
+    <AddClientModal open={addClientOpen} onClose={() => setAddClientOpen(false)} />
+  </>
   );
 };
 
