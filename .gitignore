@@ -1,0 +1,28 @@
+# Dependencies
+**/node_modules
+**/vendor
+
+# Environment files
+**/.env
+**/.env.local
+**/.env.*.local
+
+# IDE & OS
+**/.vscode
+**/.idea
+**/.DS_Store
+Thumbs.db
+
+# Laravel Specific
+**/storage/*.key
+**/storage/framework/cache/data/*
+**/storage/framework/sessions/*
+**/storage/framework/views/*
+**/storage/logs/*
+**/public/storage
+**/.phpunit.result.cache
+
+# Build outputs
+**/dist
+**/build
+**/.vite
