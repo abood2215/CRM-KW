@@ -13,8 +13,9 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->alias([
-            'role' => \App\Http\Middleware\RoleMiddleware::class,
+            'role'             => \App\Http\Middleware\RoleMiddleware::class,
             'update.last.seen' => \App\Http\Middleware\UpdateLastSeen::class,
+            'log.activity'     => \App\Http\Middleware\LogActivity::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

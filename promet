@@ -1,0 +1,474 @@
+أنا أبني نظام CRM + WhatsApp Marketing 
+اسمه "مركز مطمئنة للاستشارات اللغوية"
+مستوى Bitrix24 بالكامل.
+
+════════════════════════════════
+🏗️ التقنيات:
+════════════════════════════════
+Backend:
+- Laravel 11 API
+- MySQL
+- Redis + Laravel Horizon
+- Laravel Sanctum (Auth)
+- Laravel Echo + Soketi (Real-time)
+
+Frontend:
+- React 18 + Vite + TypeScript
+- Tailwind CSS + shadcn/ui
+- Zustand (State)
+- React Query (API)
+- Recharts (Charts)
+- RTL عربي كامل
+- خط Cairo
+
+════════════════════════════════
+🗄️ قاعدة البيانات الكاملة:
+════════════════════════════════
+
+1. users:
+   id, name, email, password
+   role (admin/manager/agent)
+   avatar, phone
+   last_seen_at
+   is_active
+   timestamps
+
+2. crm_clients:
+   id, assigned_user_id
+   name, phone (encrypted), email (encrypted)
+   source (whatsapp/instagram/referral/google)
+   service (الخدمة المطلوبة)
+   budget
+   status (new/contacted/interested/booked/active/following/closed)
+   notes
+   timestamps
+
+3. crm_tasks:
+   id, user_id, client_id
+   title, description
+   type (call/follow_up/send_offer/reminder)
+   priority (low/medium/high)
+   due_date, completed_at
+   status (pending/completed)
+   timestamps
+
+4. conversations:
+   id, chatwoot_conv_id
+   client_id (nullable)
+   assigned_user_id (nullable)
+   status (open/resolved/pending)
+   last_message, last_message_at
+   unread_count
+   source (whatsapp/instagram)
+   timestamps
+
+5. messages:
+   id, conversation_id
+   chatwoot_message_id
+   content, type (text/image/file/template)
+   direction (in/out)
+   is_private
+   sender_name
+   sent_at
+   timestamps
+
+6. contacts:
+   id, user_id
+   name, phone, email
+   tags (JSON)
+   source
+   opt_in (boolean)
+   opt_in_date
+   opt_out (boolean)
+   opt_out_date
+   is_blacklisted
+   notes
+   timestamps
+
+7. contact_lists:
+   id, user_id
+   name, description
+   count
+   timestamps
+
+8. contact_list_items:
+   id, contact_list_id, contact_id
+   timestamps
+
+9. whatsapp_numbers:
+   id, name, phone
+   access_token
+   phone_number_id
+   business_account_id
+   status (active/inactive/banned)
+   daily_limit
+   sent_today
+   week_number
+   last_sent_at
+   timestamps
+
+10. whatsapp_templates:
+    id, whatsapp_number_id
+    name, language
+    category (marketing/utility/authentication)
+    status (approved/pending/rejected)
+    header_type (none/text/image/video/pdf)
+    header_content
+    body_text
+    footer_text
+    buttons (JSON)
+    variables_count
+    last_synced_at
+    timestamps
+
+11. campaigns:
+    id, user_id
+    name, description
+    whatsapp_number_id
+    template_name, template_language
+    template_variables (JSON)
+    contact_list_id
+    status (draft/scheduled/running/paused/completed/failed)
+    scheduled_at
+    started_at, completed_at
+    total_recipients
+    sent_count, failed_count
+    reply_count, open_count
+    block_count
+    delay_seconds (120-300)
+    stop_on_fail_rate (10%)
+    timestamps
+
+12. campaign_recipients:
+    id, campaign_id, contact_id
+    phone, name
+    variables (JSON)
+    status (pending/sent/failed/replied/blocked)
+    sent_at, replied_at
+    error_message
+    timestamps
+
+13. campaign_sequences:
+    id, campaign_id
+    step_number
+    delay_days
+    template_name
+    status (active/inactive)
+    timestamps
+
+14. canned_responses:
+    id, user_id
+    title, content
+    timestamps
+
+15. auto_replies:
+    id
+    trigger_type (outside_hours/first_message/keyword)
+    keyword (nullable)
+    message
+    is_active
+    timestamps
+
+16. business_hours:
+    id, day_of_week (0-6)
+    start_time, end_time
+    is_active
+
+17. activity_logs:
+    id, user_id
+    action, model_type, model_id
+    description, metadata (JSON)
+    timestamps
+
+════════════════════════════════
+🔐 Authentication API:
+════════════════════════════════
+POST   /api/auth/login
+POST   /api/auth/logout
+GET    /api/auth/me
+PUT    /api/auth/profile
+PUT    /api/auth/password
+
+════════════════════════════════
+📡 API Endpoints الكاملة:
+════════════════════════════════
+
+--- Users & Permissions ---
+GET    /api/users
+POST   /api/users
+PUT    /api/users/{id}
+DELETE /api/users/{id}
+GET    /api/users/online
+
+--- CRM Clients ---
+GET    /api/clients
+POST   /api/clients
+GET    /api/clients/{id}
+PUT    /api/clients/{id}
+DELETE /api/clients/{id}
+GET    /api/clients/pipeline
+GET    /api/clients/export/csv
+
+--- Tasks ---
+GET    /api/tasks
+POST   /api/tasks
+PUT    /api/tasks/{id}
+DELETE /api/tasks/{id}
+PUT    /api/tasks/{id}/complete
+
+--- Conversations ---
+GET    /api/conversations
+GET    /api/conversations/{id}
+GET    /api/conversations/{id}/messages
+POST   /api/conversations/{id}/messages
+PUT    /api/conversations/{id}/status
+PUT    /api/conversations/{id}/assign
+POST   /api/conversations/{id}/notes
+
+--- Contacts ---
+GET    /api/contacts
+POST   /api/contacts
+PUT    /api/contacts/{id}
+DELETE /api/contacts/{id}
+POST   /api/contacts/import/csv
+PUT    /api/contacts/{id}/opt-out
+GET    /api/contacts/export/csv
+
+--- Contact Lists ---
+GET    /api/contact-lists
+POST   /api/contact-lists
+PUT    /api/contact-lists/{id}
+DELETE /api/contact-lists/{id}
+POST   /api/contact-lists/{id}/contacts
+
+--- WhatsApp Numbers ---
+GET    /api/whatsapp-numbers
+POST   /api/whatsapp-numbers
+DELETE /api/whatsapp-numbers/{id}
+GET    /api/whatsapp-numbers/{id}/status
+POST   /api/whatsapp-numbers/{id}/sync-templates
+
+--- WhatsApp Templates ---
+GET    /api/templates
+GET    /api/templates/{id}
+POST   /api/templates/sync
+GET    /api/templates/{name}/preview
+
+--- Campaigns ---
+GET    /api/campaigns
+POST   /api/campaigns
+GET    /api/campaigns/{id}
+PUT    /api/campaigns/{id}
+DELETE /api/campaigns/{id}
+POST   /api/campaigns/{id}/start
+PUT    /api/campaigns/{id}/pause
+PUT    /api/campaigns/{id}/resume
+GET    /api/campaigns/{id}/recipients
+GET    /api/campaigns/{id}/analytics
+
+--- Canned Responses ---
+GET    /api/canned-responses
+POST   /api/canned-responses
+PUT    /api/canned-responses/{id}
+DELETE /api/canned-responses/{id}
+
+--- Statistics ---
+GET    /api/stats/dashboard
+GET    /api/stats/campaigns
+GET    /api/stats/agents
+GET    /api/stats/whatsapp
+
+--- Settings ---
+GET    /api/settings/business-hours
+PUT    /api/settings/business-hours
+GET    /api/settings/auto-replies
+PUT    /api/settings/auto-replies
+
+--- Webhooks ---
+POST   /api/webhooks/chatwoot
+POST   /api/webhooks/whatsapp
+
+════════════════════════════════
+⚙️ Services:
+════════════════════════════════
+
+1. ChatwootService:
+   getConversations()
+   getMessages()
+   sendMessage()
+   sendPrivateNote()
+   assignConversation()
+   toggleStatus()
+   searchContact()
+   getAgents()
+
+2. WhatsAppService:
+   sendTemplate()
+   sendMessage()
+   sendImage()
+   sendPDF()
+   getTemplates()
+   syncTemplates()
+   getPhoneNumberStatus()
+
+3. CampaignService:
+   startCampaign()
+   pauseCampaign()
+   resumeCampaign()
+   processNextRecipient()
+   calculateDelay()
+   checkFailRate()
+   getAnalytics()
+
+════════════════════════════════
+🔄 Jobs & Queues:
+════════════════════════════════
+
+1. ProcessCampaignJob:
+   - يرسل رسالة واحدة لكل تنفيذ
+   - تأخير عشوائي 120-300 ثانية
+   - Rate limiting حسب الأسبوع:
+     Week 1: 250/day
+     Week 2: 500/day
+     Week 3+: 1000/day
+   - يتوقف عند:
+     فشل أكثر من 10%
+     تجاوز الحد اليومي
+     الحملة مـ pause
+   - يجدول نفسه تلقائياً للرسالة التالية
+
+2. SyncTemplatesJob:
+   - يجلب القوالب من Meta API
+   - يحدث قاعدة البيانات
+   - يشتغل كل 6 ساعات
+
+3. ResetDailyLimitJob:
+   - يصفّر sent_today كل منتصف ليل
+   - يزيد week_number كل 7 أيام
+
+4. ProcessSequenceJob:
+   - يتابع سلاسل الرسائل (Sequences)
+   - يرسل الرسالة التالية بعد delay_days
+
+════════════════════════════════
+🔔 Real-time Events:
+════════════════════════════════
+NewMessageEvent
+ConversationUpdatedEvent
+CampaignProgressEvent
+UserStatusChangedEvent
+NotificationEvent
+
+════════════════════════════════
+🛡️ Middleware:
+════════════════════════════════
+UpdateLastSeen
+RoleMiddleware (admin/manager/agent)
+LogActivity
+
+════════════════════════════════
+⚛️ React Pages & Components:
+════════════════════════════════
+
+1. تسجيل الدخول:
+   - فورم بسيط
+   - حفظ التوكن
+   - Redirect للداشبورد
+
+2. الداشبورد الرئيسي:
+   - إجمالي العملاء
+   - المحادثات النشطة
+   - الحملات الجارية
+   - رسائل اليوم
+   - رسوم بيانية (Recharts)
+   - آخر نشاط
+
+3. لوحة المتابعة (Pipeline):
+   - Kanban Drag & Drop
+   - مراحل: جديد/تواصل/مهتم/محجوز/نشط/متابعة/مغلق
+   - بطاقة العميل كاملة
+   - فلترة وبحث
+   - إضافة عميل
+
+4. سجل العملاء:
+   - جدول مع pagination
+   - بحث وفلترة متقدمة
+   - تصدير CSV
+   - صفحة تفاصيل العميل
+
+5. صندوق الرسائل:
+   - قائمة المحادثات
+   - منطقة المحادثة
+   - Real-time WebSocket
+   - فلترة الحالة
+   - تعيين لموظف
+   - ردود جاهزة
+   - ملاحظات داخلية
+   - إشعار صوتي
+
+6. إدارة المهام:
+   - قائمة + تقويم
+   - أولويات وأنواع
+   - تذكيرات
+
+7. جهات الاتصال:
+   - قائمة الجهات
+   - استيراد CSV
+   - تصنيف بـ Tags
+   - Opt-in/Opt-out
+   - قوائم مخصصة
+
+8. القوالب:
+   - قائمة القوالب من Meta
+   - معاينة كل قالب
+   - زر Sync من Meta
+   - فلترة حسب الحالة والنوع
+
+9. الحملات:
+   - قائمة الحملات مع الحالة
+   - إنشاء حملة:
+     * اختيار القالب
+     * معاينة الرسالة
+     * تحديد المتغيرات
+     * اختيار قائمة الأرقام
+     * جدولة الإرسال
+     * إعدادات الأمان
+   - مراقبة الحملة:
+     * Progress bar
+     * إحصائيات مباشرة
+     * قائمة المستلمين
+   - تقرير الحملة:
+     * معدل الإرسال
+     * معدل الرد
+     * معدل الفشل
+     * تصدير PDF/CSV
+
+10. التقارير:
+    - إيرادات شهرية
+    - أداء الموظفين
+    - مصادر العملاء
+    - إحصائيات WhatsApp
+    - رسوم بيانية تفاعلية
+
+11. الإعدادات:
+    - إدارة المستخدمين
+    - أرقام WhatsApp
+    - أوقات العمل
+    - الردود التلقائية
+    - الردود الجاهزة
+    - سجل النشاط
+
+════════════════════════════════
+🎯 متطلبات إضافية مهمة:
+════════════════════════════════
+- كل الكود كاملاً جاهزاً للنسخ
+- لا تترك TODO أو placeholder
+- TypeScript كامل في React
+- Error handling في كل مكان
+- Loading states
+- Empty states
+- RTL عربي كامل
+- خط Cairo
+- نفس مستوى Bitrix24
+- قابل للتحول لـ SaaS
+- تعليقات بالعربي في الكود

@@ -57,10 +57,9 @@ class AuthController extends Controller
     public function updateProfile(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'name' => 'sometimes|string|max:255',
-            'phone' => 'nullable|string|max:20',
+            'name'   => 'sometimes|string|max:255',
+            'phone'  => 'nullable|string|max:20',
             'avatar' => 'nullable|image|max:2048',
-            'password' => 'sometimes|string|min:8|confirmed',
         ]);
 
         $user = $request->user();
@@ -69,15 +68,36 @@ class AuthController extends Controller
             $validated['avatar'] = $request->file('avatar')->store('avatars', 'public');
         }
 
-        if (isset($validated['password'])) {
-            $validated['password'] = Hash::make($validated['password']);
-        }
-
         $user->update($validated);
 
         return response()->json([
-            'user' => new UserResource($user->fresh()),
+            'user'    => new UserResource($user->fresh()),
             'message' => 'تم تحديث الملف الشخصي.',
+        ]);
+    }
+
+    // تغيير كلمة المرور
+    public function updatePassword(Request $request): JsonResponse
+    {
+        $request->validate([
+            'current_password' => 'required|string',
+            'password'         => 'required|string|min:8|confirmed',
+        ]);
+
+        $user = $request->user();
+
+        if (!Hash::check($request->current_password, $user->password)) {
+            return response()->json([
+                'message' => 'كلمة المرور الحالية غير صحيحة.',
+            ], 422);
+        }
+
+        $user->update([
+            'password' => Hash::make($request->password),
+        ]);
+
+        return response()->json([
+            'message' => 'تم تغيير كلمة المرور بنجاح.',
         ]);
     }
 }

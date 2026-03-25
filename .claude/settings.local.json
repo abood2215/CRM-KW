@@ -7,7 +7,21 @@
       "Bash(php -l app/Http/Controllers/Api/WebhookController.php)",
       "Bash(php -l app/Http/Controllers/Api/ConversationController.php)",
       "Bash(find 'C:\\\\Users\\\\abd-allah\\\\Desktop\\\\CRM\\\\REACT CRM\\\\src' -type f \\\\\\(-name *.jsx -o -name *.js -o -name *.json \\\\\\))",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(find 'C:/Users/abd-allah/Desktop/CRM/REACT CRM/src' -type f \\\\\\(-name *.tsx -o -name *.ts -o -name *.jsx -o -name *.js \\\\\\))",
+      "Bash(php -l app/Http/Controllers/Api/TemplateController.php)",
+      "Bash(php -l app/Jobs/SyncTemplatesJob.php)",
+      "Bash(php -l app/Http/Controllers/Api/StatsController.php)",
+      "Bash(php -l app/Http/Controllers/Api/CampaignController.php)",
+      "Bash(php -l app/Http/Controllers/Api/ContactController.php)",
+      "Bash(php -l app/Models/Contact.php)",
+      "Bash(php -l app/Models/ContactList.php)",
+      "Bash(php -l app/Models/ContactListItem.php)",
+      "Bash(php -l app/Models/WhatsappTemplate.php)",
+      "Bash(php -l app/Models/CampaignSequence.php)",
+      "Bash(npx tsc:*)",
+      "Bash(node_modules/.bin/tsc --noEmit)",
+      "Bash(node:*)"
     ]
   }
 }

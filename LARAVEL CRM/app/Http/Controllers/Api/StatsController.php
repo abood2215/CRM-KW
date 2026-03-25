@@ -8,6 +8,7 @@ use App\Models\Conversation;
 use App\Models\CrmClient;
 use App\Models\CrmTask;
 use App\Models\User;
+use App\Models\WhatsappNumber;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -120,5 +121,50 @@ class StatsController extends Controller
             ]);
 
         return response()->json(['agents' => $agents]);
+    }
+
+    // إحصائيات WhatsApp
+    public function whatsapp(): JsonResponse
+    {
+        $numbers = WhatsappNumber::all();
+
+        $totalSentToday = $numbers->sum('sent_today');
+        $activeNumbers  = $numbers->where('status', 'active')->count();
+        $totalNumbers   = $numbers->count();
+
+        // إحصائيات الحملات للأسبوع الحالي
+        $weeklyCampaigns = Campaign::whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])
+            ->selectRaw('count(*) as total, sum(sent_count) as total_sent, sum(failed_count) as total_failed, sum(reply_count) as total_replies')
+            ->first();
+
+        // أداء الحملات الشهرية (آخر 30 يوم)
+        $monthlySent = Campaign::where('created_at', '>=', now()->subDays(30))
+            ->selectRaw('DATE(created_at) as date, sum(sent_count) as sent')
+            ->groupBy('date')
+            ->orderBy('date')
+            ->get()
+            ->map(fn($r) => ['date' => $r->date, 'sent' => (int) $r->sent]);
+
+        return response()->json([
+            'total_numbers'   => $totalNumbers,
+            'active_numbers'  => $activeNumbers,
+            'total_sent_today' => $totalSentToday,
+            'weekly_campaigns' => [
+                'total'         => (int) ($weeklyCampaigns->total ?? 0),
+                'total_sent'    => (int) ($weeklyCampaigns->total_sent ?? 0),
+                'total_failed'  => (int) ($weeklyCampaigns->total_failed ?? 0),
+                'total_replies' => (int) ($weeklyCampaigns->total_replies ?? 0),
+            ],
+            'monthly_sent'    => $monthlySent,
+            'numbers'         => $numbers->map(fn($n) => [
+                'id'          => $n->id,
+                'name'        => $n->name,
+                'phone'       => $n->phone,
+                'status'      => $n->status,
+                'sent_today'  => $n->sent_today,
+                'daily_limit' => $n->daily_limit,
+                'week_number' => $n->week_number,
+            ]),
+        ]);
     }
 }

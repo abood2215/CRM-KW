@@ -323,6 +323,7 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
       </div>
+    </div>
     <AddClientModal open={addClientOpen} onClose={() => setAddClientOpen(false)} />
   </>
   );

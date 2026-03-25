@@ -8,6 +8,7 @@ use App\Http\Resources\CampaignResource;
 use App\Jobs\ProcessCampaignJob;
 use App\Models\Campaign;
 use App\Models\CampaignRecipient;
+use App\Services\CampaignService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -137,6 +138,85 @@ class CampaignController extends Controller
 
         return response()->json([
             'message' => 'تم حذف الحملة.',
+        ]);
+    }
+
+    // تعديل الحملة (قبل بدئها)
+    public function update(Request $request, int $id): JsonResponse
+    {
+        $campaign = Campaign::findOrFail($id);
+
+        if ($campaign->status === 'running') {
+            return response()->json(['message' => 'لا يمكن تعديل حملة جارية.'], 422);
+        }
+
+        $validated = $request->validate([
+            'name'               => 'sometimes|string|max:255',
+            'description'        => 'nullable|string',
+            'whatsapp_number_id' => 'sometimes|exists:whatsapp_numbers,id',
+            'template_name'      => 'sometimes|string',
+            'template_language'  => 'sometimes|string',
+            'template_variables' => 'nullable|array',
+            'contact_list_id'    => 'nullable|exists:contact_lists,id',
+            'scheduled_at'       => 'nullable|date|after:now',
+            'delay_seconds'      => 'sometimes|integer|min:120|max:300',
+            'stop_on_fail_rate'  => 'sometimes|integer|min:1|max:100',
+        ]);
+
+        $campaign->update($validated);
+
+        return response()->json([
+            'campaign' => new CampaignResource($campaign->fresh('user')),
+            'message'  => 'تم تحديث الحملة.',
+        ]);
+    }
+
+    // بدء الحملة يدوياً
+    public function start(int $id): JsonResponse
+    {
+        $campaign = Campaign::findOrFail($id);
+        $service  = new CampaignService();
+
+        try {
+            $campaign = $service->startCampaign($campaign);
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json([
+            'campaign' => new CampaignResource($campaign),
+            'message'  => 'تم بدء الحملة.',
+        ]);
+    }
+
+    // قائمة المستلمين مع pagination
+    public function recipients(Request $request, int $id): JsonResponse
+    {
+        $campaign   = Campaign::findOrFail($id);
+        $recipients = $campaign->recipients()
+            ->when($request->status, fn($q) => $q->where('status', $request->status))
+            ->orderBy('id')
+            ->paginate($request->per_page ?? 50);
+
+        return response()->json([
+            'recipients' => $recipients->items(),
+            'meta' => [
+                'current_page' => $recipients->currentPage(),
+                'last_page'    => $recipients->lastPage(),
+                'total'        => $recipients->total(),
+            ],
+        ]);
+    }
+
+    // إحصائيات الحملة التفصيلية
+    public function analytics(int $id): JsonResponse
+    {
+        $campaign = Campaign::with('recipients')->findOrFail($id);
+        $service  = new CampaignService();
+
+        return response()->json([
+            'campaign'  => new CampaignResource($campaign),
+            'analytics' => $service->getAnalytics($campaign),
         ]);
     }
 }

@@ -17,6 +17,8 @@ const Campaigns = lazy(() => import('./pages/campaigns/CampaignsPage'));
 const Whatsapp = lazy(() => import('./pages/whatsapp/WhatsappPage'));
 const Stats = lazy(() => import('./pages/stats/StatsPage'));
 const Settings = lazy(() => import('./pages/settings/SettingsPage'));
+const Contacts = lazy(() => import('./pages/contacts/ContactsPage'));
+const Templates = lazy(() => import('./pages/templates/TemplatesPage'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -84,6 +86,8 @@ function App() {
             <Route path="/whatsapp" element={<ProtectedRoute><Whatsapp /></ProtectedRoute>} />
             <Route path="/stats" element={<ProtectedRoute><Stats /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+            <Route path="/contacts" element={<ProtectedRoute><Contacts /></ProtectedRoute>} />
+            <Route path="/templates" element={<ProtectedRoute><Templates /></ProtectedRoute>} />
 
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />

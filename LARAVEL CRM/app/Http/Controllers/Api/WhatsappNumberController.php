@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreWhatsappNumberRequest;
 use App\Http\Resources\WhatsappNumberResource;
+use App\Jobs\SyncTemplatesJob;
 use App\Models\WhatsappNumber;
 use App\Services\BaileysService;
 use Illuminate\Http\JsonResponse;
@@ -64,6 +65,24 @@ class WhatsappNumberController extends Controller
         return response()->json([
             'whatsapp_number' => new WhatsappNumberResource($number->fresh()),
             'session_status' => $result,
+        ]);
+    }
+
+    // مزامنة القوالب من Meta API لرقم محدد
+    public function syncTemplates(int $id): JsonResponse
+    {
+        $number = WhatsappNumber::findOrFail($id);
+
+        if (!$number->access_token || !$number->phone_number_id) {
+            return response()->json([
+                'message' => 'هذا الرقم لا يدعم Cloud API. أضف access_token و phone_number_id.',
+            ], 422);
+        }
+
+        SyncTemplatesJob::dispatch($number->id);
+
+        return response()->json([
+            'message' => 'جاري مزامنة القوالب في الخلفية.',
         ]);
     }
 }

@@ -63,6 +63,7 @@ const TasksPage: React.FC = () => {
   };
 
   return (
+    <>
     <div className="space-y-8 font-cairo animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -217,6 +218,7 @@ const TasksPage: React.FC = () => {
     </div>
 
     <AddTaskModal open={addOpen} onClose={() => setAddOpen(false)} />
+    </>
   );
 };
 

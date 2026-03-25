@@ -149,3 +149,88 @@ export interface DashboardStats {
   clients_by_source: Record<string, number>;
   recent_clients: any[];
 }
+
+export interface Contact {
+  id: number;
+  user_id?: number;
+  user?: User;
+  name: string;
+  phone: string;
+  email?: string;
+  tags?: string[];
+  source?: string;
+  opt_in: boolean;
+  opt_in_date?: string;
+  opt_out: boolean;
+  opt_out_date?: string;
+  is_blacklisted: boolean;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ContactList {
+  id: number;
+  user_id: number;
+  user?: User;
+  name: string;
+  description?: string;
+  count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WhatsappTemplate {
+  id: number;
+  whatsapp_number_id: number;
+  whatsapp_number?: WhatsappNumber;
+  name: string;
+  language: string;
+  category: 'marketing' | 'utility' | 'authentication';
+  status: 'approved' | 'pending' | 'rejected';
+  header_type: 'none' | 'text' | 'image' | 'video' | 'pdf';
+  header_content?: string;
+  body_text: string;
+  footer_text?: string;
+  buttons?: any[];
+  variables_count: number;
+  last_synced_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CampaignSequence {
+  id: number;
+  campaign_id: number;
+  step_number: number;
+  delay_days: number;
+  template_name: string;
+  status: 'active' | 'inactive';
+  created_at: string;
+}
+
+export interface ActivityLog {
+  id: number;
+  user_id?: number;
+  user?: User;
+  action: string;
+  model_type?: string;
+  model_id?: number;
+  description: string;
+  metadata?: Record<string, any>;
+  created_at: string;
+}
+
+export interface CampaignRecipient {
+  id: number;
+  campaign_id: number;
+  contact_id?: number;
+  phone: string;
+  name?: string;
+  variables?: Record<string, string>;
+  status: 'pending' | 'sent' | 'failed' | 'replied' | 'blocked';
+  sent_at?: string;
+  replied_at?: string;
+  error_message?: string;
+  created_at: string;
+}

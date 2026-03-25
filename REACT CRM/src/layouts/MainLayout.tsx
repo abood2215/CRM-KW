@@ -1,13 +1,13 @@
 import React, { ReactNode } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { 
-  BarChart3, 
-  Users, 
-  MessageSquare, 
-  CheckSquare, 
-  Megaphone, 
-  Smartphone, 
-  Settings, 
+import {
+  BarChart3,
+  Users,
+  MessageSquare,
+  CheckSquare,
+  Megaphone,
+  Smartphone,
+  Settings,
   LayoutDashboard,
   LogOut,
   ChevronRight,
@@ -16,7 +16,9 @@ import {
   Search,
   User as UserIcon,
   Activity,
-  Columns
+  Columns,
+  Contact,
+  FileText
 } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
 import { useUIStore } from '../store/useUIStore';
@@ -39,7 +41,9 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     { title: 'سجل العملاء', icon: <Users size={20} />, path: '/clients' },
     { title: 'صندوق الرسائل', icon: <MessageSquare size={20} />, path: '/messages', badge: unreadCount },
     { title: 'إدارة المهام', icon: <CheckSquare size={20} />, path: '/tasks' },
+    { title: 'جهات الاتصال', icon: <Contact size={20} />, path: '/contacts' },
     { title: 'الحملات الترويجية', icon: <Megaphone size={20} />, path: '/campaigns' },
+    { title: 'قوالب واتساب', icon: <FileText size={20} />, path: '/templates' },
     { title: 'إدارة الأرقام', icon: <Smartphone size={20} />, path: '/whatsapp' },
     { title: 'التقارير', icon: <BarChart3 size={20} />, path: '/stats' },
     { title: 'الإعدادات', icon: <Settings size={20} />, path: '/settings' },

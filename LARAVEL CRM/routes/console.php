@@ -10,3 +10,6 @@ use Illuminate\Support\Facades\Schedule;
 
 // Reset WhatsApp daily sending limits at midnight
 Schedule::job(new \App\Jobs\ResetDailyLimitJob)->daily()->at('00:00');
+
+// مزامنة قوالب واتساب كل 6 ساعات
+Schedule::job(new \App\Jobs\SyncTemplatesJob)->everySixHours();

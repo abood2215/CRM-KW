@@ -12,11 +12,15 @@ class WhatsAppService
     protected string $apiVersion;
     protected string $baseUrl = 'https://graph.facebook.com';
 
-    public function __construct()
-    {
-        $this->accessToken  = config('services.whatsapp.access_token', '');
-        $this->phoneNumberId = config('services.whatsapp.phone_number_id', '');
-        $this->apiVersion   = config('services.whatsapp.api_version', 'v19.0');
+    // يقبل اختيارياً token و phoneNumberId مباشرة (للأرقام المتعددة)
+    // وإلا يقرأ من config (للرقم الافتراضي)
+    public function __construct(
+        ?string $accessToken   = null,
+        ?string $phoneNumberId = null
+    ) {
+        $this->accessToken   = $accessToken   ?? config('services.whatsapp.access_token', '');
+        $this->phoneNumberId = $phoneNumberId ?? config('services.whatsapp.phone_number_id', '');
+        $this->apiVersion    = config('services.whatsapp.api_version', 'v19.0');
     }
 
     /**
@@ -143,6 +147,89 @@ class WhatsAppService
 
         Log::error('[WhatsApp] All attempts failed', ['payload' => $payload, 'phone_id' => $phoneId]);
         throw new \RuntimeException("WhatsApp message failed after {$maxAttempts} attempts.");
+    }
+
+    /**
+     * Send a PDF document.
+     */
+    public function sendPDF(
+        string $to,
+        string $pdfUrl,
+        string $filename = 'document.pdf',
+        ?string $phoneNumberId = null
+    ): array {
+        return $this->send([
+            'messaging_product' => 'whatsapp',
+            'recipient_type'    => 'individual',
+            'to'                => $this->formatPhone($to),
+            'type'              => 'document',
+            'document'          => [
+                'link'     => $pdfUrl,
+                'filename' => $filename,
+            ],
+        ], $phoneNumberId);
+    }
+
+    /**
+     * جلب قوالب الحساب من Meta API.
+     */
+    public function getTemplates(?string $businessAccountId = null): array
+    {
+        // business_account_id مطلوب لجلب القوالب - يُمرر أو يُقرأ من config
+        $accountId = $businessAccountId ?? config('services.whatsapp.business_account_id', '');
+
+        if (empty($accountId)) {
+            Log::warning('[WhatsApp] getTemplates: business_account_id غير محدد');
+            return [];
+        }
+
+        $url = "{$this->baseUrl}/{$this->apiVersion}/{$accountId}/message_templates";
+
+        try {
+            $response = Http::withToken($this->accessToken)
+                ->timeout(30)
+                ->get($url, [
+                    'fields' => 'name,language,category,status,components',
+                    'limit'  => 200,
+                ]);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                Log::info('[WhatsApp] getTemplates: جُلب ' . count($data['data'] ?? []) . ' قالب');
+                return $data['data'] ?? [];
+            }
+
+            Log::warning('[WhatsApp] getTemplates فشل', [
+                'status' => $response->status(),
+                'body'   => $response->body(),
+            ]);
+        } catch (\Exception $e) {
+            Log::error('[WhatsApp] getTemplates exception: ' . $e->getMessage());
+        }
+
+        return [];
+    }
+
+    /**
+     * جلب حالة رقم الهاتف من Meta.
+     */
+    public function getPhoneNumberStatus(): array
+    {
+        $url = "{$this->baseUrl}/{$this->apiVersion}/{$this->phoneNumberId}";
+
+        try {
+            $response = Http::withToken($this->accessToken)
+                ->timeout(15)
+                ->get($url, ['fields' => 'display_phone_number,verified_name,quality_rating,status']);
+
+            if ($response->successful()) {
+                return $response->json();
+            }
+        } catch (\Exception $e) {
+            Log::error('[WhatsApp] getPhoneNumberStatus: ' . $e->getMessage());
+        }
+
+        return [];
     }
 
     /**
