@@ -5,8 +5,7 @@ import { Conversation, Message } from '../../types';
 import {
   Search, Send, Paperclip, Smile, MoreVertical, Phone,
   CheckCheck, Check, Clock, Loader2, MessageSquare, Lock,
-  ArrowRight, Filter, X, Users, Wifi, ChevronDown,
-  Image, Mic, Plus
+  ArrowRight, Users, Mic, Plus, Video, ChevronDown
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -16,80 +15,50 @@ import { ar } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
-
-const AVATAR_PALETTE = [
-  { bg: '#dbeafe', fg: '#1e40af' },
-  { bg: '#d1fae5', fg: '#065f46' },
-  { bg: '#fce7f3', fg: '#be185d' },
-  { bg: '#fef3c7', fg: '#92400e' },
-  { bg: '#ede9fe', fg: '#6d28d9' },
-  { bg: '#fee2e2', fg: '#991b1b' },
-  { bg: '#e0f2fe', fg: '#0369a1' },
-  { bg: '#ecfdf5', fg: '#065f46' },
+// ─── Avatar color palette ─────────────────────────────────────────────────────
+const PALETTE = [
+  '#e17055', '#00b894', '#0984e3', '#6c5ce7',
+  '#fd79a8', '#00cec9', '#fdcb6e', '#d63031',
 ];
+const getColor = (name = '') => PALETTE[(name.charCodeAt(0) || 0) % PALETTE.length];
 
-const avatarColor = (name = '') =>
-  AVATAR_PALETTE[(name.charCodeAt(0) || 0) % AVATAR_PALETTE.length];
-
-const formatConvTime = (iso?: string) => {
+// ─── Format helpers ───────────────────────────────────────────────────────────
+const fmtConvTime = (iso?: string) => {
   if (!iso) return '';
   const d = new Date(iso);
   if (isToday(d)) return format(d, 'HH:mm');
   if (isYesterday(d)) return 'أمس';
-  return format(d, 'dd/MM', { locale: ar });
+  return format(d, 'dd/MM/yy');
 };
 
-const formatMsgDate = (iso: string) => {
+const fmtDateSep = (iso: string) => {
   const d = new Date(iso);
   if (isToday(d)) return 'اليوم';
   if (isYesterday(d)) return 'أمس';
-  return format(d, 'EEEE، dd MMMM yyyy', { locale: ar });
+  return format(d, 'EEEE، d MMMM', { locale: ar });
 };
 
-// ─── Sub-components ─────────────────────────────────────────────────────────
-
-const MsgStatus = ({ status }: { status?: string }) => {
-  if (status === 'read')
-    return <CheckCheck size={14} className="text-[#53bdeb] flex-shrink-0" />;
-  if (status === 'delivered')
-    return <CheckCheck size={14} className="text-slate-400 flex-shrink-0" />;
-  if (status === 'sent' || status === 'received')
-    return <Check size={14} className="text-slate-400 flex-shrink-0" />;
-  return <Clock size={11} className="text-slate-300 flex-shrink-0" />;
+// ─── Tick icon ────────────────────────────────────────────────────────────────
+const Tick = ({ status }: { status?: string }) => {
+  if (status === 'read') return <CheckCheck size={14} className="text-[#53bdeb]" />;
+  if (status === 'delivered') return <CheckCheck size={14} className="text-[#8696a0]" />;
+  if (status === 'sent' || status === 'received') return <Check size={14} className="text-[#8696a0]" />;
+  return <Clock size={11} className="text-[#8696a0]" />;
 };
 
-const Avatar = ({ name = '', size = 'md' }: { name?: string; size?: 'sm' | 'md' | 'lg' }) => {
-  const { bg, fg } = avatarColor(name);
-  const dim = size === 'sm' ? 'w-8 h-8 text-xs' : size === 'lg' ? 'w-12 h-12 text-base' : 'w-10 h-10 text-sm';
-  return (
-    <div
-      className={cn('rounded-full flex items-center justify-center font-bold flex-shrink-0', dim)}
-      style={{ backgroundColor: bg, color: fg }}
-    >
-      {name.charAt(0)}
-    </div>
-  );
-};
+// ─── WhatsApp-style Avatar ────────────────────────────────────────────────────
+const WaAvatar = ({ name = '', size = 40 }: { name?: string; size?: number }) => (
+  <div
+    className="rounded-full flex items-center justify-center font-bold text-white flex-shrink-0"
+    style={{ width: size, height: size, fontSize: size * 0.38, backgroundColor: getColor(name) }}
+  >
+    {name.charAt(0).toUpperCase() || '?'}
+  </div>
+);
 
-const SourceBadge = ({ source }: { source?: string }) => {
-  if (source === 'whatsapp')
-    return (
-      <span className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">
-        <Wifi size={8} /> واتساب
-      </span>
-    );
-  if (source === 'instagram')
-    return (
-      <span className="inline-flex items-center gap-1 text-[9px] font-bold text-pink-600 bg-pink-50 px-1.5 py-0.5 rounded-full">
-        <Users size={8} /> انستقرام
-      </span>
-    );
-  return null;
-};
-
-// ─── Main Component ──────────────────────────────────────────────────────────
-
+// ═════════════════════════════════════════════════════════════════════════════
+// MAIN COMPONENT
+// ═════════════════════════════════════════════════════════════════════════════
 const MessagesPage: React.FC = () => {
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
@@ -97,17 +66,15 @@ const MessagesPage: React.FC = () => {
 
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [message, setMessage] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'open' | 'pending' | 'resolved'>('open');
   const [isPrivate, setIsPrivate] = useState(false);
   const [mobileShowChat, setMobileShowChat] = useState(false);
-  const [showSearch, setShowSearch] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // ── Queries ──────────────────────────────────────────────────────────────
-
+  // ── Queries ─────────────────────────────────────────────────────────────────
   const { data: conversations = [], isLoading: loadingConvs } = useQuery<Conversation[]>({
     queryKey: ['conversations', filter],
     queryFn: async () => {
@@ -117,7 +84,7 @@ const MessagesPage: React.FC = () => {
     refetchInterval: 30_000,
   });
 
-  const { data: messages = [], isLoading: loadingMessages } = useQuery<Message[]>({
+  const { data: messages = [], isLoading: loadingMsgs } = useQuery<Message[]>({
     queryKey: ['messages', selectedId],
     queryFn: async () => {
       const { data } = await api.get(`/conversations/${selectedId}/messages`);
@@ -126,25 +93,28 @@ const MessagesPage: React.FC = () => {
     enabled: !!selectedId,
   });
 
-  const sendMessage = useMutation({
+  const sendMutation = useMutation({
     mutationFn: (payload: { content: string; is_private: boolean }) =>
       api.post(`/conversations/${selectedId}/messages`, payload),
     onSuccess: () => {
       setMessage('');
+      if (textareaRef.current) {
+        textareaRef.current.style.height = '42px';
+      }
       queryClient.invalidateQueries({ queryKey: ['messages', selectedId] });
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
     },
     onError: () => toast.error('فشل إرسال الرسالة'),
   });
 
-  // ── Real-time ─────────────────────────────────────────────────────────────
-
+  // ── Real-time ────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!echo) return;
-    const channel = echo.private('messages').listen('.NewMessageEvent', (e: { message: Message }) => {
+    echo.private('messages').listen('.NewMessageEvent', (e: { message: Message }) => {
       if (e.message.conversation_id === selectedId) {
-        queryClient.setQueryData(['messages', selectedId], (old: Message[] | undefined) =>
-          old ? [...old, e.message] : [e.message]
+        queryClient.setQueryData(
+          ['messages', selectedId],
+          (old: Message[] | undefined) => (old ? [...old, e.message] : [e.message])
         );
       }
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
@@ -152,200 +122,209 @@ const MessagesPage: React.FC = () => {
     return () => echo.leave('messages');
   }, [echo, selectedId, queryClient]);
 
-  // ── Scroll to bottom on new messages ─────────────────────────────────────
-
+  // ── Auto-scroll ──────────────────────────────────────────────────────────────
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
 
-  // ── Handlers ─────────────────────────────────────────────────────────────
-
-  const handleSelectConversation = (id: number) => {
+  // ── Handlers ─────────────────────────────────────────────────────────────────
+  const handleSelect = (id: number) => {
     setSelectedId(id);
     setMobileShowChat(true);
-    inputRef.current?.focus();
   };
 
   const handleSend = (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (!message.trim() || !selectedId || sendMessage.isPending) return;
-    sendMessage.mutate({ content: message, is_private: isPrivate });
+    if (!message.trim() || !selectedId || sendMutation.isPending) return;
+    sendMutation.mutate({ content: message, is_private: isPrivate });
   };
 
-  // ── Derived ───────────────────────────────────────────────────────────────
-
+  // ── Derived data ──────────────────────────────────────────────────────────────
   const selectedConv = conversations.find((c) => c.id === selectedId);
 
-  const filteredConvs = useMemo(
+  const filtered = useMemo(
     () =>
       conversations.filter((c) =>
-        !searchTerm ||
-        c.client?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.client?.phone.includes(searchTerm) ||
-        c.last_message?.toLowerCase().includes(searchTerm.toLowerCase())
+        !search ||
+        c.client?.name?.toLowerCase().includes(search.toLowerCase()) ||
+        c.client?.phone?.includes(search) ||
+        c.last_message?.toLowerCase().includes(search.toLowerCase())
       ),
-    [conversations, searchTerm]
+    [conversations, search]
   );
 
-  // Group messages by date for separators
-  const messageGroups = useMemo(() => {
+  const msgGroups = useMemo(() => {
     const groups: { date: string; msgs: Message[] }[] = [];
-    messages.forEach((msg) => {
-      const d = formatMsgDate(msg.sent_at);
+    messages.forEach((m) => {
+      const d = fmtDateSep(m.sent_at);
       const last = groups[groups.length - 1];
-      if (last?.date === d) last.msgs.push(msg);
-      else groups.push({ date: d, msgs: [msg] });
+      if (last?.date === d) last.msgs.push(m);
+      else groups.push({ date: d, msgs: [m] });
     });
     return groups;
   }, [messages]);
 
-  const filterLabels = { open: 'نشطة', pending: 'معلقة', resolved: 'مكتملة' } as const;
+  const filterMap = {
+    open: { label: 'نشطة', color: 'bg-[#00a884] text-white' },
+    pending: { label: 'معلقة', color: 'bg-amber-500 text-white' },
+    resolved: { label: 'مكتملة', color: 'bg-slate-400 text-white' },
+  } as const;
 
-  // ── JSX ───────────────────────────────────────────────────────────────────
-
+  // ─────────────────────────────────────────────────────────────────────────────
   return (
     <div
-      className="flex overflow-hidden font-cairo rounded-2xl border border-slate-200 shadow-xl"
-      style={{ height: 'calc(100dvh - 8.75rem)' }}
+      className="flex bg-white rounded-xl overflow-hidden shadow-2xl border border-slate-200 font-cairo"
+      style={{ height: 'calc(100vh - 9rem)' }}
     >
 
-      {/* ═══════════════════════════════════════════════════════════════════
-          SIDEBAR — Conversation List
-      ═══════════════════════════════════════════════════════════════════ */}
-      <aside
+      {/* ═══════════════════════════════════════════════════════════════════════
+          RIGHT PANEL — Conversation List  (in RTL this appears on the right)
+      ═══════════════════════════════════════════════════════════════════════ */}
+      <div
         className={cn(
-          'flex-shrink-0 flex flex-col bg-[#f0f2f5]',
-          'w-full lg:w-[360px] xl:w-[400px]',
-          'border-l border-slate-200',
+          'flex-shrink-0 flex flex-col border-l border-[#d1d7db]',
+          'w-full lg:w-[360px] xl:w-[390px]',
           mobileShowChat ? 'hidden lg:flex' : 'flex'
         )}
+        style={{ backgroundColor: '#111b21' }}
       >
-        {/* Sidebar Header */}
-        <div className="bg-[#f0f2f5] px-4 py-3 flex items-center justify-between flex-shrink-0">
+        {/* ── Header ── */}
+        <div
+          className="flex items-center justify-between px-4 py-3 flex-shrink-0"
+          style={{ backgroundColor: '#202c33' }}
+        >
           <div className="flex items-center gap-3">
-            <Avatar name={user?.name ?? 'U'} size="md" />
-            <h2 className="text-base font-black text-slate-800">المحادثات</h2>
+            <WaAvatar name={user?.name ?? 'U'} size={40} />
+            <span className="text-[15px] font-semibold text-[#e9edef]">
+              {user?.name ?? 'أنت'}
+            </span>
           </div>
           <div className="flex items-center gap-1">
+            <button className="w-9 h-9 flex items-center justify-center rounded-full text-[#aebac1] hover:bg-white/10 transition-colors">
+              <Users size={19} />
+            </button>
+            <button className="w-9 h-9 flex items-center justify-center rounded-full text-[#aebac1] hover:bg-white/10 transition-colors">
+              <MessageSquare size={19} />
+            </button>
+            <button className="w-9 h-9 flex items-center justify-center rounded-full text-[#aebac1] hover:bg-white/10 transition-colors">
+              <MoreVertical size={19} />
+            </button>
+          </div>
+        </div>
+
+        {/* ── Filter chips ── */}
+        <div
+          className="flex items-center gap-2 px-4 py-2 flex-shrink-0 overflow-x-auto scrollbar-hide"
+          style={{ backgroundColor: '#111b21' }}
+        >
+          {(['open', 'pending', 'resolved'] as const).map((f) => (
             <button
-              onClick={() => setShowSearch((v) => !v)}
-              className="w-9 h-9 flex items-center justify-center rounded-full text-slate-500 hover:bg-black/5 transition-colors"
+              key={f}
+              onClick={() => setFilter(f)}
+              className={cn(
+                'flex-shrink-0 px-4 py-1 rounded-full text-[12.5px] font-semibold transition-all border',
+                filter === f
+                  ? filterMap[f].color + ' border-transparent'
+                  : 'text-[#8696a0] border-[#8696a0]/40 hover:border-[#8696a0]/80'
+              )}
             >
-              {showSearch ? <X size={18} /> : <Search size={18} />}
+              {filterMap[f].label}
             </button>
-            <button className="w-9 h-9 flex items-center justify-center rounded-full text-slate-500 hover:bg-black/5 transition-colors">
-              <Filter size={17} />
-            </button>
+          ))}
+        </div>
+
+        {/* ── Search ── */}
+        <div className="px-3 pb-2 flex-shrink-0" style={{ backgroundColor: '#111b21' }}>
+          <div className="relative">
+            <Search
+              size={16}
+              className="absolute right-3 top-1/2 -translate-y-1/2"
+              style={{ color: '#8696a0' }}
+            />
+            <input
+              type="text"
+              placeholder="بحث أو بدء محادثة جديدة"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full h-[35px] pr-9 pl-4 rounded-lg text-[14px] focus:outline-none placeholder:text-[#8696a0] text-[#d1d7db]"
+              style={{ backgroundColor: '#202c33' }}
+            />
           </div>
         </div>
 
-        {/* Search Bar */}
-        <AnimatePresence>
-          {showSearch && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="overflow-hidden px-3 pb-2 bg-[#f0f2f5]"
-            >
-              <div className="relative">
-                <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
-                <input
-                  type="text"
-                  placeholder="بحث أو بدء محادثة جديدة"
-                  className="w-full h-9 pr-9 pl-4 bg-white rounded-lg text-sm focus:outline-none border-none shadow-sm placeholder:text-slate-400"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  autoFocus
-                />
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Filter Tabs */}
-        <div className="px-3 pb-2 bg-[#f0f2f5] flex-shrink-0">
-          <div className="flex gap-1.5">
-            {(['open', 'pending', 'resolved'] as const).map((s) => (
-              <button
-                key={s}
-                onClick={() => setFilter(s)}
-                className={cn(
-                  'flex-1 py-1.5 text-xs font-bold rounded-full transition-all',
-                  filter === s
-                    ? 'bg-[#00a884] text-white shadow-sm'
-                    : 'bg-white/70 text-slate-500 hover:bg-white'
-                )}
-              >
-                {filterLabels[s]}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Conversation List */}
-        <div className="flex-1 overflow-y-auto bg-white">
+        {/* ── Conversation List ── */}
+        <div className="flex-1 overflow-y-auto" style={{ backgroundColor: '#111b21' }}>
           {loadingConvs ? (
-            <div className="flex items-center justify-center h-32">
-              <Loader2 className="animate-spin text-[#00a884]" size={24} />
+            <div className="flex items-center justify-center h-24">
+              <Loader2 className="animate-spin" size={22} style={{ color: '#00a884' }} />
             </div>
-          ) : filteredConvs.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-48 gap-3 text-slate-400 px-6 text-center">
-              <MessageSquare size={36} className="text-slate-200" />
-              <p className="text-sm font-medium">لا توجد محادثات</p>
+          ) : filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center gap-3 py-20 px-6 text-center">
+              <MessageSquare size={40} style={{ color: '#8696a0' }} />
+              <p className="text-[13px]" style={{ color: '#8696a0' }}>
+                {search ? 'لا توجد نتائج' : 'لا توجد محادثات'}
+              </p>
             </div>
           ) : (
-            filteredConvs.map((conv) => {
+            filtered.map((conv) => {
               const isActive = selectedId === conv.id;
-              const { bg, fg } = avatarColor(conv.client?.name ?? '');
+              const color = getColor(conv.client?.name ?? '');
               return (
                 <button
                   key={conv.id}
-                  onClick={() => handleSelectConversation(conv.id)}
-                  className={cn(
-                    'w-full flex items-center gap-3 px-4 py-3.5 transition-colors text-right border-b border-slate-50',
-                    isActive ? 'bg-[#f0f2f5]' : 'bg-white hover:bg-[#f5f6f6]'
-                  )}
+                  onClick={() => handleSelect(conv.id)}
+                  className="w-full flex items-center gap-3 px-3 py-3 transition-colors text-right relative"
+                  style={{
+                    backgroundColor: isActive ? '#2a3942' : 'transparent',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isActive) e.currentTarget.style.backgroundColor = '#202c33';
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isActive) e.currentTarget.style.backgroundColor = 'transparent';
+                  }}
                 >
+                  {/* Divider */}
+                  <div
+                    className="absolute bottom-0 right-[72px] left-0 h-px"
+                    style={{ backgroundColor: '#ffffff0f' }}
+                  />
+
                   {/* Avatar */}
-                  <div className="relative flex-shrink-0">
-                    <div
-                      className="w-12 h-12 rounded-full flex items-center justify-center font-bold text-base"
-                      style={{ backgroundColor: bg, color: fg }}
-                    >
-                      {conv.client?.name?.charAt(0) ?? '?'}
-                    </div>
-                    {conv.source === 'whatsapp' && (
-                      <div className="absolute -bottom-0.5 -left-0.5 w-5 h-5 rounded-full bg-[#25d366] flex items-center justify-center border-2 border-white">
-                        <Wifi size={10} className="text-white" />
-                      </div>
-                    )}
+                  <div
+                    className="w-[49px] h-[49px] rounded-full flex items-center justify-center font-bold text-white flex-shrink-0 text-lg"
+                    style={{ backgroundColor: color }}
+                  >
+                    {conv.client?.name?.charAt(0)?.toUpperCase() ?? '?'}
                   </div>
 
                   {/* Content */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between mb-0.5">
-                      <span className="text-[13px] font-bold text-slate-800 truncate">
+                    <div className="flex items-center justify-between mb-[2px]">
+                      <span className="text-[15px] font-normal truncate" style={{ color: '#e9edef' }}>
                         {conv.client?.name ?? 'مجهول'}
                       </span>
                       <span
-                        className={cn(
-                          'text-[11px] font-medium flex-shrink-0 mr-1',
-                          conv.unread_count > 0 ? 'text-[#00a884] font-bold' : 'text-slate-400'
-                        )}
+                        className="text-[11.5px] flex-shrink-0 mr-1"
+                        style={{ color: conv.unread_count > 0 ? '#00a884' : '#8696a0' }}
                       >
-                        {formatConvTime(conv.last_message_at)}
+                        {fmtConvTime(conv.last_message_at)}
                       </span>
                     </div>
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-[12px] text-slate-500 truncate leading-snug">
-                        {conv.last_message || 'لا توجد رسائل'}
+                    <div className="flex items-center justify-between gap-1">
+                      <p
+                        className="text-[13px] truncate leading-snug"
+                        style={{ color: '#8696a0' }}
+                      >
+                        {conv.last_message || 'ابدأ المحادثة...'}
                       </p>
                       {conv.unread_count > 0 && (
-                        <span className="flex-shrink-0 min-w-[20px] h-5 bg-[#00a884] text-white rounded-full text-[11px] font-bold flex items-center justify-center px-1">
+                        <span
+                          className="flex-shrink-0 min-w-[20px] h-5 rounded-full text-[11px] font-semibold flex items-center justify-center px-1"
+                          style={{ backgroundColor: '#00a884', color: '#111b21' }}
+                        >
                           {conv.unread_count > 99 ? '99+' : conv.unread_count}
                         </span>
                       )}
@@ -356,12 +335,12 @@ const MessagesPage: React.FC = () => {
             })
           )}
         </div>
-      </aside>
+      </div>
 
-      {/* ═══════════════════════════════════════════════════════════════════
-          CHAT AREA
-      ═══════════════════════════════════════════════════════════════════ */}
-      <main
+      {/* ═══════════════════════════════════════════════════════════════════════
+          LEFT PANEL — Chat Area  (in RTL this appears on the left)
+      ═══════════════════════════════════════════════════════════════════════ */}
+      <div
         className={cn(
           'flex-1 flex flex-col min-w-0',
           mobileShowChat ? 'flex' : 'hidden lg:flex'
@@ -370,47 +349,45 @@ const MessagesPage: React.FC = () => {
         {selectedId ? (
           <>
             {/* ── Chat Header ── */}
-            <div className="h-[60px] px-3 lg:px-4 bg-[#f0f2f5] flex items-center justify-between gap-3 flex-shrink-0 border-b border-slate-200">
-              {/* Left: back + avatar + info */}
-              <div className="flex items-center gap-2 min-w-0">
+            <div
+              className="flex items-center justify-between px-4 py-[10px] flex-shrink-0"
+              style={{ backgroundColor: '#202c33' }}
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                {/* Mobile back */}
                 <button
                   onClick={() => setMobileShowChat(false)}
-                  className="lg:hidden w-8 h-8 flex items-center justify-center text-slate-600 hover:text-slate-900 transition-colors flex-shrink-0"
+                  className="lg:hidden w-8 h-8 flex items-center justify-center text-[#aebac1]"
                 >
                   <ArrowRight size={22} />
                 </button>
-                <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center font-bold flex-shrink-0 cursor-pointer"
-                  style={{
-                    backgroundColor: avatarColor(selectedConv?.client?.name ?? '').bg,
-                    color: avatarColor(selectedConv?.client?.name ?? '').fg,
-                  }}
-                >
-                  {selectedConv?.client?.name?.charAt(0) ?? '?'}
-                </div>
-                <div className="min-w-0">
-                  <h3 className="text-[14px] font-bold text-slate-800 truncate leading-tight">
+                <WaAvatar name={selectedConv?.client?.name ?? ''} size={40} />
+                <div className="min-w-0 cursor-pointer">
+                  <p className="text-[15px] font-medium text-[#e9edef] truncate leading-tight">
                     {selectedConv?.client?.name ?? 'محادثة'}
-                  </h3>
-                  <p className="text-[11px] text-slate-500 truncate">
-                    {selectedConv?.client?.phone}
+                  </p>
+                  <p className="text-[12px] truncate" style={{ color: '#8696a0' }}>
+                    {selectedConv?.client?.phone ?? ''}
                     {selectedConv?.assigned_user && (
-                      <span className="mr-2 text-[#00a884]">• {selectedConv.assigned_user.name}</span>
+                      <span style={{ color: '#00a884' }}>
+                        {' '}• {selectedConv.assigned_user.name}
+                      </span>
                     )}
                   </p>
                 </div>
               </div>
-
-              {/* Right: actions */}
               <div className="flex items-center gap-1 flex-shrink-0">
-                <button className="w-9 h-9 flex items-center justify-center rounded-full text-slate-500 hover:bg-black/5 transition-colors">
-                  <Phone size={18} />
+                <button className="w-10 h-10 flex items-center justify-center rounded-full text-[#aebac1] hover:bg-white/10 transition-colors">
+                  <Video size={20} />
                 </button>
-                <button className="w-9 h-9 flex items-center justify-center rounded-full text-slate-500 hover:bg-black/5 transition-colors">
-                  <Search size={18} />
+                <button className="w-10 h-10 flex items-center justify-center rounded-full text-[#aebac1] hover:bg-white/10 transition-colors">
+                  <Phone size={20} />
                 </button>
-                <button className="w-9 h-9 flex items-center justify-center rounded-full text-slate-500 hover:bg-black/5 transition-colors">
-                  <MoreVertical size={18} />
+                <button className="w-10 h-10 flex items-center justify-center rounded-full text-[#aebac1] hover:bg-white/10 transition-colors">
+                  <Search size={20} />
+                </button>
+                <button className="w-10 h-10 flex items-center justify-center rounded-full text-[#aebac1] hover:bg-white/10 transition-colors">
+                  <MoreVertical size={20} />
                 </button>
               </div>
             </div>
@@ -418,271 +395,269 @@ const MessagesPage: React.FC = () => {
             {/* ── Messages Area ── */}
             <div
               ref={scrollRef}
-              className="flex-1 overflow-y-auto flex flex-col gap-1 px-3 lg:px-6 py-4"
+              className="flex-1 overflow-y-auto px-[5%] lg:px-[8%] py-4 flex flex-col gap-[2px]"
               style={{
-                backgroundImage: `url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='%23b2bec3' fill-opacity='0.08' fill-rule='evenodd'/%3E%3C/svg%3E")`,
-                backgroundColor: '#efeae2',
+                backgroundColor: '#0b141a',
+                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='400' height='400' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E")`,
               }}
             >
-              {loadingMessages ? (
-                <div className="flex-1 flex flex-col items-center justify-center gap-3">
-                  <Loader2 className="animate-spin text-[#00a884]" size={28} />
-                  <p className="text-slate-500 text-sm font-medium">تحميل الرسائل...</p>
+              {loadingMsgs ? (
+                <div className="flex flex-col items-center justify-center flex-1 gap-3">
+                  <Loader2 className="animate-spin" size={28} style={{ color: '#00a884' }} />
+                  <p className="text-[13px]" style={{ color: '#8696a0' }}>تحميل...</p>
                 </div>
               ) : (
-                <>
-                  {messageGroups.map(({ date, msgs }) => (
-                    <React.Fragment key={date}>
-                      {/* Date separator */}
-                      <div className="flex items-center justify-center my-3">
-                        <span className="bg-white/80 backdrop-blur-sm text-slate-500 text-[11px] font-semibold px-4 py-1 rounded-full shadow-sm border border-white/50">
-                          {date}
-                        </span>
-                      </div>
+                msgGroups.map(({ date, msgs }) => (
+                  <React.Fragment key={date}>
+                    {/* Date separator */}
+                    <div className="flex items-center justify-center my-4">
+                      <span
+                        className="px-4 py-[5px] rounded-lg text-[12px] font-medium shadow-sm"
+                        style={{ backgroundColor: '#182229', color: '#8696a0' }}
+                      >
+                        {date}
+                      </span>
+                    </div>
 
-                      {msgs.map((msg) => {
-                        const isSent = msg.direction === 'out' && !msg.is_private;
-                        const isNote = msg.is_private;
+                    {msgs.map((msg) => {
+                      const isSent = msg.direction === 'out' && !msg.is_private;
+                      const isNote = msg.is_private;
 
-                        if (isNote) {
-                          return (
-                            <motion.div
-                              key={msg.id}
-                              initial={{ opacity: 0, y: 4 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              className="flex justify-center my-1"
-                            >
-                              <div className="bg-[#fff3cd] border border-[#ffc107]/30 text-[#856404] text-[12px] font-medium px-4 py-2 rounded-xl flex items-center gap-2 max-w-[85%] shadow-sm">
-                                <Lock size={11} className="flex-shrink-0" />
-                                <span className="italic">{msg.content}</span>
-                              </div>
-                            </motion.div>
-                          );
-                        }
-
+                      if (isNote) {
                         return (
                           <motion.div
                             key={msg.id}
-                            initial={{ opacity: 0, scale: 0.97 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{ duration: 0.15 }}
-                            className={cn('flex mb-0.5', isSent ? 'justify-start' : 'justify-end')}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            className="flex justify-center my-1"
                           >
                             <div
-                              className={cn(
-                                'max-w-[75%] lg:max-w-[65%] flex flex-col',
-                                isSent ? 'items-start' : 'items-end'
-                              )}
+                              className="flex items-center gap-2 px-4 py-2 rounded-lg max-w-[80%] text-[12px] italic"
+                              style={{ backgroundColor: '#2a2f32', color: '#8696a0' }}
                             >
-                              <div
-                                className={cn(
-                                  'relative px-3 py-2 shadow-sm',
-                                  isSent
-                                    ? 'bg-[#d9fdd3] rounded-2xl rounded-tr-sm text-slate-800'
-                                    : 'bg-white rounded-2xl rounded-tl-sm text-slate-800'
-                                )}
-                              >
-                                {/* Bubble tail */}
-                                {isSent ? (
-                                  <div
-                                    className="absolute top-0 -right-[7px] w-0 h-0"
-                                    style={{
-                                      borderLeft: '8px solid #d9fdd3',
-                                      borderBottom: '8px solid transparent',
-                                    }}
-                                  />
-                                ) : (
-                                  <div
-                                    className="absolute top-0 -left-[7px] w-0 h-0"
-                                    style={{
-                                      borderRight: '8px solid #ffffff',
-                                      borderBottom: '8px solid transparent',
-                                    }}
-                                  />
-                                )}
-
-                                <p className="text-[13.5px] leading-[1.5] whitespace-pre-wrap break-words">
-                                  {msg.content}
-                                </p>
-
-                                {/* Time + status */}
-                                <div className="flex items-center gap-1 justify-end mt-1 -mb-0.5">
-                                  <span className="text-[10px] text-slate-400 font-medium">
-                                    {format(new Date(msg.sent_at), 'HH:mm')}
-                                  </span>
-                                  {isSent && <MsgStatus status={msg.status} />}
-                                </div>
-                              </div>
+                              <Lock size={11} style={{ color: '#8696a0' }} />
+                              ملاحظة: {msg.content}
                             </div>
                           </motion.div>
                         );
-                      })}
-                    </React.Fragment>
-                  ))}
+                      }
 
-                  {/* Typing indicator space */}
-                  {sendMessage.isPending && (
-                    <div className="flex justify-start">
-                      <div className="bg-white rounded-2xl rounded-tr-sm px-4 py-3 shadow-sm flex items-center gap-1">
-                        {[0, 1, 2].map((i) => (
+                      return (
+                        <motion.div
+                          key={msg.id}
+                          initial={{ opacity: 0, y: 6 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.12 }}
+                          className={cn('flex mb-[2px]', isSent ? 'justify-start' : 'justify-end')}
+                        >
                           <div
-                            key={i}
-                            className="w-2 h-2 bg-slate-300 rounded-full animate-bounce"
-                            style={{ animationDelay: `${i * 150}ms` }}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </>
+                            className={cn(
+                              'relative max-w-[65%] lg:max-w-[55%] px-[9px] pt-[6px] pb-[8px] rounded-[7.5px] shadow-sm',
+                              isSent ? 'rounded-tr-none' : 'rounded-tl-none'
+                            )}
+                            style={{
+                              backgroundColor: isSent ? '#005c4b' : '#202c33',
+                            }}
+                          >
+                            {/* Bubble tail */}
+                            {isSent ? (
+                              <div
+                                className="absolute top-0 -right-[8px] w-0 h-0"
+                                style={{
+                                  borderLeft: '8px solid #005c4b',
+                                  borderBottom: '8px solid transparent',
+                                }}
+                              />
+                            ) : (
+                              <div
+                                className="absolute top-0 -left-[8px] w-0 h-0"
+                                style={{
+                                  borderRight: '8px solid #202c33',
+                                  borderBottom: '8px solid transparent',
+                                }}
+                              />
+                            )}
+
+                            {/* Message text */}
+                            <p
+                              className="text-[14.2px] leading-[1.45] whitespace-pre-wrap break-words"
+                              style={{ color: '#e9edef' }}
+                            >
+                              {msg.content}
+                            </p>
+
+                            {/* Footer: time + tick */}
+                            <div className="flex items-center justify-end gap-1 mt-[4px] -mb-[2px]">
+                              <span className="text-[11px]" style={{ color: '#8696a0' }}>
+                                {format(new Date(msg.sent_at), 'HH:mm')}
+                              </span>
+                              {isSent && <Tick status={msg.status} />}
+                            </div>
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+                  </React.Fragment>
+                ))
+              )}
+
+              {/* Sending indicator */}
+              {sendMutation.isPending && (
+                <div className="flex justify-start">
+                  <div
+                    className="flex items-center gap-1.5 px-4 py-3 rounded-[7.5px] rounded-tr-none"
+                    style={{ backgroundColor: '#005c4b' }}
+                  >
+                    {[0, 1, 2].map((i) => (
+                      <div
+                        key={i}
+                        className="w-2 h-2 rounded-full animate-bounce"
+                        style={{ backgroundColor: '#8696a0', animationDelay: `${i * 150}ms` }}
+                      />
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
 
             {/* ── Input Area ── */}
             <div
-              className={cn(
-                'flex-shrink-0 bg-[#f0f2f5] border-t border-slate-200',
-                isPrivate ? 'bg-amber-50' : ''
-              )}
+              className="flex-shrink-0 px-3 py-2 flex items-end gap-2"
+              style={{ backgroundColor: '#202c33' }}
             >
-              {/* Private Note Toggle */}
-              <div className="px-3 pt-2 flex items-center gap-2">
+              {/* Left icons */}
+              <div className="flex items-center gap-1 flex-shrink-0 pb-[5px]">
                 <button
-                  onClick={() => setIsPrivate((v) => !v)}
-                  className={cn(
-                    'h-7 px-3 rounded-full text-[11px] font-bold flex items-center gap-1.5 transition-all border',
-                    isPrivate
-                      ? 'bg-amber-500 text-white border-amber-600 shadow-md'
-                      : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'
-                  )}
+                  type="button"
+                  className="w-[38px] h-[38px] flex items-center justify-center rounded-full hover:bg-white/10 transition-colors"
+                  style={{ color: '#8696a0' }}
                 >
-                  <Lock size={10} />
-                  ملاحظة داخلية
+                  <Smile size={22} />
                 </button>
-                {isPrivate && (
-                  <span className="text-[11px] text-amber-600 font-medium">
-                    لن تُرسل للعميل
-                  </span>
-                )}
+                <button
+                  type="button"
+                  className="w-[38px] h-[38px] flex items-center justify-center rounded-full hover:bg-white/10 transition-colors"
+                  style={{ color: '#8696a0' }}
+                >
+                  <Paperclip size={22} />
+                </button>
               </div>
 
-              {/* Message row */}
-              <form onSubmit={handleSend} className="flex items-end gap-2 px-3 py-2">
-                {/* Attachment / Emoji */}
-                <div className="flex items-center gap-1 flex-shrink-0 pb-2">
-                  <button
-                    type="button"
-                    className="w-9 h-9 flex items-center justify-center rounded-full text-slate-500 hover:bg-black/5 transition-colors"
+              {/* Textarea */}
+              <div className="flex-1 relative">
+                {isPrivate && (
+                  <div
+                    className="absolute -top-7 right-0 text-[11px] px-2 py-0.5 rounded-full flex items-center gap-1"
+                    style={{ backgroundColor: '#2a2f32', color: '#8696a0' }}
                   >
-                    <Plus size={20} />
-                  </button>
-                </div>
+                    <Lock size={9} />
+                    ملاحظة داخلية — لن تُرسل للعميل
+                  </div>
+                )}
+                <textarea
+                  ref={textareaRef}
+                  rows={1}
+                  value={message}
+                  onChange={(e) => {
+                    setMessage(e.target.value);
+                    e.target.style.height = 'auto';
+                    e.target.style.height = Math.min(e.target.scrollHeight, 140) + 'px';
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSend();
+                    }
+                  }}
+                  placeholder={isPrivate ? 'اكتب ملاحظة داخلية...' : 'اكتب رسالة'}
+                  className="w-full min-h-[42px] max-h-[140px] px-4 py-[11px] rounded-lg text-[15px] focus:outline-none resize-none leading-[1.35] placeholder:text-[#8696a0]"
+                  style={{
+                    backgroundColor: isPrivate ? '#2d2a22' : '#2a3942',
+                    color: '#d1d7db',
+                    border: isPrivate ? '1px solid #6b5900' : 'none',
+                  }}
+                />
+                {/* Private note toggle — small icon inside input */}
+                <button
+                  type="button"
+                  onClick={() => setIsPrivate((v) => !v)}
+                  className="absolute left-3 bottom-[9px] w-6 h-6 flex items-center justify-center rounded-full transition-colors"
+                  style={{ color: isPrivate ? '#f59e0b' : '#8696a0' }}
+                  title="ملاحظة داخلية"
+                >
+                  <Lock size={15} />
+                </button>
+              </div>
 
-                {/* Textarea */}
-                <div className="flex-1 relative">
-                  <textarea
-                    ref={inputRef}
-                    rows={1}
-                    value={message}
-                    onChange={(e) => {
-                      setMessage(e.target.value);
-                      // Auto-grow
-                      e.target.style.height = 'auto';
-                      e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        handleSend();
-                      }
-                    }}
-                    placeholder={isPrivate ? 'اكتب ملاحظة داخلية...' : 'اكتب رسالة'}
-                    className={cn(
-                      'w-full min-h-[42px] max-h-[120px] px-4 py-2.5 rounded-3xl text-[13.5px] font-medium focus:outline-none resize-none leading-relaxed placeholder:text-slate-400 transition-colors',
-                      isPrivate
-                        ? 'bg-amber-100 border border-amber-200 focus:bg-amber-50'
-                        : 'bg-white border-none shadow-sm'
-                    )}
-                  />
-                  <button
-                    type="button"
-                    className="absolute left-3 bottom-2.5 w-7 h-7 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors"
-                  >
-                    <Smile size={18} />
-                  </button>
-                </div>
-
-                {/* Send / Mic button */}
-                <div className="flex-shrink-0 pb-0.5">
-                  <AnimatePresence mode="wait">
-                    {message.trim() ? (
-                      <motion.button
-                        key="send"
-                        type="submit"
-                        initial={{ scale: 0.5, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        exit={{ scale: 0.5, opacity: 0 }}
-                        transition={{ duration: 0.15 }}
-                        disabled={sendMessage.isPending}
-                        className="w-11 h-11 bg-[#00a884] text-white rounded-full flex items-center justify-center shadow-lg hover:bg-[#00956e] active:scale-95 transition-all disabled:opacity-60"
-                      >
-                        <Send size={18} className="-rotate-45 translate-x-0.5" />
-                      </motion.button>
-                    ) : (
-                      <motion.button
-                        key="mic"
-                        type="button"
-                        initial={{ scale: 0.5, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        exit={{ scale: 0.5, opacity: 0 }}
-                        transition={{ duration: 0.15 }}
-                        className="w-11 h-11 bg-[#00a884] text-white rounded-full flex items-center justify-center shadow-lg hover:bg-[#00956e] active:scale-95 transition-all"
-                      >
-                        <Mic size={18} />
-                      </motion.button>
-                    )}
-                  </AnimatePresence>
-                </div>
-              </form>
+              {/* Send / Mic */}
+              <div className="flex-shrink-0 pb-[2px]">
+                <AnimatePresence mode="wait">
+                  {message.trim() ? (
+                    <motion.button
+                      key="send"
+                      type="button"
+                      onClick={() => handleSend()}
+                      initial={{ scale: 0.6, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      exit={{ scale: 0.6, opacity: 0 }}
+                      transition={{ duration: 0.12 }}
+                      disabled={sendMutation.isPending}
+                      className="w-[52px] h-[52px] rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform disabled:opacity-60"
+                      style={{ backgroundColor: '#00a884' }}
+                    >
+                      <Send size={20} className="-rotate-45 translate-x-0.5" style={{ color: '#fff' }} />
+                    </motion.button>
+                  ) : (
+                    <motion.button
+                      key="mic"
+                      type="button"
+                      initial={{ scale: 0.6, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      exit={{ scale: 0.6, opacity: 0 }}
+                      transition={{ duration: 0.12 }}
+                      className="w-[52px] h-[52px] rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform"
+                      style={{ backgroundColor: '#00a884' }}
+                    >
+                      <Mic size={22} style={{ color: '#fff' }} />
+                    </motion.button>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
           </>
         ) : (
-          /* ── Empty State ── */
+          /* ── Empty state — desktop only ── */
           <div
-            className="flex-1 flex flex-col items-center justify-center gap-5 select-none"
-            style={{ backgroundColor: '#f8f9fa' }}
+            className="flex-1 flex-col items-center justify-center gap-5 select-none hidden lg:flex"
+            style={{ backgroundColor: '#0b141a' }}
           >
-            <div className="w-24 h-24 lg:w-36 lg:h-36 rounded-full bg-white flex items-center justify-center shadow-lg">
-              <MessageSquare size={48} className="text-[#00a884] lg:hidden" />
-              <MessageSquare size={72} className="text-[#00a884] hidden lg:block" />
+            {/* WhatsApp Web–style center badge */}
+            <div
+              className="w-[200px] h-[200px] rounded-full flex items-center justify-center"
+              style={{ backgroundColor: '#182229' }}
+            >
+              <MessageSquare size={80} style={{ color: '#00a884', opacity: 0.7 }} />
             </div>
             <div className="text-center px-8 max-w-sm">
-              <h2 className="text-xl lg:text-2xl font-black text-slate-700 mb-2">
-                ابدأ محادثة
+              <h2 className="text-[22px] font-light mb-2" style={{ color: '#e9edef' }}>
+                صندوق الوارد للفريق
               </h2>
-              <p className="text-slate-400 text-sm lg:text-base leading-relaxed">
-                اختر محادثة من القائمة للتواصل مع العميل عبر واتساب.
+              <p className="text-[14px] leading-relaxed" style={{ color: '#8696a0' }}>
+                أرسل واستقبل الرسائل مع عملائك عبر واتساب.<br />
+                اختر محادثة للبدء.
               </p>
             </div>
-            <div className="flex flex-wrap justify-center gap-3 mt-2">
-              <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-full shadow-sm border border-slate-100 text-xs font-bold text-slate-500">
-                <div className="w-2 h-2 rounded-full bg-[#00a884] animate-pulse" />
-                نظام الواتساب متصل
-              </div>
-              <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-full shadow-sm border border-slate-100 text-xs font-bold text-slate-500">
-                <div className="w-2 h-2 rounded-full bg-slate-300" />
-                {conversations.length} محادثة
-              </div>
-            </div>
-            {/* Decorative lock icon */}
-            <div className="mt-8 flex items-center gap-2 text-slate-300">
-              <Lock size={12} />
-              <p className="text-[11px]">رسائلك محمية ومشفرة</p>
+            <div
+              className="flex items-center gap-2 px-5 py-2 rounded-full text-[12.5px] font-medium mt-2"
+              style={{ backgroundColor: '#182229', color: '#8696a0' }}
+            >
+              <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: '#00a884' }} />
+              مشفّر ومحمي
               <Lock size={12} />
             </div>
           </div>
         )}
-      </main>
+      </div>
     </div>
   );
 };
