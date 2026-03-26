@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 import CreateCampaignModal from '../../components/CreateCampaignModal';
 import { Campaign } from '../../types';
@@ -22,6 +23,7 @@ import { motion } from 'framer-motion';
 
 const CampaignsPage: React.FC = () => {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'all' | 'running' | 'completed'>('all');
   const [createOpen, setCreateOpen] = useState(false);
 
@@ -197,7 +199,11 @@ const CampaignsPage: React.FC = () => {
                           <Play size={16} />
                         </button>
                       ) : (
-                        <button className="w-9 h-9 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center hover:bg-indigo-600 hover:text-white transition-all">
+                        <button
+                          onClick={() => navigate(`/campaigns/${campaign.id}/report`)}
+                          title="عرض التقرير"
+                          className="w-9 h-9 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center hover:bg-indigo-600 hover:text-white transition-all"
+                        >
                           <BarChart3 size={16} />
                         </button>
                       )}

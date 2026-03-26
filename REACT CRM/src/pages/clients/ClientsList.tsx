@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 import { useDebounce } from '../../hooks/useDebounce';
 import { Client } from '../../types';
 import {
   Users, Search, Download, Plus, ChevronRight, ChevronLeft,
-  Phone, Calendar, Trash2, Loader2
+  Phone, Calendar, Trash2, Loader2, Eye
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { format } from 'date-fns';
@@ -15,6 +16,7 @@ import AddClientModal from '../../components/AddClientModal';
 
 const ClientsList: React.FC = () => {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [page, setPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [addOpen, setAddOpen] = useState(false);
@@ -179,7 +181,14 @@ const ClientsList: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-4 lg:px-6 py-3 lg:py-4">
-                      <div className="flex items-center justify-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <button
+                          className="p-2 text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
+                          onClick={() => navigate(`/clients/${client.id}`)}
+                          title="عرض التفاصيل والـ Timeline"
+                        >
+                          <Eye size={16} />
+                        </button>
                         <button
                           className="p-2 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
                           onClick={() => handleDelete(client)}

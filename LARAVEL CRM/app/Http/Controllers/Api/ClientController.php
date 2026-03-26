@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreClientRequest;
 use App\Http\Requests\UpdateClientRequest;
 use App\Http\Resources\ClientResource;
+use App\Models\ActivityLog;
+use App\Models\CampaignRecipient;
 use App\Models\CrmClient;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -133,6 +135,94 @@ class ClientController extends Controller
 
             fclose($file);
         }, 200, $headers);
+    }
+
+    /**
+     * Timeline أحداث العميل: رسائل، مهام، حملات، سجل نشاط
+     */
+    public function timeline(int $id): JsonResponse
+    {
+        $client = CrmClient::with([
+            'conversations.messages',
+            'tasks',
+        ])->findOrFail($id);
+
+        $events = collect();
+
+        // --- رسائل المحادثات ---
+        foreach ($client->conversations as $conversation) {
+            foreach ($conversation->messages as $message) {
+                $events->push([
+                    'type'      => 'message',
+                    'date'      => ($message->sent_at ?? $message->created_at)->toISOString(),
+                    'direction' => $message->direction,   // in | out
+                    'content'   => $message->content,
+                    'sender'    => $message->sender_name,
+                    'status'    => $message->status,
+                ]);
+            }
+        }
+
+        // --- المهام ---
+        foreach ($client->tasks as $task) {
+            // حدث إنشاء المهمة
+            $events->push([
+                'type'     => 'task_created',
+                'date'     => $task->created_at->toISOString(),
+                'title'    => $task->title,
+                'task_type'=> $task->type,
+                'priority' => $task->priority,
+                'status'   => $task->status,
+            ]);
+
+            // حدث إكمال المهمة (إن وُجد)
+            if ($task->completed_at) {
+                $events->push([
+                    'type'   => 'task_completed',
+                    'date'   => \Carbon\Carbon::parse($task->completed_at)->toISOString(),
+                    'title'  => $task->title,
+                ]);
+            }
+        }
+
+        // --- الحملات التي وصلت لهذا العميل (بناءً على رقم الهاتف) ---
+        $campaignRecipients = CampaignRecipient::with('campaign')
+            ->where('phone', $client->phone)
+            ->whereNotNull('sent_at')
+            ->get();
+
+        foreach ($campaignRecipients as $recipient) {
+            $events->push([
+                'type'          => 'campaign',
+                'date'          => $recipient->sent_at->toISOString(),
+                'campaign_name' => $recipient->campaign?->name,
+                'campaign_id'   => $recipient->campaign_id,
+                'status'        => $recipient->status,
+            ]);
+        }
+
+        // --- سجل النشاط المرتبط بهذا العميل ---
+        $activityLogs = ActivityLog::where('model_type', 'App\\Models\\CrmClient')
+            ->where('model_id', $id)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        foreach ($activityLogs as $log) {
+            $events->push([
+                'type'        => 'activity',
+                'date'        => $log->created_at->toISOString(),
+                'action'      => $log->action,
+                'description' => $log->description,
+            ]);
+        }
+
+        // ترتيب جميع الأحداث تنازلياً حسب التاريخ
+        $timeline = $events->sortByDesc('date')->values();
+
+        return response()->json([
+            'client'   => new ClientResource($client),
+            'timeline' => $timeline,
+        ]);
     }
 
     public function pipeline(): JsonResponse

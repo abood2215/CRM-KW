@@ -65,6 +65,7 @@ Route::middleware(['auth:sanctum', 'update.last.seen', 'log.activity'])->group(f
     Route::get('/clients/export/csv', [ClientController::class, 'exportCsv']);
     Route::get('/clients/pipeline', [ClientController::class, 'pipeline']);
     Route::get('/clients/{id}', [ClientController::class, 'show']);
+    Route::get('/clients/{id}/timeline', [ClientController::class, 'timeline']);
     Route::put('/clients/{id}', [ClientController::class, 'update']);
     Route::delete('/clients/{id}', [ClientController::class, 'destroy']);
 
@@ -117,6 +118,7 @@ Route::middleware(['auth:sanctum', 'update.last.seen', 'log.activity'])->group(f
     Route::put('/campaigns/{id}/resume', [CampaignController::class, 'resume']);
     Route::get('/campaigns/{id}/recipients', [CampaignController::class, 'recipients']);
     Route::get('/campaigns/{id}/analytics', [CampaignController::class, 'analytics']);
+    Route::get('/campaigns/{id}/report', [CampaignController::class, 'report']);
     Route::delete('/campaigns/{id}', [CampaignController::class, 'destroy']);
 
     // --- WhatsApp Templates ---

@@ -1,0 +1,39 @@
+[Unit]
+Description=Laravel Horizon Queue Manager - مركز مطمئنة
+Documentation=https://laravel.com/docs/horizon
+After=network.target redis.service
+Wants=redis.service
+
+[Service]
+# المستخدم الذي يشغّل العملية
+User=www-data
+Group=www-data
+
+# مسار المشروع (غيّره حسب السيرفر)
+WorkingDirectory=/var/www/crm
+
+# أمر تشغيل Horizon
+ExecStart=/usr/bin/php artisan horizon
+
+# إعادة التشغيل تلقائياً عند الفشل
+Restart=on-failure
+RestartSec=5s
+
+# حد الذاكرة للعملية
+MemoryMax=256M
+
+# تسجيل المخرجات
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=laravel-horizon
+
+# متغيرات البيئة
+Environment=APP_ENV=production
+EnvironmentFile=/var/www/crm/.env
+
+# إرسال إشارة إيقاف نظيف لـ Horizon قبل الإيقاف
+KillSignal=SIGTERM
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target

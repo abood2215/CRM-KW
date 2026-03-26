@@ -25,6 +25,7 @@ import { useAuthStore } from '../store/useAuthStore';
 import { useUIStore } from '../store/useUIStore';
 import { cn } from '../utils/cn';
 import { motion, AnimatePresence } from 'framer-motion';
+import AudioToggle from '../components/AudioToggle';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -271,6 +272,9 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           </div>
 
           <div className="flex items-center gap-3 lg:gap-6">
+            {/* زر الإشعارات الصوتية */}
+            <AudioToggle />
+
             <button className="relative text-slate-500 hover:text-indigo-600 transition-colors p-2 rounded-xl hover:bg-indigo-50">
               <Bell size={20} />
               {unreadCount > 0 && (

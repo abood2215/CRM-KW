@@ -12,9 +12,11 @@ import { Loader2 } from 'lucide-react';
 const Dashboard = lazy(() => import('./pages/dashboard/Dashboard'));
 const Pipeline = lazy(() => import('./pages/clients/Pipeline'));
 const ClientsList = lazy(() => import('./pages/clients/ClientsList'));
+const ClientDetail = lazy(() => import('./pages/clients/ClientDetailPage'));
 const Messages = lazy(() => import('./pages/messages/MessagesPage'));
 const Tasks = lazy(() => import('./pages/tasks/TasksPage'));
 const Campaigns = lazy(() => import('./pages/campaigns/CampaignsPage'));
+const CampaignReport = lazy(() => import('./pages/campaigns/CampaignReportPage'));
 const Whatsapp = lazy(() => import('./pages/whatsapp/WhatsappPage'));
 const Stats = lazy(() => import('./pages/stats/StatsPage'));
 const Settings = lazy(() => import('./pages/settings/SettingsPage'));
@@ -90,9 +92,11 @@ function App() {
               <Route path="/" element={<ProtectedRoute><ErrorBoundary><Dashboard /></ErrorBoundary></ProtectedRoute>} />
               <Route path="/pipeline" element={<ProtectedRoute><ErrorBoundary><Pipeline /></ErrorBoundary></ProtectedRoute>} />
               <Route path="/clients" element={<ProtectedRoute><ErrorBoundary><ClientsList /></ErrorBoundary></ProtectedRoute>} />
+              <Route path="/clients/:id" element={<ProtectedRoute><ErrorBoundary><ClientDetail /></ErrorBoundary></ProtectedRoute>} />
               <Route path="/messages" element={<ProtectedRoute><ErrorBoundary><Messages /></ErrorBoundary></ProtectedRoute>} />
               <Route path="/tasks" element={<ProtectedRoute><ErrorBoundary><Tasks /></ErrorBoundary></ProtectedRoute>} />
               <Route path="/campaigns" element={<ProtectedRoute><ErrorBoundary><Campaigns /></ErrorBoundary></ProtectedRoute>} />
+              <Route path="/campaigns/:id/report" element={<ProtectedRoute><ErrorBoundary><CampaignReport /></ErrorBoundary></ProtectedRoute>} />
               <Route path="/whatsapp" element={<ProtectedRoute><ErrorBoundary><Whatsapp /></ErrorBoundary></ProtectedRoute>} />
               <Route path="/stats" element={<ProtectedRoute><ErrorBoundary><Stats /></ErrorBoundary></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><ErrorBoundary><Settings /></ErrorBoundary></ProtectedRoute>} />

@@ -219,4 +219,55 @@ class CampaignController extends Controller
             'analytics' => $service->getAnalytics($campaign),
         ]);
     }
+
+    /**
+     * تقرير شامل للحملة: إحصائيات + رسم بياني بالوقت + قائمة المستلمين
+     */
+    public function report(int $id): JsonResponse
+    {
+        $campaign = Campaign::with('recipients')->findOrFail($id);
+        $service  = new CampaignService();
+
+        // إحصائيات مجمّعة بالساعة (SQLite compatible)
+        $hourlyStats = $campaign->recipients()
+            ->whereNotNull('sent_at')
+            ->selectRaw("
+                strftime('%Y-%m-%d %H:00', sent_at) as hour,
+                COUNT(*) as total,
+                SUM(CASE WHEN status = 'sent'    THEN 1 ELSE 0 END) as sent,
+                SUM(CASE WHEN status = 'failed'  THEN 1 ELSE 0 END) as failed,
+                SUM(CASE WHEN status = 'replied' THEN 1 ELSE 0 END) as replied
+            ")
+            ->groupBy('hour')
+            ->orderBy('hour')
+            ->get()
+            ->map(fn($row) => [
+                'hour'    => $row->hour,
+                'total'   => (int) $row->total,
+                'sent'    => (int) $row->sent,
+                'failed'  => (int) $row->failed,
+                'replied' => (int) $row->replied,
+            ]);
+
+        // قائمة المستلمين (أول 200 للعرض)
+        $recipients = $campaign->recipients()
+            ->orderBy('id')
+            ->limit(200)
+            ->get()
+            ->map(fn($r) => [
+                'id'            => $r->id,
+                'phone'         => $r->phone,
+                'name'          => $r->name,
+                'status'        => $r->status,
+                'sent_at'       => $r->sent_at?->toISOString(),
+                'error_message' => $r->error_message,
+            ]);
+
+        return response()->json([
+            'campaign'     => new CampaignResource($campaign),
+            'analytics'    => $service->getAnalytics($campaign),
+            'hourly_stats' => $hourlyStats,
+            'recipients'   => $recipients,
+        ]);
+    }
 }
