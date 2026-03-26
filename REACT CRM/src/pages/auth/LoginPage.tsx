@@ -26,7 +26,7 @@ const LoginPage: React.FC = () => {
       const { data } = await api.post('/auth/login', { email, password });
       setAuth(data.user, data.token);
       toast.success('تم تسجيل الدخول بنجاح');
-      setTimeout(() => { window.location.href = '/'; }, 300);
+      navigate('/', { replace: true });
     } catch (err: any) {
       const msg = err?.response?.data?.message || 'فشل تسجيل الدخول. تحقق من البيانات.';
       toast.error(msg);

@@ -73,7 +73,7 @@ const Pipeline: React.FC = () => {
     );
   }
 
-  const activeStageData = STAGES.find(s => s.id === mobileActiveStage)!;
+  const activeStageData = STAGES.find(s => s.id === mobileActiveStage) ?? STAGES[0];
   const activeClients = getClientsInStage(mobileActiveStage);
 
   return (

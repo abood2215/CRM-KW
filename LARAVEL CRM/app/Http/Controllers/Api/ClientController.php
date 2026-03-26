@@ -37,7 +37,8 @@ class ClientController extends Controller
             });
         }
 
-        $clients = $query->orderBy('created_at', 'desc')->paginate($request->per_page ?? 20);
+        $perPage = min((int) ($request->per_page ?? 20), 100); // cap at 100
+        $clients = $query->orderBy('created_at', 'desc')->paginate($perPage);
 
         return response()->json([
             'data' => ClientResource::collection($clients),
@@ -98,32 +99,37 @@ class ClientController extends Controller
 
     public function exportCsv(): \Symfony\Component\HttpFoundation\StreamedResponse
     {
-        $clients = CrmClient::with('user')->get();
-
         $headers = [
-            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Type'        => 'text/csv; charset=UTF-8',
             'Content-Disposition' => 'attachment; filename="clients_' . date('Y-m-d') . '.csv"',
+            'X-Accel-Buffering'   => 'no',
         ];
 
-        return response()->stream(function () use ($clients) {
+        return response()->stream(function () {
             $file = fopen('php://output', 'w');
             fprintf($file, chr(0xEF) . chr(0xBB) . chr(0xBF)); // UTF-8 BOM
 
             fputcsv($file, ['الاسم', 'الهاتف', 'البريد', 'المصدر', 'الخدمة', 'الميزانية', 'الحالة', 'المسؤول', 'تاريخ الإضافة']);
 
-            foreach ($clients as $client) {
-                fputcsv($file, [
-                    $client->name,
-                    $client->phone,
-                    $client->email,
-                    $client->source,
-                    $client->service,
-                    $client->budget,
-                    $client->status,
-                    $client->user?->name ?? '-',
-                    $client->created_at->format('Y-m-d'),
-                ]);
-            }
+            CrmClient::with('user')
+                ->orderBy('id')
+                ->chunk(500, function ($chunk) use ($file) {
+                    foreach ($chunk as $client) {
+                        fputcsv($file, [
+                            $client->name,
+                            $client->phone,
+                            $client->email,
+                            $client->source,
+                            $client->service,
+                            $client->budget,
+                            $client->status,
+                            $client->user?->name ?? '-',
+                            $client->created_at->format('Y-m-d'),
+                        ]);
+                    }
+                    ob_flush();
+                    flush();
+                });
 
             fclose($file);
         }, 200, $headers);
@@ -132,21 +138,20 @@ class ClientController extends Controller
     public function pipeline(): JsonResponse
     {
         $statuses = ['new', 'contacted', 'interested', 'booked', 'active', 'following'];
-        $pipeline = [];
 
-        foreach ($statuses as $status) {
-            $clients = CrmClient::with('user')
-                ->where('status', $status)
-                ->orderBy('created_at', 'desc')
-                ->get();
+        // Single query — group in PHP instead of N separate queries
+        $all = CrmClient::with('user')
+            ->whereIn('status', $statuses)
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->groupBy('status');
 
-            $pipeline[] = [
-                'status' => $status,
-                'count' => $clients->count(),
-                'clients' => ClientResource::collection($clients),
-            ];
-        }
+        $pipeline = array_map(fn ($status) => [
+            'status'  => $status,
+            'count'   => $all->get($status, collect())->count(),
+            'clients' => ClientResource::collection($all->get($status, collect())),
+        ], $statuses);
 
-        return response()->json(['pipeline' => $pipeline]);
+        return response()->json(['pipeline' => array_values($pipeline)]);
     }
 }

@@ -27,13 +27,14 @@ use Illuminate\Support\Facades\Route;
 // ============================
 
 Route::prefix('auth')->group(function () {
-    Route::post('/login', [AuthController::class, 'login']);
+    // Rate limit: max 10 login attempts per minute per IP
+    Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
 });
 
-// Webhooks (بدون مصادقة)
-Route::post('/webhooks/chatwoot', [WebhookController::class, 'chatwoot']);
-Route::get('/webhooks/whatsapp', [WebhookController::class, 'whatsappVerify']);
-Route::post('/webhooks/whatsapp', [WebhookController::class, 'whatsapp']);
+// Webhooks (public - rate limited)
+Route::post('/webhooks/chatwoot', [WebhookController::class, 'chatwoot'])->middleware('throttle:60,1');
+Route::get('/webhooks/whatsapp', [WebhookController::class, 'whatsappVerify'])->middleware('throttle:20,1');
+Route::post('/webhooks/whatsapp', [WebhookController::class, 'whatsapp'])->middleware('throttle:120,1');
 
 // ============================
 // 🔐 🔐 Protected Routes

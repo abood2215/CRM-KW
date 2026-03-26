@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../api/axios';
+import { useDebounce } from '../../hooks/useDebounce';
 import { WhatsappTemplate, WhatsappNumber } from '../../types';
 import {
   FileText, RefreshCw, CheckCircle, Clock, XCircle,
@@ -20,6 +21,8 @@ const TemplatesPage: React.FC = () => {
   const [selectedNumberId, setSelectedNumberId] = useState<number | ''>('');
   const [previewTemplate, setPreviewTemplate] = useState<WhatsappTemplate | null>(null);
 
+  const debouncedSearch = useDebounce(search, 400);
+
   // جلب أرقام واتساب لاختيار الرقم للمزامنة
   const { data: numbers = [] } = useQuery<WhatsappNumber[]>({
     queryKey: ['whatsapp-numbers'],
@@ -31,11 +34,11 @@ const TemplatesPage: React.FC = () => {
 
   // جلب القوالب
   const { data: templates = [], isLoading } = useQuery<WhatsappTemplate[]>({
-    queryKey: ['templates', search, statusFilter, categoryFilter, selectedNumberId],
+    queryKey: ['templates', debouncedSearch, statusFilter, categoryFilter, selectedNumberId],
     queryFn: async () => {
       const { data } = await api.get('/templates', {
         params: {
-          search: search || undefined,
+          search: debouncedSearch || undefined,
           status: statusFilter || undefined,
           category: categoryFilter || undefined,
           whatsapp_number_id: selectedNumberId || undefined,

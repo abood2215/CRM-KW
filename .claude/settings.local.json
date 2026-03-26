@@ -21,7 +21,8 @@
       "Bash(php -l app/Models/CampaignSequence.php)",
       "Bash(npx tsc:*)",
       "Bash(node_modules/.bin/tsc --noEmit)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(find 'C:\\\\Users\\\\abd-allah\\\\Desktop\\\\CRM\\\\LARAVEL CRM\\\\app\\\\Services' -type f -name *.php)"
     ]
   }
 }

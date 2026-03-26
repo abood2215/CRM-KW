@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../api/axios';
+import { useDebounce } from '../../hooks/useDebounce';
 import { Client } from '../../types';
 import {
   Users, Search, Download, Plus, ChevronRight, ChevronLeft,
@@ -18,10 +19,15 @@ const ClientsList: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [addOpen, setAddOpen] = useState(false);
 
-  const { data: response, isLoading } = useQuery<{ data: Client[], meta: any }>({
-    queryKey: ['clients', page, searchTerm],
+  const debouncedSearch = useDebounce(searchTerm, 400);
+
+  // Reset to page 1 whenever the search term changes
+  useEffect(() => { setPage(1); }, [debouncedSearch]);
+
+  const { data: response, isLoading, isError } = useQuery<{ data: Client[], meta: any }>({
+    queryKey: ['clients', page, debouncedSearch],
     queryFn: async () => {
-      const { data } = await api.get('/clients', { params: { page, search: searchTerm } });
+      const { data } = await api.get('/clients', { params: { page, search: debouncedSearch || undefined } });
       return data;
     },
   });
@@ -110,7 +116,7 @@ const ClientsList: React.FC = () => {
               placeholder="البحث بالاسم، الهاتف..."
               className="w-full h-10 pr-10 pl-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
               value={searchTerm}
-              onChange={(e) => { setSearchTerm(e.target.value); setPage(1); }}
+              onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
           <p className="text-sm font-bold text-slate-400 whitespace-nowrap">

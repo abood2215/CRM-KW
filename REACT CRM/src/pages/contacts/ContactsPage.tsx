@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../api/axios';
+import { useDebounce } from '../../hooks/useDebounce';
 import { Contact, ContactList } from '../../types';
 import {
   Users, Plus, Search, Upload, Download, Trash2,
@@ -9,6 +10,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import toast from 'react-hot-toast';
+import AddContactModal from '../../components/AddContactModal';
 
 // ==============================
 // صفحة جهات الاتصال
@@ -23,12 +25,17 @@ const ContactsPage: React.FC = () => {
   const [page, setPage] = useState(1);
   const [importFile, setImportFile] = useState<File | null>(null);
 
+  const debouncedSearch = useDebounce(search, 400);
+
+  // Reset to page 1 on new search
+  useEffect(() => { setPage(1); }, [debouncedSearch]);
+
   // جلب جهات الاتصال
   const { data: contactsData, isLoading } = useQuery({
-    queryKey: ['contacts', search, optInFilter, page],
+    queryKey: ['contacts', debouncedSearch, optInFilter, page],
     queryFn: async () => {
       const { data } = await api.get('/contacts', {
-        params: { search: search || undefined, opt_in: optInFilter || undefined, page }
+        params: { search: debouncedSearch || undefined, opt_in: optInFilter || undefined, page }
       });
       return data;
     },
@@ -181,7 +188,7 @@ const ContactsPage: React.FC = () => {
                     type="text"
                     placeholder="بحث بالاسم أو الهاتف أو البريد..."
                     value={search}
-                    onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                    onChange={(e) => setSearch(e.target.value)}
                     className="w-full h-10 pr-9 pl-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                   />
                 </div>
@@ -421,106 +428,6 @@ const ContactListsTab: React.FC<{ lists: ContactList[]; queryClient: any }> = ({
   );
 };
 
-// ==============================
-// مودال إضافة جهة اتصال
-// ==============================
-const AddContactModal: React.FC<{ onClose: () => void; onSuccess: () => void }> = ({ onClose, onSuccess }) => {
-  const [form, setForm] = useState({ name: '', phone: '', email: '', tags: '', source: '', opt_in: false });
-  const [loading, setLoading] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      await api.post('/contacts', {
-        ...form,
-        tags: form.tags ? form.tags.split(',').map(t => t.trim()) : [],
-      });
-      toast.success('تم إضافة جهة الاتصال.');
-      onSuccess();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'فشلت الإضافة.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg p-8">
-        <h2 className="text-xl font-black text-slate-800 mb-6">إضافة جهة اتصال</h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-bold text-slate-700 mb-1">الاسم *</label>
-            <input
-              required
-              value={form.name}
-              onChange={e => setForm({ ...form, name: e.target.value })}
-              className="w-full h-11 px-4 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-sm"
-              placeholder="الاسم الكامل"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-bold text-slate-700 mb-1">الهاتف *</label>
-            <input
-              required
-              value={form.phone}
-              onChange={e => setForm({ ...form, phone: e.target.value })}
-              className="w-full h-11 px-4 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-sm font-mono"
-              placeholder="9665XXXXXXXX"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-bold text-slate-700 mb-1">البريد الإلكتروني</label>
-            <input
-              type="email"
-              value={form.email}
-              onChange={e => setForm({ ...form, email: e.target.value })}
-              className="w-full h-11 px-4 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-sm"
-              placeholder="example@email.com"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-bold text-slate-700 mb-1">التاقات (مفصولة بفاصلة)</label>
-            <input
-              value={form.tags}
-              onChange={e => setForm({ ...form, tags: e.target.value })}
-              className="w-full h-11 px-4 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-sm"
-              placeholder="عميل, مهتم, ذهب"
-            />
-          </div>
-          <div className="flex items-center gap-3">
-            <input
-              type="checkbox"
-              id="opt_in"
-              checked={form.opt_in}
-              onChange={e => setForm({ ...form, opt_in: e.target.checked })}
-              className="w-4 h-4 rounded border-slate-300 text-indigo-600"
-            />
-            <label htmlFor="opt_in" className="text-sm font-bold text-slate-700">وافق على استلام الرسائل (Opt-in)</label>
-          </div>
-          <div className="flex gap-3 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 h-11 border border-slate-200 rounded-xl font-bold text-slate-600 hover:bg-slate-50 transition-all text-sm"
-            >
-              إلغاء
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex-1 h-11 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all text-sm disabled:opacity-60 flex items-center justify-center gap-2"
-            >
-              {loading && <Loader2 size={16} className="animate-spin" />}
-              إضافة
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-};
 
 // ==============================
 // مودال إنشاء قائمة

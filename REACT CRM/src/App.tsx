@@ -5,6 +5,7 @@ import { Toaster } from 'react-hot-toast';
 import { useAuthStore } from './store/useAuthStore';
 import MainLayout from './layouts/MainLayout';
 import LoginPage from './pages/auth/LoginPage';
+import ErrorBoundary from './components/ErrorBoundary';
 import { Loader2 } from 'lucide-react';
 
 // Lazy load pages for performance
@@ -24,7 +25,15 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       refetchOnWindowFocus: false,
-      retry: 1,
+      retry: (failureCount, error: any) => {
+        // Never retry on 4xx — only retry on network/5xx errors
+        if (error?.response?.status >= 400 && error?.response?.status < 500) return false;
+        return failureCount < 2;
+      },
+      staleTime: 30_000, // 30s — avoids redundant refetches when switching tabs
+    },
+    mutations: {
+      retry: false,
     },
   },
 });
@@ -70,29 +79,31 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <Toaster position="top-center" reverseOrder={false} />
       <Router>
-        <Suspense fallback={<LoadingFallback />}>
-          <Routes>
-            <Route 
-              path="/login" 
-              element={isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />} 
-            />
-            
-            <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-            <Route path="/pipeline" element={<ProtectedRoute><Pipeline /></ProtectedRoute>} />
-            <Route path="/clients" element={<ProtectedRoute><ClientsList /></ProtectedRoute>} />
-            <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
-            <Route path="/tasks" element={<ProtectedRoute><Tasks /></ProtectedRoute>} />
-            <Route path="/campaigns" element={<ProtectedRoute><Campaigns /></ProtectedRoute>} />
-            <Route path="/whatsapp" element={<ProtectedRoute><Whatsapp /></ProtectedRoute>} />
-            <Route path="/stats" element={<ProtectedRoute><Stats /></ProtectedRoute>} />
-            <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-            <Route path="/contacts" element={<ProtectedRoute><Contacts /></ProtectedRoute>} />
-            <Route path="/templates" element={<ProtectedRoute><Templates /></ProtectedRoute>} />
+        <ErrorBoundary>
+          <Suspense fallback={<LoadingFallback />}>
+            <Routes>
+              <Route
+                path="/login"
+                element={isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />}
+              />
 
-            {/* Fallback */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </Suspense>
+              <Route path="/" element={<ProtectedRoute><ErrorBoundary><Dashboard /></ErrorBoundary></ProtectedRoute>} />
+              <Route path="/pipeline" element={<ProtectedRoute><ErrorBoundary><Pipeline /></ErrorBoundary></ProtectedRoute>} />
+              <Route path="/clients" element={<ProtectedRoute><ErrorBoundary><ClientsList /></ErrorBoundary></ProtectedRoute>} />
+              <Route path="/messages" element={<ProtectedRoute><ErrorBoundary><Messages /></ErrorBoundary></ProtectedRoute>} />
+              <Route path="/tasks" element={<ProtectedRoute><ErrorBoundary><Tasks /></ErrorBoundary></ProtectedRoute>} />
+              <Route path="/campaigns" element={<ProtectedRoute><ErrorBoundary><Campaigns /></ErrorBoundary></ProtectedRoute>} />
+              <Route path="/whatsapp" element={<ProtectedRoute><ErrorBoundary><Whatsapp /></ErrorBoundary></ProtectedRoute>} />
+              <Route path="/stats" element={<ProtectedRoute><ErrorBoundary><Stats /></ErrorBoundary></ProtectedRoute>} />
+              <Route path="/settings" element={<ProtectedRoute><ErrorBoundary><Settings /></ErrorBoundary></ProtectedRoute>} />
+              <Route path="/contacts" element={<ProtectedRoute><ErrorBoundary><Contacts /></ErrorBoundary></ProtectedRoute>} />
+              <Route path="/templates" element={<ProtectedRoute><ErrorBoundary><Templates /></ErrorBoundary></ProtectedRoute>} />
+
+              {/* Fallback */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Suspense>
+        </ErrorBoundary>
       </Router>
     </QueryClientProvider>
   );
