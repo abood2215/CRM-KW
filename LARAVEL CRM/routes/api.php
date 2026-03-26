@@ -36,7 +36,7 @@ Route::get('/webhooks/whatsapp', [WebhookController::class, 'whatsappVerify']);
 Route::post('/webhooks/whatsapp', [WebhookController::class, 'whatsapp']);
 
 // ============================
-// 🔐 Protected Routes
+// 🔐 🔐 Protected Routes
 // ============================
 
 Route::middleware(['auth:sanctum', 'update.last.seen', 'log.activity'])->group(function () {
