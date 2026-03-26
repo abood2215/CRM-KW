@@ -52,30 +52,30 @@ const WhatsappPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8 font-cairo animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-5 lg:space-y-8 font-cairo">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-slate-800">إدارة أرقام واتساب</h1>
-          <p className="text-slate-500 mt-1 font-medium">قم بربط أرقامك الرسمية ومراقبة أدائها اليومي لمركز مطمئنة.</p>
+          <h1 className="text-xl lg:text-2xl font-black text-slate-800">إدارة أرقام واتساب</h1>
+          <p className="text-slate-500 mt-1 font-medium text-sm">ربط أرقامك الرسمية ومراقبة أدائها اليومي.</p>
         </div>
         <div className="flex items-center gap-3">
-          <button className="h-11 px-6 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-all flex items-center gap-2">
-            <Plus size={18} />
-            <span>إضافة رقم جديد</span>
+          <button className="h-10 lg:h-11 px-4 lg:px-6 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-all flex items-center gap-2 text-sm self-start sm:self-auto">
+            <Plus size={16} />
+            <span>إضافة رقم</span>
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-8">
         {isLoading ? (
           <div className="col-span-full py-20 text-center">
              <Loader2 className="animate-spin text-indigo-600 h-10 w-10 mb-4" />
              <p className="text-slate-500 font-medium">جاري جلب قائمة الأرقام...</p>
           </div>
         ) : numbers.map((number) => (
-          <div key={number.id} className="bg-white rounded-[2rem] border border-slate-100 shadow-xl overflow-hidden group hover:shadow-2xl hover:-translate-y-1 transition-all">
+          <div key={number.id} className="bg-white rounded-2xl lg:rounded-[2rem] border border-slate-100 shadow-xl overflow-hidden group hover:shadow-2xl hover:-translate-y-1 transition-all">
             {/* Health Info */}
-            <div className="p-8 pb-4">
+            <div className="p-5 lg:p-8 pb-4">
               <div className="flex items-center justify-between mb-6">
                 <div className="w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:scale-110 group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-all border border-slate-100 group-hover:border-indigo-100 shadow-sm relative">
                   <Smartphone size={28} />
@@ -144,7 +144,7 @@ const WhatsappPage: React.FC = () => {
         ))}
         
         {/* Statistics or Connect more card */}
-        <div className="bg-indigo-600 p-10 rounded-[2rem] shadow-2xl text-white relative flex flex-col items-center justify-center text-center overflow-hidden group">
+        <div className="bg-indigo-600 p-6 lg:p-10 rounded-2xl lg:rounded-[2rem] shadow-2xl text-white relative flex flex-col items-center justify-center text-center overflow-hidden group min-h-[200px]">
            <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-24 translate-x-24 blur-3xl pointer-events-none transition-transform duration-700 group-hover:scale-150" />
            <div className="relative z-10">
               <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center mb-6 mx-auto border border-white/20">

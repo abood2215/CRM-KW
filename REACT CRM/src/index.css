@@ -7,13 +7,31 @@
     @apply font-cairo bg-gray-50 text-gray-900;
     direction: rtl;
     min-height: 100vh;
+    /* Prevent horizontal overflow on mobile */
+    overflow-x: hidden;
+  }
+
+  /* Better tap targets on mobile */
+  button, a {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Prevent zoom on input focus on iOS */
+  input, select, textarea {
+    font-size: 16px;
+  }
+
+  @media (min-width: 768px) {
+    input, select, textarea {
+      font-size: inherit;
+    }
   }
 }
 
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 4px;
+  height: 4px;
 }
 
 ::-webkit-scrollbar-track {
@@ -39,4 +57,22 @@
 
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Safe area for iOS bottom bar */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .safe-bottom {
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+  }
+
+  /* Push bottom nav above iOS home indicator */
+  nav.fixed.bottom-0 {
+    padding-bottom: env(safe-area-inset-bottom);
+    height: calc(4rem + env(safe-area-inset-bottom));
+  }
 }

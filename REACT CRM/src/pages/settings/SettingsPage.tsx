@@ -110,33 +110,57 @@ const SettingsPage: React.FC = () => {
   const daysLabel = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
 
   return (
-    <div className="space-y-8 font-cairo animate-in fade-in duration-500 pb-20">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-5 lg:space-y-8 font-cairo pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-slate-800">إعدادات النظام</h1>
-          <p className="text-slate-500 mt-1 font-medium">تخصيص كامل للنظام ليناسب احتياجات مركز مطمئنة.</p>
+          <h1 className="text-xl lg:text-2xl font-black text-slate-800">إعدادات النظام</h1>
+          <p className="text-slate-500 mt-1 font-medium text-sm">تخصيص النظام ليناسب احتياجات مركز مطمئنة.</p>
         </div>
         {activeTab !== 'users' && (
           <button
             onClick={handleSave}
             disabled={isSaving}
-            className="h-11 px-6 bg-emerald-600 text-white font-bold rounded-xl shadow-lg shadow-emerald-500/20 hover:bg-emerald-700 transition-all flex items-center gap-2 disabled:opacity-70"
+            className="h-10 lg:h-11 px-4 lg:px-6 bg-emerald-600 text-white font-bold rounded-xl shadow-lg shadow-emerald-500/20 hover:bg-emerald-700 transition-all flex items-center gap-2 disabled:opacity-70 text-sm self-start sm:self-auto"
           >
-            {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+            {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
             <span>حفظ التغييرات</span>
           </button>
         )}
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-10">
-        {/* Tabs Sidebar */}
-        <div className="lg:w-72 space-y-2">
+      {/* Mobile Tab Switcher */}
+      <div className="flex gap-2 lg:hidden overflow-x-auto scrollbar-hide">
+        {tabs.map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id as any)}
+            className={cn(
+              "flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-black whitespace-nowrap transition-all border flex-shrink-0",
+              activeTab === tab.id
+                ? "bg-indigo-600 text-white border-indigo-600 shadow-lg shadow-indigo-600/20"
+                : "bg-white text-slate-400 border-slate-200"
+            )}
+          >
+            {tab.icon}
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="flex flex-col lg:flex-row gap-5 lg:gap-8">
+        {/* Desktop Tabs Sidebar */}
+        <div className="hidden lg:block lg:w-64 space-y-2">
           {tabs.map(tab => (
-            <button key={tab.id} onClick={() => setActiveTab(tab.id as any)}
-              className={cn("w-full px-6 py-4 rounded-2xl flex items-center gap-4 transition-all",
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={cn(
+                "w-full px-5 py-4 rounded-2xl flex items-center gap-4 transition-all",
                 activeTab === tab.id
                   ? "bg-indigo-600 text-white shadow-xl shadow-indigo-600/20"
-                  : "bg-white text-slate-500 border border-slate-100 hover:bg-slate-50 hover:text-indigo-600")}>
+                  : "bg-white text-slate-500 border border-slate-100 hover:bg-slate-50 hover:text-indigo-600"
+              )}
+            >
               <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center transition-all",
                 activeTab === tab.id ? "bg-white/20 text-white" : "bg-slate-50 text-slate-400")}>
                 {tab.icon}
@@ -147,40 +171,40 @@ const SettingsPage: React.FC = () => {
         </div>
 
         {/* Content Panel */}
-        <div className="flex-1 bg-white rounded-[2.5rem] border border-slate-100 shadow-xl overflow-hidden">
+        <div className="flex-1 bg-white rounded-2xl lg:rounded-[2rem] border border-slate-100 shadow-xl overflow-hidden">
 
           {/* Business Hours */}
           {activeTab === 'hours' && (
-            <div className="p-10 space-y-8">
+            <div className="p-5 lg:p-8 space-y-5 lg:space-y-8">
               <div className="flex items-center justify-between">
-                <h3 className="text-xl font-black text-slate-800">توقيتات العمل الرسمية</h3>
-                <div className="px-5 py-2.5 bg-indigo-50 text-indigo-600 rounded-xl text-xs font-black">
-                  بتوقيت عمان (Amman/Asia)
+                <h3 className="text-base lg:text-xl font-black text-slate-800">توقيتات العمل</h3>
+                <div className="px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-xl text-xs font-black">
+                  Amman/Asia
                 </div>
               </div>
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {loadingHours ? (
                   <div className="flex justify-center py-10">
-                    <Loader2 className="animate-spin text-indigo-600" size={32} />
+                    <Loader2 className="animate-spin text-indigo-600" size={28} />
                   </div>
                 ) : localHours.map((day, idx) => (
-                  <div key={day.id} className="p-5 rounded-2xl border border-slate-50 bg-slate-50/30 flex items-center justify-between group hover:bg-white hover:border-slate-100 transition-all">
-                    <div className="flex items-center gap-6">
+                  <div key={day.id} className="p-4 rounded-2xl border border-slate-100 bg-slate-50/30 flex items-center justify-between gap-4 flex-wrap hover:bg-white transition-all">
+                    <div className="flex items-center gap-3">
                       <label className="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox" checked={day.is_active} className="sr-only peer"
                           onChange={e => setLocalHours(h => h.map((d, i) => i === idx ? { ...d, is_active: e.target.checked } : d))} />
-                        <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                        <div className="w-10 h-5 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
                       </label>
-                      <span className="text-sm font-black text-slate-700 w-20">{daysLabel[day.day_of_week]}</span>
+                      <span className="text-sm font-black text-slate-700 w-16">{daysLabel[day.day_of_week]}</span>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
                       <input type="time" value={day.start_time}
                         onChange={e => setLocalHours(h => h.map((d, i) => i === idx ? { ...d, start_time: e.target.value } : d))}
-                        className="px-4 py-2 border border-slate-100 rounded-xl text-xs font-bold text-slate-600 bg-white focus:outline-none focus:border-indigo-500" />
-                      <span className="text-slate-300">إلى</span>
+                        className="px-3 py-1.5 border border-slate-100 rounded-xl text-xs font-bold text-slate-600 bg-white focus:outline-none focus:border-indigo-500" />
+                      <span className="text-slate-300 text-sm">←</span>
                       <input type="time" value={day.end_time}
                         onChange={e => setLocalHours(h => h.map((d, i) => i === idx ? { ...d, end_time: e.target.value } : d))}
-                        className="px-4 py-2 border border-slate-100 rounded-xl text-xs font-bold text-slate-600 bg-white focus:outline-none focus:border-indigo-500" />
+                        className="px-3 py-1.5 border border-slate-100 rounded-xl text-xs font-bold text-slate-600 bg-white focus:outline-none focus:border-indigo-500" />
                     </div>
                   </div>
                 ))}
@@ -190,19 +214,19 @@ const SettingsPage: React.FC = () => {
 
           {/* Auto Replies */}
           {activeTab === 'replies' && (
-            <div className="p-10 space-y-8">
-              <h3 className="text-xl font-black text-slate-800">إدارة الردود التلقائية</h3>
-              <div className="grid grid-cols-1 gap-6">
+            <div className="p-5 lg:p-8 space-y-5 lg:space-y-6">
+              <h3 className="text-base lg:text-xl font-black text-slate-800">الردود التلقائية</h3>
+              <div className="grid grid-cols-1 gap-4 lg:gap-6">
                 {loadingReplies ? (
                   <div className="flex justify-center py-10">
-                    <Loader2 className="animate-spin text-indigo-600" size={32} />
+                    <Loader2 className="animate-spin text-indigo-600" size={28} />
                   </div>
                 ) : localReplies.map((reply, idx) => (
-                  <div key={reply.id} className="p-8 rounded-[2rem] border border-slate-100 bg-slate-50/30 space-y-6">
+                  <div key={reply.id} className="p-5 lg:p-6 rounded-2xl border border-slate-100 bg-slate-50/30 space-y-4">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-2xl bg-white border border-slate-100 flex items-center justify-center text-indigo-600 shadow-sm">
-                          <FileText size={20} />
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-indigo-600 shadow-sm">
+                          <FileText size={17} />
                         </div>
                         <span className="text-sm font-black text-slate-800">
                           {reply.trigger === 'outside_hours' ? 'رد خارج أوقات العمل' : 'ترحيب العملاء الجدد'}
@@ -211,11 +235,11 @@ const SettingsPage: React.FC = () => {
                       <label className="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox" checked={reply.is_active} className="sr-only peer"
                           onChange={e => setLocalReplies(r => r.map((rep, i) => i === idx ? { ...rep, is_active: e.target.checked } : rep))} />
-                        <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                        <div className="w-10 h-5 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
                       </label>
                     </div>
                     <textarea
-                      className="w-full h-32 p-6 bg-white border border-slate-100 rounded-2xl text-sm font-medium focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 resize-none"
+                      className="w-full h-28 lg:h-32 px-4 py-3 bg-white border border-slate-100 rounded-2xl text-sm font-medium focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 resize-none"
                       value={reply.message}
                       onChange={e => setLocalReplies(r => r.map((rep, i) => i === idx ? { ...rep, message: e.target.value } : rep))}
                     />
@@ -227,22 +251,24 @@ const SettingsPage: React.FC = () => {
 
           {/* Users */}
           {activeTab === 'users' && (
-            <div className="p-10 space-y-8">
+            <div className="p-5 lg:p-8 space-y-5 lg:space-y-6">
               <div className="flex items-center justify-between">
-                <h3 className="text-xl font-black text-slate-800">قائمة مستخدمي النظام</h3>
-                <button onClick={() => setAddUserOpen(true)}
-                  className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-black flex items-center gap-2 hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-600/20">
-                  <Plus size={16} /> إضافة مستخدم
+                <h3 className="text-base lg:text-xl font-black text-slate-800">مستخدمو النظام</h3>
+                <button
+                  onClick={() => setAddUserOpen(true)}
+                  className="h-9 px-4 bg-indigo-600 text-white rounded-xl text-xs font-black flex items-center gap-2 hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-600/20"
+                >
+                  <Plus size={14} /> إضافة مستخدم
                 </button>
               </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-right border-collapse">
+              <div className="overflow-x-auto rounded-2xl border border-slate-100">
+                <table className="w-full text-right border-collapse min-w-[500px]">
                   <thead>
-                    <tr className="bg-slate-50/50">
-                      <th className="px-6 py-4 text-xs font-black text-slate-400 border-b border-slate-100">المستخدم</th>
-                      <th className="px-6 py-4 text-xs font-black text-slate-400 border-b border-slate-100">الصلاحية</th>
-                      <th className="px-6 py-4 text-xs font-black text-slate-400 border-b border-slate-100">الحالة</th>
-                      <th className="px-6 py-4 text-xs font-black text-slate-400 border-b border-slate-100 text-center">الإجراءات</th>
+                    <tr className="bg-slate-50/80">
+                      <th className="px-4 lg:px-6 py-3 text-xs font-black text-slate-400 border-b border-slate-100">المستخدم</th>
+                      <th className="px-4 lg:px-6 py-3 text-xs font-black text-slate-400 border-b border-slate-100">الصلاحية</th>
+                      <th className="px-4 lg:px-6 py-3 text-xs font-black text-slate-400 border-b border-slate-100">الحالة</th>
+                      <th className="px-4 lg:px-6 py-3 border-b border-slate-100 text-center w-16"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
@@ -250,35 +276,36 @@ const SettingsPage: React.FC = () => {
                       <tr><td colSpan={4} className="py-10 text-center"><Loader2 className="animate-spin inline-block text-indigo-600" /></td></tr>
                     ) : userList.map(u => (
                       <tr key={u.id} className="hover:bg-slate-50/50 transition-all">
-                        <td className="px-6 py-4">
+                        <td className="px-4 lg:px-6 py-3 lg:py-4">
                           <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-xs uppercase">{u.name.charAt(0)}</div>
-                            <div>
-                              <p className="text-sm font-black text-slate-800">{u.name}</p>
-                              <p className="text-[10px] font-bold text-slate-400">{u.email}</p>
+                            <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-xs uppercase flex-shrink-0">{u.name.charAt(0)}</div>
+                            <div className="min-w-0">
+                              <p className="text-sm font-black text-slate-800 truncate">{u.name}</p>
+                              <p className="text-[10px] font-bold text-slate-400 truncate">{u.email}</p>
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4">
-                          <span className={cn("px-3 py-1 rounded-lg text-[10px] font-black uppercase",
+                        <td className="px-4 lg:px-6 py-3 lg:py-4">
+                          <span className={cn("px-2.5 py-1 rounded-lg text-[10px] font-black uppercase whitespace-nowrap",
                             u.role === 'admin' ? "bg-rose-50 text-rose-600" : u.role === 'manager' ? "bg-amber-50 text-amber-600" : "bg-indigo-50 text-indigo-600")}>
-                            {u.role === 'admin' ? 'مدير نظام' : u.role === 'manager' ? 'مشرف' : 'موظف'}
+                            {u.role === 'admin' ? 'مدير' : u.role === 'manager' ? 'مشرف' : 'موظف'}
                           </span>
                         </td>
-                        <td className="px-6 py-4">
-                          <span className={cn("flex items-center gap-1.5 text-[11px] font-bold", u.is_active ? "text-emerald-600" : "text-slate-400")}>
-                            <div className={cn("w-1.5 h-1.5 rounded-full", u.is_active ? "bg-emerald-500" : "bg-slate-300")} />
+                        <td className="px-4 lg:px-6 py-3 lg:py-4">
+                          <span className={cn("flex items-center gap-1.5 text-[11px] font-bold whitespace-nowrap", u.is_active ? "text-emerald-600" : "text-slate-400")}>
+                            <div className={cn("w-1.5 h-1.5 rounded-full flex-shrink-0", u.is_active ? "bg-emerald-500" : "bg-slate-300")} />
                             {u.is_active ? 'نشط' : 'معطل'}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-center">
+                        <td className="px-4 lg:px-6 py-3 lg:py-4 text-center">
                           <button
                             onClick={() => {
                               if (window.confirm(`هل تريد حذف المستخدم "${u.name}"؟`))
                                 deleteUserMutation.mutate(u.id);
                             }}
-                            className="p-2 text-slate-400 hover:text-rose-600 hover:bg-slate-100 rounded-lg transition-all">
-                            <Trash2 size={18} />
+                            className="p-2 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
+                          >
+                            <Trash2 size={16} />
                           </button>
                         </td>
                       </tr>
