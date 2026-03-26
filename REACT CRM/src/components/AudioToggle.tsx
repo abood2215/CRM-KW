@@ -6,35 +6,40 @@ import { cn } from '../utils/cn';
 
 /**
  * زر تفعيل/تعطيل الإشعارات الصوتية
- * يستمع أيضاً لأحداث WebSocket ويشغّل الصوت تلقائياً
+ * يستمع لأحداث WebSocket من قناة conversations الفعلية في الـ backend
+ *
+ * NewMessageEvent        → يبث على Channel('conversations')
+ * ConversationUpdatedEvent → يبث على Channel('conversations')
  */
 const AudioToggle: React.FC = () => {
   const { enabled, toggle, playMessage, playConversation } = useAudioNotification();
   const echo = useEcho();
 
-  // الاستماع لأحداث WebSocket وتشغيل الصوت
   useEffect(() => {
     if (!echo) return;
 
-    // استمع لقناة الرسائل العامة
-    const messageChannel = echo.channel('messages');
-    const conversationChannel = echo.channel('conversations');
+    // القناة الفعلية التي يبث عليها NewMessageEvent و ConversationUpdatedEvent
+    const channel = echo.channel('conversations');
 
-    // رسالة واردة جديدة
-    messageChannel.listen('.message.received', () => {
-      playMessage();
+    // رسالة واردة جديدة (direction: 'in' فقط تحتاج صوت)
+    channel.listen('.NewMessageEvent', (e: { direction?: string }) => {
+      if (e.direction === 'in') {
+        playMessage();
+      }
     });
 
-    // محادثة جديدة
-    conversationChannel.listen('.conversation.created', () => {
-      playConversation();
+    // محادثة جديدة أو محادثة وصل إليها رسالة أولى (unread_count = 1)
+    channel.listen('.ConversationUpdatedEvent', (e: { unread_count?: number }) => {
+      if (e.unread_count === 1) {
+        // الصوت المختلف = محادثة جديدة (أول رسالة)
+        playConversation();
+      }
     });
 
     return () => {
-      messageChannel.stopListening('.message.received');
-      conversationChannel.stopListening('.conversation.created');
-      echo.leaveChannel('messages');
-      echo.leaveChannel('conversations');
+      // stopListening فقط بدون leaveChannel لتجنب قطع اشتراك صفحات أخرى تستخدم نفس القناة
+      channel.stopListening('.NewMessageEvent');
+      channel.stopListening('.ConversationUpdatedEvent');
     };
   }, [echo, playMessage, playConversation]);
 

@@ -6,7 +6,6 @@ import { Client } from '../../types';
 import {
   ArrowRight,
   MessageSquare,
-  CheckSquare,
   Megaphone,
   Activity,
   CheckCircle2,

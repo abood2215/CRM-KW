@@ -179,7 +179,7 @@ class ClientController extends Controller
             if ($task->completed_at) {
                 $events->push([
                     'type'   => 'task_completed',
-                    'date'   => \Carbon\Carbon::parse($task->completed_at)->toISOString(),
+                    'date'   => $task->completed_at->toISOString(),
                     'title'  => $task->title,
                 ]);
             }
@@ -202,7 +202,8 @@ class ClientController extends Controller
         }
 
         // --- سجل النشاط المرتبط بهذا العميل ---
-        $activityLogs = ActivityLog::where('model_type', 'App\\Models\\CrmClient')
+        // الـ middleware يحفظ model_type كـ 'CrmClient' (بدون namespace)
+        $activityLogs = ActivityLog::where('model_type', 'CrmClient')
             ->where('model_id', $id)
             ->orderBy('created_at', 'desc')
             ->get();
