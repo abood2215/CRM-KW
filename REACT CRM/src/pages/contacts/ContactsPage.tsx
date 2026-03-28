@@ -6,7 +6,7 @@ import { Contact, ContactList } from '../../types';
 import {
   Users, Plus, Search, Upload, Download, Trash2,
   Phone, Mail, Tag, List, CheckCircle, XCircle,
-  Loader2, Filter, MoreVertical
+  Loader2, Filter, MoreVertical, ShieldOff, ShieldCheck
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import toast from 'react-hot-toast';
@@ -58,6 +58,17 @@ const ContactsPage: React.FC = () => {
       toast.success('تم الحذف.');
     },
     onError: () => toast.error('فشل الحذف.'),
+  });
+
+  // تبديل الحظر
+  const blacklistMutation = useMutation({
+    mutationFn: ({ id, blacklisted }: { id: number; blacklisted: boolean }) =>
+      api.put(`/contacts/${id}`, { is_blacklisted: blacklisted }),
+    onSuccess: (_, { blacklisted }) => {
+      queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      toast.success(blacklisted ? 'تم إضافة الرقم لقائمة الحظر' : 'تم رفع الحظر عن الرقم');
+    },
+    onError: () => toast.error('فشل تحديث الحالة'),
   });
 
   // إلغاء الاشتراك
@@ -283,6 +294,13 @@ const ContactsPage: React.FC = () => {
                                   إلغاء اشتراك
                                 </button>
                               )}
+                              <button
+                                title={contact.is_blacklisted ? 'رفع الحظر' : 'إضافة للحظر'}
+                                onClick={() => blacklistMutation.mutate({ id: contact.id, blacklisted: !contact.is_blacklisted })}
+                                className={`p-1.5 rounded-lg transition-colors ${contact.is_blacklisted ? 'text-rose-500 hover:text-rose-700 hover:bg-rose-50' : 'text-slate-300 hover:text-rose-500 hover:bg-rose-50'}`}
+                              >
+                                {contact.is_blacklisted ? <ShieldCheck size={15} /> : <ShieldOff size={15} />}
+                              </button>
                               <button
                                 onClick={() => {
                                   if (window.confirm('حذف هذه الجهة؟'))
