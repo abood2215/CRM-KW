@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\TemplateController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\WebhookController;
 use App\Http\Controllers\Api\WhatsappNumberController;
+use App\Http\Controllers\Api\NotificationController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -143,6 +144,14 @@ Route::middleware(['auth:sanctum', 'update.last.seen', 'log.activity'])->group(f
         Route::get('/campaigns', [StatsController::class, 'campaigns']);
         Route::get('/agents', [StatsController::class, 'agents']);
         Route::get('/whatsapp', [StatsController::class, 'whatsapp']);
+    });
+
+    // --- Notifications ---
+    Route::prefix('notifications')->group(function () {
+        Route::get('/',              [NotificationController::class, 'index']);
+        Route::post('/mark-all-read',[NotificationController::class, 'markAllRead']);
+        Route::put('/{id}/read',     [NotificationController::class, 'markRead']);
+        Route::delete('/{id}',       [NotificationController::class, 'destroy']);
     });
 
     // --- Settings (admin/manager) ---

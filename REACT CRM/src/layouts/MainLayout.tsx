@@ -275,14 +275,14 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             {/* زر الإشعارات الصوتية */}
             <AudioToggle />
 
-            <button className="relative text-slate-500 hover:text-indigo-600 transition-colors p-2 rounded-xl hover:bg-indigo-50">
+            <NavLink to="/notifications" className="relative text-slate-500 hover:text-indigo-600 transition-colors p-2 rounded-xl hover:bg-indigo-50">
               <Bell size={20} />
               {unreadCount > 0 && (
                 <span className="absolute top-1 left-1 w-4 h-4 bg-rose-500 border-2 border-white rounded-full flex items-center justify-center text-[8px] text-white font-bold">
                   {unreadCount > 9 ? '9+' : unreadCount}
                 </span>
               )}
-            </button>
+            </NavLink>
 
             <div className="h-7 w-px bg-slate-200 hidden sm:block" />
 

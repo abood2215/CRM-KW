@@ -22,6 +22,7 @@ const Stats = lazy(() => import('./pages/stats/StatsPage'));
 const Settings = lazy(() => import('./pages/settings/SettingsPage'));
 const Contacts = lazy(() => import('./pages/contacts/ContactsPage'));
 const Templates = lazy(() => import('./pages/templates/TemplatesPage'));
+const Notifications = lazy(() => import('./pages/notifications/NotificationsPage'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -102,6 +103,7 @@ function App() {
               <Route path="/settings" element={<ProtectedRoute><ErrorBoundary><Settings /></ErrorBoundary></ProtectedRoute>} />
               <Route path="/contacts" element={<ProtectedRoute><ErrorBoundary><Contacts /></ErrorBoundary></ProtectedRoute>} />
               <Route path="/templates" element={<ProtectedRoute><ErrorBoundary><Templates /></ErrorBoundary></ProtectedRoute>} />
+              <Route path="/notifications" element={<ProtectedRoute><ErrorBoundary><Notifications /></ErrorBoundary></ProtectedRoute>} />
 
               {/* Fallback */}
               <Route path="*" element={<Navigate to="/" replace />} />

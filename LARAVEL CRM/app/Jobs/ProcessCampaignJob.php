@@ -6,6 +6,7 @@ use App\Models\Campaign;
 use App\Models\CampaignRecipient;
 use App\Models\WhatsappNumber;
 use App\Services\BaileysService;
+use App\Services\NotificationService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -41,6 +42,13 @@ class ProcessCampaignJob implements ShouldQueue
 
         if (!$whatsappNumber) {
             Log::error("No connected WhatsApp number for campaign {$campaign->id}");
+            NotificationService::sendToAdmins(
+                'campaign_failed',
+                'فشل تشغيل الحملة',
+                "الحملة \"{$campaign->name}\" فشلت: لا يوجد رقم واتساب متصل.",
+                ['campaign_id' => $campaign->id]
+            );
+            $campaign->update(['status' => 'paused']);
             return;
         }
 
@@ -104,6 +112,19 @@ class ProcessCampaignJob implements ShouldQueue
                 'status' => 'completed',
                 'completed_at' => now(),
             ]);
+            NotificationService::sendToAdmins(
+                'campaign_completed',
+                'اكتملت الحملة',
+                "الحملة \"{$campaign->name}\" اكتملت. أُرسلت: {$campaign->sent_count} | فشلت: {$campaign->failed_count}",
+                ['campaign_id' => $campaign->id]
+            );
+        } elseif ($campaign->failed_count > 0 && $campaign->sent_count === 0) {
+            NotificationService::sendToAdmins(
+                'campaign_failed',
+                'فشلت الحملة',
+                "الحملة \"{$campaign->name}\" فشلت في إرسال جميع الرسائل.",
+                ['campaign_id' => $campaign->id]
+            );
         }
     }
 }
