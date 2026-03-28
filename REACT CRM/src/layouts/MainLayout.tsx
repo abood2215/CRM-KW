@@ -26,6 +26,8 @@ import { useUIStore } from '../store/useUIStore';
 import { cn } from '../utils/cn';
 import { motion, AnimatePresence } from 'framer-motion';
 import AudioToggle from '../components/AudioToggle';
+import { useEcho } from '../hooks/useEcho';
+import api from '../api/axios';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -33,10 +35,30 @@ interface MainLayoutProps {
 
 const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const { user, logout } = useAuthStore();
-  const { sidebarOpen, setSidebarOpen, unreadCount } = useUIStore();
+  const { sidebarOpen, setSidebarOpen, unreadCount, setUnreadCount, incrementUnread } = useUIStore();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const echo = useEcho();
+
+  // Fetch initial unread notifications count
+  useEffect(() => {
+    api.get('/notifications').then(({ data }) => {
+      setUnreadCount(data.unread_count ?? 0);
+    }).catch(() => {});
+  }, [setUnreadCount]);
+
+  // Listen for new notifications in real-time
+  useEffect(() => {
+    if (!echo || !user?.id) return;
+    const channel = echo.private(`user.${user.id}`);
+    channel.listen('.notification', () => {
+      incrementUnread();
+    });
+    return () => {
+      channel.stopListening('.notification');
+    };
+  }, [echo, user?.id, incrementUnread]);
 
   // Close mobile sidebar on route change
   useEffect(() => {

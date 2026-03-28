@@ -108,13 +108,16 @@ const MessagesPage: React.FC = () => {
   // ── realtime ─────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!echo) return;
-    echo.private('messages').listen('.NewMessageEvent', (e: { message: Message }) => {
+    const channel = echo.channel('conversations');
+    channel.listen('.NewMessageEvent', (e: { message: Message }) => {
       if (e.message.conversation_id === selectedId)
         queryClient.setQueryData(['messages', selectedId],
           (old: Message[] | undefined) => old ? [...old, e.message] : [e.message]);
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
     });
-    return () => echo.leave('messages');
+    return () => {
+      channel.stopListening('.NewMessageEvent');
+    };
   }, [echo, selectedId, queryClient]);
 
   useEffect(() => {

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../api/axios';
 import { Bell, CheckCheck, Trash2, Loader2, AlertCircle, CheckCircle2, Megaphone, MessageSquare } from 'lucide-react';
@@ -6,6 +6,9 @@ import { formatDistanceToNow } from 'date-fns';
 import { ar } from 'date-fns/locale';
 import toast from 'react-hot-toast';
 import { cn } from '../../utils/cn';
+import { useEcho } from '../../hooks/useEcho';
+import { useAuthStore } from '../../store/useAuthStore';
+import { useUIStore } from '../../store/useUIStore';
 
 const typeConfig: Record<string, { icon: React.ReactNode; color: string }> = {
   campaign_completed: { icon: <Megaphone size={18} />,    color: 'text-emerald-600 bg-emerald-50' },
@@ -16,6 +19,9 @@ const typeConfig: Record<string, { icon: React.ReactNode; color: string }> = {
 
 const NotificationsPage: React.FC = () => {
   const queryClient = useQueryClient();
+  const echo = useEcho();
+  const { user } = useAuthStore();
+  const { setUnreadCount } = useUIStore();
 
   const { data, isLoading } = useQuery<{ notifications: any[]; unread_count: number }>({
     queryKey: ['notifications'],
@@ -24,6 +30,23 @@ const NotificationsPage: React.FC = () => {
       return data;
     },
   });
+
+  // Sync badge count with fresh data whenever query resolves
+  useEffect(() => {
+    if (data) setUnreadCount(data.unread_count);
+  }, [data, setUnreadCount]);
+
+  // Real-time: refresh list when a new notification arrives
+  useEffect(() => {
+    if (!echo || !user?.id) return;
+    const channel = echo.private(`user.${user.id}`);
+    channel.listen('.notification', () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    });
+    return () => {
+      channel.stopListening('.notification');
+    };
+  }, [echo, user?.id, queryClient]);
 
   const markReadMutation = useMutation({
     mutationFn: (id: number) => api.put(`/notifications/${id}/read`),
