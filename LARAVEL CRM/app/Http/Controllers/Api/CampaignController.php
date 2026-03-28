@@ -232,7 +232,7 @@ class CampaignController extends Controller
         $hourlyStats = $campaign->recipients()
             ->whereNotNull('sent_at')
             ->selectRaw("
-                strftime('%Y-%m-%d %H:00', sent_at) as hour,
+                DATE_FORMAT(sent_at, '%Y-%m-%d %H:00') as hour,
                 COUNT(*) as total,
                 SUM(CASE WHEN status = 'sent'    THEN 1 ELSE 0 END) as sent,
                 SUM(CASE WHEN status = 'failed'  THEN 1 ELSE 0 END) as failed,
