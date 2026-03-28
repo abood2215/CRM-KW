@@ -27,6 +27,8 @@ import { format } from 'date-fns';
 const WhatsappPage: React.FC = () => {
   const queryClient = useQueryClient();
   const [selectedQR, setSelectedQR] = useState<{ id: number, qr: string } | null>(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [addForm, setAddForm] = useState({ name: '', phone: '' });
 
   const { data: numbers = [], isLoading } = useQuery<WhatsappNumber[]>({
     queryKey: ['whatsapp-numbers'],
@@ -34,6 +36,20 @@ const WhatsappPage: React.FC = () => {
       const { data } = await api.get('/whatsapp-numbers');
       return data.whatsapp_numbers;
     },
+  });
+
+  const addNumberMutation = useMutation({
+    mutationFn: async (form: { name: string; phone: string }) => {
+      const { data } = await api.post('/whatsapp-numbers', form);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['whatsapp-numbers'] });
+      setShowAddModal(false);
+      setAddForm({ name: '', phone: '' });
+      toast.success('تم إضافة الرقم بنجاح');
+    },
+    onError: () => toast.error('فشل إضافة الرقم'),
   });
 
   const getQRMutation = useMutation({
@@ -59,7 +75,7 @@ const WhatsappPage: React.FC = () => {
           <p className="text-slate-500 mt-1 font-medium text-sm">ربط أرقامك الرسمية ومراقبة أدائها اليومي.</p>
         </div>
         <div className="flex items-center gap-3">
-          <button className="h-10 lg:h-11 px-4 lg:px-6 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-all flex items-center gap-2 text-sm self-start sm:self-auto">
+          <button onClick={() => setShowAddModal(true)} className="h-10 lg:h-11 px-4 lg:px-6 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-all flex items-center gap-2 text-sm self-start sm:self-auto">
             <Plus size={16} />
             <span>إضافة رقم</span>
           </button>
@@ -166,6 +182,59 @@ const WhatsappPage: React.FC = () => {
            </div>
         </div>
       </div>
+
+      {/* Add Number Modal */}
+      <AnimatePresence>
+        {showAddModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-white rounded-[2.5rem] shadow-2xl p-10 max-w-sm w-full relative"
+            >
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="absolute top-6 right-6 p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-all font-bold"
+              >
+                إغلاق
+              </button>
+              <h3 className="text-2xl font-black text-slate-800 mb-2">إضافة رقم جديد</h3>
+              <p className="text-slate-400 text-sm font-medium mb-8">أدخل بيانات الرقم لإضافته إلى النظام.</p>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2">اسم الرقم</label>
+                  <input
+                    type="text"
+                    value={addForm.name}
+                    onChange={e => setAddForm(f => ({ ...f, name: e.target.value }))}
+                    placeholder="مثال: رقم المبيعات"
+                    className="w-full h-12 px-4 rounded-2xl border border-slate-200 bg-slate-50 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2">رقم الهاتف</label>
+                  <input
+                    type="text"
+                    value={addForm.phone}
+                    onChange={e => setAddForm(f => ({ ...f, phone: e.target.value }))}
+                    placeholder="96512345678+"
+                    className="w-full h-12 px-4 rounded-2xl border border-slate-200 bg-slate-50 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <button
+                  onClick={() => addNumberMutation.mutate(addForm)}
+                  disabled={addNumberMutation.isPending || !addForm.name || !addForm.phone}
+                  className="w-full h-12 bg-indigo-600 text-white font-black rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-all disabled:opacity-60 mt-2"
+                >
+                  {addNumberMutation.isPending ? <Loader2 size={18} className="animate-spin" /> : <Plus size={18} />}
+                  <span>إضافة الرقم</span>
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* QR Modal */}
       <AnimatePresence>
