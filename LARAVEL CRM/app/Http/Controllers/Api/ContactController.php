@@ -158,13 +158,17 @@ class ContactController extends Controller
                 continue;
             }
 
-            // التحقق من وجود الاسم والهاتف كحد أدنى
-            if (empty($row[0]) || empty($row[1])) {
-                $skipped++;
-                continue;
+            // دعم عمود واحد (الهاتف فقط) أو عمودين (الاسم + الهاتف)
+            $hasOnlyPhone = empty($row[1]);
+            if ($hasOnlyPhone) {
+                if (empty($row[0])) { $skipped++; continue; }
+                $phone = trim($row[0]);
+                $name  = $phone;
+            } else {
+                if (empty($row[0]) || empty($row[1])) { $skipped++; continue; }
+                $phone = trim($row[1]);
+                $name  = trim($row[0]);
             }
-
-            $phone = trim($row[1]);
 
             // تجنب التكرار
             if (Contact::where('phone', $phone)->exists()) {
@@ -175,7 +179,7 @@ class ContactController extends Controller
             try {
                 Contact::create([
                     'user_id' => $userId,
-                    'name'    => trim($row[0]),
+                    'name'    => $name,
                     'phone'   => $phone,
                     'email'   => $row[2] ?? null,
                     'tags'    => !empty($row[3]) ? array_map('trim', explode(',', $row[3])) : null,
