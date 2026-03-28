@@ -382,6 +382,11 @@ const MessagesPage: React.FC = () => {
                             <div className="absolute top-0 -left-2 w-0 h-0"
                               style={{ borderRight: '8px solid #ffffff', borderBottom: '8px solid transparent' }} />
                           )}
+                          {isSent && msg.sender_name && (
+                            <p className="text-[10px] font-bold text-emerald-700 mb-0.5">
+                              {msg.sender_name}
+                            </p>
+                          )}
                           <p className="text-sm leading-relaxed whitespace-pre-wrap break-words text-slate-800">
                             {msg.content}
                           </p>
