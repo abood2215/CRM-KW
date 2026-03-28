@@ -102,6 +102,15 @@ class ProcessWhatsAppWebhookJob implements ShouldQueue
             ->orWhere('phone', $this->formatPhoneForSearch($fromPhone))
             ->first();
 
+        if (!$client && $fromPhone) {
+            $client = CrmClient::create([
+                'phone' => $fromPhone,
+                'name'  => $contactName ?? $fromPhone,
+            ]);
+        } elseif ($client && $contactName && ($client->name === $client->phone || !$client->name)) {
+            $client->update(['name' => $contactName]);
+        }
+
         // Find or create conversation
         $conversation = $this->resolveConversation($client, $fromPhone, $phoneNumberId);
 
