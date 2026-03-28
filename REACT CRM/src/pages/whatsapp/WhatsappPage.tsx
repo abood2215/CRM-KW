@@ -28,7 +28,7 @@ const WhatsappPage: React.FC = () => {
   const queryClient = useQueryClient();
   const [selectedQR, setSelectedQR] = useState<{ id: number, qr: string } | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [addForm, setAddForm] = useState({ name: '', phone: '' });
+  const [addForm, setAddForm] = useState({ name: '', phone: '', session_name: '' });
 
   const { data: numbers = [], isLoading } = useQuery<WhatsappNumber[]>({
     queryKey: ['whatsapp-numbers'],
@@ -46,7 +46,7 @@ const WhatsappPage: React.FC = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['whatsapp-numbers'] });
       setShowAddModal(false);
-      setAddForm({ name: '', phone: '' });
+      setAddForm({ name: '', phone: '', session_name: '' });
       toast.success('تم إضافة الرقم بنجاح');
     },
     onError: () => toast.error('فشل إضافة الرقم'),
@@ -222,9 +222,19 @@ const WhatsappPage: React.FC = () => {
                     className="w-full h-12 px-4 rounded-2xl border border-slate-200 bg-slate-50 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
+                <div>
+                  <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2">اسم الجلسة</label>
+                  <input
+                    type="text"
+                    value={addForm.session_name}
+                    onChange={e => setAddForm(f => ({ ...f, session_name: e.target.value }))}
+                    placeholder="مثال: sales_number_1"
+                    className="w-full h-12 px-4 rounded-2xl border border-slate-200 bg-slate-50 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
                 <button
                   onClick={() => addNumberMutation.mutate(addForm)}
-                  disabled={addNumberMutation.isPending || !addForm.name || !addForm.phone}
+                  disabled={addNumberMutation.isPending || !addForm.name || !addForm.phone || !addForm.session_name}
                   className="w-full h-12 bg-indigo-600 text-white font-black rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-all disabled:opacity-60 mt-2"
                 >
                   {addNumberMutation.isPending ? <Loader2 size={18} className="animate-spin" /> : <Plus size={18} />}
