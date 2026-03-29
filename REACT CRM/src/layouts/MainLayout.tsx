@@ -125,6 +125,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           <NavLink
             key={item.path}
             to={item.path}
+            title={!sidebarOpen ? item.title : undefined}
             className={({ isActive }) => cn(
               "flex items-center px-4 py-3 mx-2 rounded-xl transition-all group relative",
               isActive
@@ -137,6 +138,15 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             </span>
             {(isMobile || sidebarOpen) && (
               <span className="mr-3 font-medium whitespace-nowrap">{item.title}</span>
+            )}
+            {/* Tooltip - يظهر عندما يكون الـ sidebar مغلق */}
+            {!isMobile && !sidebarOpen && (
+              <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-50">
+                <div className="bg-slate-900 text-white text-xs font-bold px-3 py-2 rounded-lg whitespace-nowrap shadow-lg">
+                  {item.title}
+                  <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-slate-900" />
+                </div>
+              </div>
             )}
             {item.badge !== undefined && item.badge > 0 && (
               <span className={cn(
@@ -227,6 +237,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             <NavLink
               key={item.path}
               to={item.path}
+              title={!sidebarOpen ? item.title : undefined}
               className={({ isActive }) => cn(
                 "flex items-center px-4 py-3 mx-2 rounded-xl transition-all group relative",
                 isActive
@@ -246,6 +257,15 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   {item.title}
                 </motion.span>
               )}
+              {/* Tooltip - يظهر عندما يكون الـ sidebar مغلق */}
+              {!sidebarOpen && (
+                <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-50">
+                  <div className="bg-slate-900 text-white text-xs font-bold px-3 py-2 rounded-lg whitespace-nowrap shadow-lg">
+                    {item.title}
+                    <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-slate-900" />
+                  </div>
+                </div>
+              )}
               {item.badge !== undefined && item.badge > 0 && (
                 <span className={cn(
                   "absolute flex items-center justify-center bg-rose-500 text-white font-bold rounded-full text-[10px]",
@@ -261,13 +281,25 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         <div className="p-4 border-t border-indigo-900/50">
           <button
             onClick={handleLogout}
+            title={!sidebarOpen ? "تسجيل الخروج" : undefined}
             className={cn(
-              "w-full flex items-center text-indigo-300 hover:text-rose-400 hover:bg-rose-500/10 p-3 rounded-xl transition-all",
+              "w-full flex items-center text-indigo-300 hover:text-rose-400 hover:bg-rose-500/10 p-3 rounded-xl transition-all group relative",
               !sidebarOpen && "justify-center"
             )}
           >
             <LogOut size={20} />
             {sidebarOpen && <span className="mr-3 font-medium">تسجيل الخروج</span>}
+            {/* Tooltip */}
+            {!sidebarOpen && (
+              <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-50">
+                <div className="bg-slate-900 text-white text-xs font-bold px-3 py-2 rounded-lg whitespace-nowrap shadow-lg">
+                  تسجيل الخروج
+                  <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-slate-900" />
+                </div>
+              </div>
+            )}
+          </button>
+        </div>
           </button>
         </div>
       </motion.aside>
