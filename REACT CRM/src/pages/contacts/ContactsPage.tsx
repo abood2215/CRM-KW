@@ -6,7 +6,7 @@ import { Contact, ContactList } from '../../types';
 import {
   Users, Plus, Search, Upload, Download, Trash2,
   Phone, Mail, Tag, List, CheckCircle, XCircle,
-  Loader2, Filter, MoreVertical, ShieldOff, ShieldCheck
+  Loader2, Filter, MoreVertical, ShieldOff, ShieldCheck, ShieldAlert
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import toast from 'react-hot-toast';
@@ -17,7 +17,7 @@ import AddContactModal from '../../components/AddContactModal';
 // ==============================
 const ContactsPage: React.FC = () => {
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<'contacts' | 'lists'>('contacts');
+  const [activeTab, setActiveTab] = useState<'contacts' | 'lists' | 'blacklisted'>('contacts');
   const [search, setSearch] = useState('');
   const [optInFilter, setOptInFilter] = useState<'' | 'true' | 'false'>('');
   const [showAddModal, setShowAddModal] = useState(false);
@@ -39,6 +39,19 @@ const ContactsPage: React.FC = () => {
       });
       return data;
     },
+    enabled: activeTab !== 'blacklisted',
+  });
+
+  // جلب المحظورين
+  const { data: blacklistedData, isLoading: loadingBlacklisted } = useQuery({
+    queryKey: ['contacts-blacklisted', debouncedSearch, page],
+    queryFn: async () => {
+      const { data } = await api.get('/contacts', {
+        params: { is_blacklisted: true, search: debouncedSearch || undefined, page }
+      });
+      return data;
+    },
+    enabled: activeTab === 'blacklisted',
   });
 
   // جلب القوائم
@@ -118,6 +131,7 @@ const ContactsPage: React.FC = () => {
   const meta = contactsData?.meta;
   const lists: ContactList[] = listsData ?? [];
 
+
   return (
     <div className="space-y-8 font-cairo animate-in fade-in duration-500">
       {/* Header */}
@@ -167,29 +181,41 @@ const ContactsPage: React.FC = () => {
 
       {/* Tabs */}
       <div className="bg-white rounded-[2rem] border border-slate-100 shadow-xl overflow-hidden">
-        <div className="flex gap-8 px-10 border-b border-slate-50">
-          {(['contacts', 'lists'] as const).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={cn(
-                'py-5 text-sm font-black border-b-4 transition-all',
-                activeTab === tab
-                  ? 'border-indigo-600 text-indigo-600'
-                  : 'border-transparent text-slate-400 hover:text-slate-600'
-              )}
-            >
-              {tab === 'contacts' ? (
-                <span className="flex items-center gap-2"><Users size={16} /> جهات الاتصال ({meta?.total ?? 0})</span>
-              ) : (
-                <span className="flex items-center gap-2"><List size={16} /> القوائم ({lists.length})</span>
-              )}
-            </button>
-          ))}
+        <div className="flex gap-8 px-10 border-b border-slate-50 overflow-x-auto">
+          <button
+            onClick={() => setActiveTab('contacts')}
+            className={cn('py-5 text-sm font-black border-b-4 transition-all whitespace-nowrap', activeTab === 'contacts' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600')}
+          >
+            <span className="flex items-center gap-2"><Users size={16} /> جهات الاتصال ({contactsData?.meta?.total ?? 0})</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('blacklisted')}
+            className={cn('py-5 text-sm font-black border-b-4 transition-all whitespace-nowrap', activeTab === 'blacklisted' ? 'border-rose-500 text-rose-600' : 'border-transparent text-slate-400 hover:text-slate-600')}
+          >
+            <span className="flex items-center gap-2"><ShieldAlert size={16} /> المحظورون ({blacklistedData?.meta?.total ?? 0})</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('lists')}
+            className={cn('py-5 text-sm font-black border-b-4 transition-all whitespace-nowrap', activeTab === 'lists' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600')}
+          >
+            <span className="flex items-center gap-2"><List size={16} /> القوائم ({lists.length})</span>
+          </button>
         </div>
 
         <div className="p-8">
-          {activeTab === 'contacts' ? (
+          {activeTab === 'blacklisted' ? (
+            <BlacklistedTab
+              contacts={blacklistedData?.contacts ?? []}
+              meta={blacklistedData?.meta}
+              isLoading={loadingBlacklisted}
+              search={search}
+              setSearch={setSearch}
+              page={page}
+              setPage={setPage}
+              blacklistMutation={blacklistMutation}
+              deleteMutation={deleteMutation}
+            />
+          ) : activeTab === 'contacts' ? (
             <>
               {/* أدوات الفلترة */}
               <div className="flex flex-col sm:flex-row gap-4 mb-8">
@@ -351,6 +377,7 @@ const ContactsPage: React.FC = () => {
             // تبويب القوائم
             <ContactListsTab lists={lists} queryClient={queryClient} />
           )}
+
         </div>
       </div>
 
@@ -367,6 +394,117 @@ const ContactsPage: React.FC = () => {
     </div>
   );
 };
+
+// ==============================
+// تبويب المحظورين
+// ==============================
+const BlacklistedTab: React.FC<{
+  contacts: Contact[];
+  meta: any;
+  isLoading: boolean;
+  search: string;
+  setSearch: (v: string) => void;
+  page: number;
+  setPage: (fn: (p: number) => number) => void;
+  blacklistMutation: any;
+  deleteMutation: any;
+}> = ({ contacts, meta, isLoading, search, setSearch, page, setPage, blacklistMutation, deleteMutation }) => (
+  <div>
+    {/* بحث */}
+    <div className="relative max-w-sm mb-6">
+      <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+      <input
+        type="text"
+        placeholder="بحث في المحظورين..."
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        className="w-full h-10 pr-9 pl-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20"
+      />
+    </div>
+
+    {isLoading ? (
+      <div className="flex justify-center py-20">
+        <Loader2 className="animate-spin text-rose-500 h-8 w-8" />
+      </div>
+    ) : contacts.length === 0 ? (
+      <div className="text-center py-20">
+        <div className="w-20 h-20 bg-rose-50 rounded-full flex items-center justify-center mx-auto mb-4">
+          <ShieldAlert size={32} className="text-rose-200" />
+        </div>
+        <p className="font-black text-slate-600 text-lg">لا يوجد أرقام محظورة</p>
+        <p className="text-slate-400 mt-1 text-sm">الأرقام التي تحظرها لن تتلقى حملاتك التسويقية.</p>
+      </div>
+    ) : (
+      <>
+        <div className="mb-4 flex items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-rose-50 text-rose-600 rounded-full text-xs font-bold">
+            <ShieldAlert size={12} /> {meta?.total ?? contacts.length} رقم محظور
+          </span>
+          <span className="text-xs text-slate-400">— هؤلاء لن يتلقوا أي حملة تسويقية</span>
+        </div>
+
+        <div className="overflow-x-auto rounded-2xl border border-rose-100">
+          <table className="w-full text-sm">
+            <thead className="bg-rose-50/60 border-b border-rose-100">
+              <tr>
+                <th className="text-right p-4 font-black text-rose-400 text-xs uppercase tracking-wider">الاسم</th>
+                <th className="text-right p-4 font-black text-rose-400 text-xs uppercase tracking-wider">الهاتف</th>
+                <th className="text-right p-4 font-black text-rose-400 text-xs uppercase tracking-wider hidden md:table-cell">البريد</th>
+                <th className="p-4"></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-rose-50">
+              {contacts.map((contact) => (
+                <tr key={contact.id} className="hover:bg-rose-50/30 transition-colors">
+                  <td className="p-4 font-bold text-slate-800">{contact.name}</td>
+                  <td className="p-4">
+                    <span className="flex items-center gap-1.5 text-slate-600 font-mono">
+                      <Phone size={13} className="text-slate-400" />
+                      {contact.phone}
+                    </span>
+                  </td>
+                  <td className="p-4 text-slate-500 hidden md:table-cell">
+                    {contact.email || '—'}
+                  </td>
+                  <td className="p-4">
+                    <div className="flex items-center gap-2 justify-end">
+                      <button
+                        onClick={() => blacklistMutation.mutate({ id: contact.id, blacklisted: false })}
+                        title="رفع الحظر"
+                        className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 hover:text-emerald-800 px-3 py-1.5 rounded-lg hover:bg-emerald-50 transition-colors border border-emerald-200"
+                      >
+                        <ShieldCheck size={13} /> رفع الحظر
+                      </button>
+                      <button
+                        onClick={() => { if (window.confirm('حذف هذه الجهة؟')) deleteMutation.mutate(contact.id); }}
+                        className="p-1.5 text-slate-300 hover:text-rose-500 rounded-lg transition-colors"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {meta && meta.last_page > 1 && (
+          <div className="flex items-center justify-between mt-6">
+            <p className="text-sm text-slate-500 font-medium">
+              عرض {contacts.length} من {meta.total} رقم محظور
+            </p>
+            <div className="flex gap-2">
+              <button disabled={page <= 1} onClick={() => setPage(p => p - 1)} className="h-9 px-4 border border-slate-200 rounded-xl text-sm font-bold disabled:opacity-40 hover:bg-slate-50">السابق</button>
+              <span className="h-9 px-4 flex items-center text-sm font-bold text-slate-600">{page} / {meta.last_page}</span>
+              <button disabled={page >= meta.last_page} onClick={() => setPage(p => p + 1)} className="h-9 px-4 border border-slate-200 rounded-xl text-sm font-bold disabled:opacity-40 hover:bg-slate-50">التالي</button>
+            </div>
+          </div>
+        )}
+      </>
+    )}
+  </div>
+);
 
 // ==============================
 // تبويب القوائم
