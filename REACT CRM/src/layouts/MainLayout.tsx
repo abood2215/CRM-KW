@@ -13,7 +13,6 @@ import {
   ChevronRight,
   ChevronLeft,
   Bell,
-  Search,
   Columns,
   Contact,
   FileText,
@@ -281,19 +280,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             {/* Logo text on mobile */}
             <span className="text-base font-black text-indigo-700 lg:hidden">مطمئنة</span>
 
-            {/* Desktop Search */}
-            <div className="relative max-w-xs w-full hidden lg:flex items-center group">
-              <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" size={16} />
-              <input
-                type="text"
-                placeholder="بحث في النظام..."
-                className="w-full h-10 pr-10 pl-20 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm"
-              />
-              <div className="absolute left-3 flex items-center gap-0.5 pointer-events-none">
-                <kbd className="text-[10px] font-semibold text-slate-400 bg-white border border-slate-200 px-1.5 py-0.5 rounded-md shadow-sm">Ctrl</kbd>
-                <kbd className="text-[10px] font-semibold text-slate-400 bg-white border border-slate-200 px-1.5 py-0.5 rounded-md shadow-sm">K</kbd>
-              </div>
-            </div>
           </div>
 
           <div className="flex items-center gap-1 lg:gap-2">
