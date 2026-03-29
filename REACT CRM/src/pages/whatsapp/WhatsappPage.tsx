@@ -17,7 +17,8 @@ import {
   MoreVertical,
   Activity,
   ArrowUpRight,
-  ShieldAlert
+  ShieldAlert,
+  X
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import toast from 'react-hot-toast';
@@ -195,9 +196,9 @@ const WhatsappPage: React.FC = () => {
             >
               <button
                 onClick={() => setShowAddModal(false)}
-                className="absolute top-6 right-6 p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-all font-bold"
+                className="absolute -top-4 -right-4 z-10 p-2 rounded-xl bg-white text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all font-bold shadow-lg"
               >
-                إغلاق
+                <X size={24} />
               </button>
               <h3 className="text-2xl font-black text-slate-800 mb-2">إضافة رقم جديد</h3>
               <p className="text-slate-400 text-sm font-medium mb-8">أدخل بيانات الرقم لإضافته إلى النظام.</p>
@@ -258,9 +259,9 @@ const WhatsappPage: React.FC = () => {
             >
               <button 
                 onClick={() => setSelectedQR(null)}
-                className="absolute top-6 right-6 p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-all font-bold"
+                className="absolute -top-4 -right-4 z-10 p-2 rounded-xl bg-white text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all font-bold shadow-lg"
               >
-                إغلاق
+                <X size={24} />
               </button>
               
               <div className="mb-8">
