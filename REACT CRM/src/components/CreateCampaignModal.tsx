@@ -26,7 +26,7 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ open, onClose
   const { data: contacts = [] } = useQuery<any[]>({
     queryKey: ['contacts-all'],
     queryFn: async () => {
-      const { data } = await api.get('/contacts', { params: { per_page: 1000 } });
+      const { data } = await api.get('/contacts', { params: { per_page: 1000, is_blacklisted: false } });
       return data.contacts?.data ?? data.contacts ?? [];
     },
     enabled: open && inputMode === 'contacts',
