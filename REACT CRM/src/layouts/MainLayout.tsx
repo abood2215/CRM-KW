@@ -64,7 +64,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     setMobileSidebarOpen(false);
   }, [location.pathname]);
 
-  const menuItems = [
+  const fullMenuItems = [
     { title: 'لوحة التحكم', icon: <LayoutDashboard size={20} />, path: '/' },
     { title: 'لوحة المتابعة', icon: <Columns size={20} />, path: '/pipeline' },
     { title: 'سجل العملاء', icon: <Users size={20} />, path: '/clients' },
@@ -76,8 +76,14 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     { title: 'إدارة الأرقام', icon: <Smartphone size={20} />, path: '/whatsapp' },
     { title: 'مركز الملفات', icon: <HardDrive size={20} />, path: '/drive' },
     { title: 'التقارير', icon: <BarChart3 size={20} />, path: '/stats' },
-    { title: 'الإعدادات', icon: <Settings size={20} />, path: '/settings' },
+    // Only show settings for admin and manager
+    ...(user?.role === 'admin' || user?.role === 'manager'
+      ? [{ title: 'الإعدادات', icon: <Settings size={20} />, path: '/settings' }]
+      : []),
   ];
+
+  // Filter menu items based on user role
+  const menuItems = fullMenuItems;
 
   // Bottom nav items (most important 5)
   const bottomNavItems = [

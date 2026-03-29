@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Navigate } from 'react-router-dom';
 import api from '../../api/axios';
+import { useAuthStore } from '../../store/useAuthStore';
 import {
-  Clock, MessageSquare, Users, Save, Plus, Edit, Trash2, Loader2, FileText
+  Clock, MessageSquare, Users, Save, Plus, Edit, Trash2, Loader2, FileText, Lock
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import toast from 'react-hot-toast';
@@ -10,6 +12,40 @@ import { User, BusinessHour, AutoReply } from '../../types';
 import AddUserModal from '../../components/AddUserModal';
 
 const SettingsPage: React.FC = () => {
+  const { user } = useAuthStore();
+  
+  // Check authorization - only admin and manager can access settings
+  if (!user || (user.role !== 'admin' && user.role !== 'manager')) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 font-cairo">
+        <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center space-y-6">
+          <div className="flex justify-center">
+            <div className="p-4 bg-rose-50 rounded-2xl">
+              <Lock size={32} className="text-rose-600" />
+            </div>
+          </div>
+          <div>
+            <h1 className="text-2xl font-black text-slate-900">تم منع الوصول</h1>
+            <p className="text-slate-600 text-sm font-medium mt-2">
+              هذه الصفحة متاحة فقط للمديرين والمشرفين. ليس لديك صلاحيات كافية للوصول إلى الإعدادات.
+            </p>
+          </div>
+          <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl">
+            <p className="text-amber-800 text-xs font-bold">
+              صلاحيتك الحالية: <span className="font-black text-amber-900">موظف</span>
+            </p>
+          </div>
+          <a
+            href="/"
+            className="block h-11 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-all flex items-center justify-center"
+          >
+            العودة إلى الرئيسية
+          </a>
+        </div>
+      </div>
+    );
+  }
+
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<'hours' | 'replies' | 'users'>('hours');
   const [localHours, setLocalHours] = useState<BusinessHour[]>([]);
