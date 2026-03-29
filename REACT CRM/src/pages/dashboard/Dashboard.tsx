@@ -60,32 +60,44 @@ const Dashboard: React.FC = () => {
       value: stats?.total_clients || 0,
       change: '+12%',
       isUp: true,
-      icon: <Users className="text-indigo-600" size={22} />,
-      color: 'bg-indigo-50'
+      icon: <Users size={20} />,
+      iconColor: 'text-indigo-600',
+      iconBg: 'bg-indigo-100',
+      accent: 'from-indigo-500 to-indigo-600',
+      shadow: 'shadow-indigo-100',
     },
     {
       title: 'عملاء اليوم',
       value: stats?.new_clients_today || 0,
       change: '+5%',
       isUp: true,
-      icon: <TrendingUp className="text-emerald-600" size={22} />,
-      color: 'bg-emerald-50'
+      icon: <TrendingUp size={20} />,
+      iconColor: 'text-emerald-600',
+      iconBg: 'bg-emerald-100',
+      accent: 'from-emerald-500 to-emerald-600',
+      shadow: 'shadow-emerald-100',
     },
     {
       title: 'رسائل غير مقروءة',
       value: stats?.unread_messages || 0,
       change: '-2%',
       isUp: false,
-      icon: <MessageSquare className="text-amber-600" size={22} />,
-      color: 'bg-amber-50'
+      icon: <MessageSquare size={20} />,
+      iconColor: 'text-amber-600',
+      iconBg: 'bg-amber-100',
+      accent: 'from-amber-500 to-amber-600',
+      shadow: 'shadow-amber-100',
     },
     {
       title: 'مهام معلقة',
       value: stats?.pending_tasks || 0,
       change: '15',
       isUp: true,
-      icon: <CheckSquare className="text-rose-600" size={22} />,
-      color: 'bg-rose-50'
+      icon: <CheckSquare size={20} />,
+      iconColor: 'text-rose-600',
+      iconBg: 'bg-rose-100',
+      accent: 'from-rose-500 to-rose-600',
+      shadow: 'shadow-rose-100',
     },
   ];
 
@@ -132,31 +144,36 @@ const Dashboard: React.FC = () => {
         </div>
 
         {/* Stat Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-5">
           {statCards.map((card, idx) => (
             <motion.div
               key={idx}
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: idx * 0.08 }}
-              className="bg-white p-4 lg:p-6 rounded-2xl lg:rounded-[1.5rem] border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all group"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: idx * 0.07 }}
+              className={cn(
+                "bg-white p-4 lg:p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 group overflow-hidden relative",
+                card.shadow
+              )}
             >
-              <div className="flex items-center justify-between mb-3 lg:mb-4">
-                <div className={cn("w-10 h-10 lg:w-12 lg:h-12 rounded-xl lg:rounded-2xl flex items-center justify-center transition-all group-hover:scale-110", card.color)}>
+              {/* Accent bar */}
+              <div className={cn("absolute top-0 right-0 left-0 h-0.5 bg-gradient-to-l rounded-t-2xl opacity-60", card.accent)} />
+
+              <div className="flex items-start justify-between mb-3">
+                <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110", card.iconBg, card.iconColor)}>
                   {card.icon}
                 </div>
                 <div className={cn(
-                  "flex items-center gap-1 text-[10px] lg:text-xs font-bold px-2 py-0.5 rounded-full",
-                  card.isUp ? "text-emerald-600 bg-emerald-50" : "text-rose-600 bg-rose-50"
+                  "flex items-center gap-0.5 text-[10px] font-bold px-2 py-1 rounded-lg",
+                  card.isUp ? "text-emerald-700 bg-emerald-50" : "text-rose-600 bg-rose-50"
                 )}>
-                  {card.isUp ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
-                  <span>{card.change}</span>
+                  {card.isUp ? <ArrowUpRight size={11} /> : <ArrowDownRight size={11} />}
+                  {card.change}
                 </div>
               </div>
-              <div>
-                <p className="text-xs font-bold text-slate-400 mb-1 leading-tight">{card.title}</p>
-                <h3 className="text-2xl lg:text-3xl font-black text-slate-800 tracking-tight">{card.value}</h3>
-              </div>
+
+              <p className="text-[11px] font-semibold text-slate-400 mb-0.5 truncate">{card.title}</p>
+              <h3 className="text-2xl lg:text-3xl font-black text-slate-800 tracking-tight leading-none">{card.value}</h3>
             </motion.div>
           ))}
         </div>
