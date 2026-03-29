@@ -300,8 +300,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             )}
           </button>
         </div>
-          </button>
-        </div>
       </motion.aside>
 
       {/* Main Content Area */}
