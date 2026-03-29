@@ -23,7 +23,22 @@
       "Bash(node_modules/.bin/tsc --noEmit)",
       "Bash(node:*)",
       "Bash(find 'C:\\\\Users\\\\abd-allah\\\\Desktop\\\\CRM\\\\LARAVEL CRM\\\\app\\\\Services' -type f -name *.php)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(find '/c/Users/abd-allah/Desktop/CRM/REACT CRM/src' -type f \\\\\\(-name *[Nn]otif* -o -name *[Pp]age* \\\\\\))",
+      "Bash(grep -r \"NotificationEvent\\\\|notifications\" '/c/Users/abd-allah/Desktop/CRM/LARAVEL CRM/app' --include=*.php)",
+      "Bash(find '/c/Users/abd-allah/Desktop/CRM/LARAVEL CRM/app' -type f \\\\\\(-name *.php \\\\\\))",
+      "Bash(grep -r \"dispatch\\\\|Notification\\\\|broadcast\" '/c/Users/abd-allah/Desktop/CRM/LARAVEL CRM/app' --include=*.php)",
+      "Bash(grep -r \"NotificationEvent\\\\|new NotificationEvent\\\\|NotificationEvent::\" /c/Users/abd-allah/Desktop/CRM --include=*.php --include=*.ts --include=*.tsx)",
+      "Bash(grep -r \"notification\\\\|Notification\\\\|broadcast\\\\|listener\" '/c/Users/abd-allah/Desktop/CRM/REACT CRM/src' --include=*.ts --include=*.tsx)",
+      "Bash(grep -r \"useEcho\\\\|listener\\\\|on\\(\" '/c/Users/abd-allah/Desktop/CRM/REACT CRM/src/pages' --include=*.tsx --include=*.ts)",
+      "Bash(find '/c/Users/abd-allah/Desktop/CRM/LARAVEL CRM/app/Models' -type f -name *.php)",
+      "Bash(xargs basename:*)",
+      "Bash(grep -E \"\\\\.\\(php|js\\)$\")",
+      "Bash(grep -r 'use Illuminate\\\\Notifications' 'c:/Users/abd-allah/Desktop/CRM/LARAVEL CRM/app' --include=*.php)",
+      "Bash(find 'c:/Users/abd-allah/Desktop/CRM/LARAVEL CRM/config' -name *.php)",
+      "Bash(grep -n \"broadcastOn\\\\|broadcastAs\" \"c:/Users/abd-allah/Desktop/CRM/LARAVEL CRM/app/Events\"/*.php)",
+      "Bash(find \"c:/Users/abd-allah/Desktop/CRM/LARAVEL CRM/app\" -name \"*.php\" -exec grep -l \"use.*NotificationService\\\\|use.*WhatsAppService\" {})",
+      "Bash(composer require:*)"
     ]
   }
 }

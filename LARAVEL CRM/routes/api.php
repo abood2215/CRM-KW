@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\WebhookController;
 use App\Http\Controllers\Api\WhatsappNumberController;
 use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\FileController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -152,6 +153,14 @@ Route::middleware(['auth:sanctum', 'update.last.seen', 'log.activity'])->group(f
         Route::post('/mark-all-read',[NotificationController::class, 'markAllRead']);
         Route::put('/{id}/read',     [NotificationController::class, 'markRead']);
         Route::delete('/{id}',       [NotificationController::class, 'destroy']);
+    });
+
+    // --- Drive (File Storage) ---
+    Route::prefix('drive')->group(function () {
+        Route::get('/',              [FileController::class, 'index']);
+        Route::post('/upload',       [FileController::class, 'store']);
+        Route::get('/{file}/download', [FileController::class, 'download']);
+        Route::delete('/{file}',     [FileController::class, 'destroy']);
     });
 
     // --- Settings (admin/manager) ---

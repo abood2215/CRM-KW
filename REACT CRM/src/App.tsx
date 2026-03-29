@@ -23,6 +23,7 @@ const Settings = lazy(() => import('./pages/settings/SettingsPage'));
 const Contacts = lazy(() => import('./pages/contacts/ContactsPage'));
 const Templates = lazy(() => import('./pages/templates/TemplatesPage'));
 const Notifications = lazy(() => import('./pages/notifications/NotificationsPage'));
+const Drive = lazy(() => import('./pages/drive/DrivePage'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -104,6 +105,7 @@ function App() {
               <Route path="/contacts" element={<ProtectedRoute><ErrorBoundary><Contacts /></ErrorBoundary></ProtectedRoute>} />
               <Route path="/templates" element={<ProtectedRoute><ErrorBoundary><Templates /></ErrorBoundary></ProtectedRoute>} />
               <Route path="/notifications" element={<ProtectedRoute><ErrorBoundary><Notifications /></ErrorBoundary></ProtectedRoute>} />
+              <Route path="/drive" element={<ProtectedRoute><ErrorBoundary><Drive /></ErrorBoundary></ProtectedRoute>} />
 
               {/* Fallback */}
               <Route path="*" element={<Navigate to="/" replace />} />

@@ -234,3 +234,18 @@ export interface CampaignRecipient {
   error_message?: string;
   created_at: string;
 }
+
+export interface FileRecord {
+  id: number;
+  user_id: number;
+  user?: User;
+  original_name: string;
+  stored_name: string;
+  path: string;
+  mime_type?: string;
+  size: number;
+  size_formatted?: string;
+  category: 'image' | 'csv' | 'document' | 'other';
+  created_at: string;
+  updated_at: string;
+}

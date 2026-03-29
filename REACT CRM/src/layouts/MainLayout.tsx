@@ -17,7 +17,8 @@ import {
   Contact,
   FileText,
   Menu,
-  X
+  X,
+  HardDrive
 } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
 import { useUIStore } from '../store/useUIStore';
@@ -73,6 +74,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     { title: 'الحملات الترويجية', icon: <Megaphone size={20} />, path: '/campaigns' },
     { title: 'قوالب واتساب', icon: <FileText size={20} />, path: '/templates' },
     { title: 'إدارة الأرقام', icon: <Smartphone size={20} />, path: '/whatsapp' },
+    { title: 'مركز الملفات', icon: <HardDrive size={20} />, path: '/drive' },
     { title: 'التقارير', icon: <BarChart3 size={20} />, path: '/stats' },
     { title: 'الإعدادات', icon: <Settings size={20} />, path: '/settings' },
   ];
