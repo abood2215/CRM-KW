@@ -15,6 +15,152 @@ import { ar } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 
+// ─── countries (no Israel) ────────────────────────────────────────────────────
+const flag = (c: string) => [...c.toUpperCase()].map(l => String.fromCodePoint(l.charCodeAt(0) + 127397)).join('');
+const COUNTRIES = [
+  // خليج وعرب
+  { name: 'الكويت',        code: 'KW', dial: '965' },
+  { name: 'السعودية',      code: 'SA', dial: '966' },
+  { name: 'الإمارات',      code: 'AE', dial: '971' },
+  { name: 'قطر',           code: 'QA', dial: '974' },
+  { name: 'البحرين',       code: 'BH', dial: '973' },
+  { name: 'عُمان',         code: 'OM', dial: '968' },
+  { name: 'مصر',           code: 'EG', dial: '20'  },
+  { name: 'الأردن',        code: 'JO', dial: '962' },
+  { name: 'لبنان',         code: 'LB', dial: '961' },
+  { name: 'سوريا',         code: 'SY', dial: '963' },
+  { name: 'العراق',        code: 'IQ', dial: '964' },
+  { name: 'اليمن',         code: 'YE', dial: '967' },
+  { name: 'ليبيا',         code: 'LY', dial: '218' },
+  { name: 'تونس',          code: 'TN', dial: '216' },
+  { name: 'الجزائر',       code: 'DZ', dial: '213' },
+  { name: 'المغرب',        code: 'MA', dial: '212' },
+  { name: 'السودان',       code: 'SD', dial: '249' },
+  { name: 'موريتانيا',     code: 'MR', dial: '222' },
+  { name: 'الصومال',       code: 'SO', dial: '252' },
+  { name: 'جيبوتي',        code: 'DJ', dial: '253' },
+  { name: 'جزر القمر',     code: 'KM', dial: '269' },
+  { name: 'فلسطين',        code: 'PS', dial: '970' },
+  // آسيا
+  { name: 'تركيا',         code: 'TR', dial: '90'  },
+  { name: 'إيران',         code: 'IR', dial: '98'  },
+  { name: 'باكستان',       code: 'PK', dial: '92'  },
+  { name: 'الهند',         code: 'IN', dial: '91'  },
+  { name: 'بنغلاديش',     code: 'BD', dial: '880' },
+  { name: 'الفلبين',       code: 'PH', dial: '63'  },
+  { name: 'إندونيسيا',    code: 'ID', dial: '62'  },
+  { name: 'ماليزيا',       code: 'MY', dial: '60'  },
+  { name: 'سريلانكا',      code: 'LK', dial: '94'  },
+  { name: 'نيبال',         code: 'NP', dial: '977' },
+  { name: 'أفغانستان',    code: 'AF', dial: '93'  },
+  { name: 'الصين',         code: 'CN', dial: '86'  },
+  { name: 'اليابان',       code: 'JP', dial: '81'  },
+  { name: 'كوريا الجنوبية',code: 'KR', dial: '82'  },
+  { name: 'تايلاند',       code: 'TH', dial: '66'  },
+  { name: 'فيتنام',        code: 'VN', dial: '84'  },
+  { name: 'سنغافورة',      code: 'SG', dial: '65'  },
+  { name: 'هونج كونج',     code: 'HK', dial: '852' },
+  { name: 'تايوان',        code: 'TW', dial: '886' },
+  { name: 'كازاخستان',     code: 'KZ', dial: '7'   },
+  { name: 'أوزبكستان',    code: 'UZ', dial: '998' },
+  { name: 'أذربيجان',     code: 'AZ', dial: '994' },
+  { name: 'أرمينيا',      code: 'AM', dial: '374' },
+  { name: 'جورجيا',        code: 'GE', dial: '995' },
+  { name: 'قبرص',          code: 'CY', dial: '357' },
+  // أوروبا
+  { name: 'المملكة المتحدة',code:'GB', dial: '44'  },
+  { name: 'ألمانيا',       code: 'DE', dial: '49'  },
+  { name: 'فرنسا',         code: 'FR', dial: '33'  },
+  { name: 'إيطاليا',      code: 'IT', dial: '39'  },
+  { name: 'إسبانيا',      code: 'ES', dial: '34'  },
+  { name: 'هولندا',        code: 'NL', dial: '31'  },
+  { name: 'بلجيكا',        code: 'BE', dial: '32'  },
+  { name: 'سويسرا',        code: 'CH', dial: '41'  },
+  { name: 'السويد',        code: 'SE', dial: '46'  },
+  { name: 'النرويج',       code: 'NO', dial: '47'  },
+  { name: 'الدنمارك',      code: 'DK', dial: '45'  },
+  { name: 'فنلندا',        code: 'FI', dial: '358' },
+  { name: 'البرتغال',      code: 'PT', dial: '351' },
+  { name: 'اليونان',       code: 'GR', dial: '30'  },
+  { name: 'النمسا',        code: 'AT', dial: '43'  },
+  { name: 'بولندا',        code: 'PL', dial: '48'  },
+  { name: 'رومانيا',       code: 'RO', dial: '40'  },
+  { name: 'المجر',         code: 'HU', dial: '36'  },
+  { name: 'التشيك',        code: 'CZ', dial: '420' },
+  { name: 'سلوفاكيا',     code: 'SK', dial: '421' },
+  { name: 'كرواتيا',       code: 'HR', dial: '385' },
+  { name: 'صربيا',         code: 'RS', dial: '381' },
+  { name: 'أوكرانيا',     code: 'UA', dial: '380' },
+  { name: 'روسيا',         code: 'RU', dial: '7'   },
+  { name: 'بيلاروسيا',    code: 'BY', dial: '375' },
+  { name: 'لتوانيا',       code: 'LT', dial: '370' },
+  { name: 'لاتفيا',        code: 'LV', dial: '371' },
+  { name: 'إستونيا',      code: 'EE', dial: '372' },
+  { name: 'أيرلندا',      code: 'IE', dial: '353' },
+  { name: 'لوكسمبورغ',    code: 'LU', dial: '352' },
+  { name: 'مالطا',         code: 'MT', dial: '356' },
+  { name: 'أيسلندا',      code: 'IS', dial: '354' },
+  { name: 'ألبانيا',      code: 'AL', dial: '355' },
+  { name: 'مقدونيا',       code: 'MK', dial: '389' },
+  { name: 'البوسنة',       code: 'BA', dial: '387' },
+  { name: 'الجبل الأسود',  code: 'ME', dial: '382' },
+  { name: 'سلوفينيا',     code: 'SI', dial: '386' },
+  { name: 'بلغاريا',      code: 'BG', dial: '359' },
+  { name: 'مولدوفا',       code: 'MD', dial: '373' },
+  // أمريكا
+  { name: 'الولايات المتحدة',code:'US', dial: '1'  },
+  { name: 'كندا',          code: 'CA', dial: '1'   },
+  { name: 'المكسيك',       code: 'MX', dial: '52'  },
+  { name: 'البرازيل',      code: 'BR', dial: '55'  },
+  { name: 'الأرجنتين',    code: 'AR', dial: '54'  },
+  { name: 'كولومبيا',      code: 'CO', dial: '57'  },
+  { name: 'تشيلي',         code: 'CL', dial: '56'  },
+  { name: 'بيرو',          code: 'PE', dial: '51'  },
+  { name: 'فنزويلا',       code: 'VE', dial: '58'  },
+  { name: 'الإكوادور',    code: 'EC', dial: '593' },
+  { name: 'بوليفيا',       code: 'BO', dial: '591' },
+  { name: 'باراغواي',      code: 'PY', dial: '595' },
+  { name: 'أوروغواي',     code: 'UY', dial: '598' },
+  { name: 'كوبا',          code: 'CU', dial: '53'  },
+  { name: 'جامايكا',       code: 'JM', dial: '1876'},
+  { name: 'هايتي',         code: 'HT', dial: '509' },
+  { name: 'الدومينيكان',   code: 'DO', dial: '1809'},
+  { name: 'غواتيمالا',    code: 'GT', dial: '502' },
+  { name: 'هندوراس',       code: 'HN', dial: '504' },
+  { name: 'السلفادور',     code: 'SV', dial: '503' },
+  { name: 'نيكاراغوا',    code: 'NI', dial: '505' },
+  { name: 'كوستاريكا',    code: 'CR', dial: '506' },
+  { name: 'بنما',          code: 'PA', dial: '507' },
+  // أفريقيا
+  { name: 'نيجيريا',       code: 'NG', dial: '234' },
+  { name: 'إثيوبيا',      code: 'ET', dial: '251' },
+  { name: 'كينيا',         code: 'KE', dial: '254' },
+  { name: 'تنزانيا',       code: 'TZ', dial: '255' },
+  { name: 'أوغندا',       code: 'UG', dial: '256' },
+  { name: 'غانا',          code: 'GH', dial: '233' },
+  { name: 'رواندا',        code: 'RW', dial: '250' },
+  { name: 'الكاميرون',     code: 'CM', dial: '237' },
+  { name: 'ساحل العاج',    code: 'CI', dial: '225' },
+  { name: 'السنغال',       code: 'SN', dial: '221' },
+  { name: 'زيمبابوي',      code: 'ZW', dial: '263' },
+  { name: 'زامبيا',        code: 'ZM', dial: '260' },
+  { name: 'موزمبيق',       code: 'MZ', dial: '258' },
+  { name: 'مدغشقر',        code: 'MG', dial: '261' },
+  { name: 'أنغولا',       code: 'AO', dial: '244' },
+  { name: 'ناميبيا',       code: 'NA', dial: '264' },
+  { name: 'بوتسوانا',      code: 'BW', dial: '267' },
+  { name: 'جنوب أفريقيا', code: 'ZA', dial: '27'  },
+  { name: 'مالي',          code: 'ML', dial: '223' },
+  { name: 'بوركينافاسو',   code: 'BF', dial: '226' },
+  { name: 'النيجر',        code: 'NE', dial: '227' },
+  { name: 'تشاد',          code: 'TD', dial: '235' },
+  { name: 'إريتريا',      code: 'ER', dial: '291' },
+  { name: 'جنوب السودان',  code: 'SS', dial: '211' },
+  // أوقيانوسيا
+  { name: 'أستراليا',     code: 'AU', dial: '61'  },
+  { name: 'نيوزيلندا',    code: 'NZ', dial: '64'  },
+];
+
 // ─── helpers ──────────────────────────────────────────────────────────────────
 const PALETTE = ['#6366f1','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#f97316','#ec4899'];
 const avatarBg = (name = '') => PALETTE[(name.charCodeAt(0) || 0) % PALETTE.length];
@@ -62,10 +208,13 @@ const MessagesPage: React.FC = () => {
   const [filter, setFilter]             = useState<'open' | 'pending' | 'resolved'>('open');
   const [isPrivate, setIsPrivate]       = useState(false);
   const [mobileShowChat, setMobileShowChat] = useState(false);
-  const [showNewConv, setShowNewConv]   = useState(false);
-  const [newPhone, setNewPhone]         = useState('');
-  const [newName, setNewName]           = useState('');
-  const [newMsg, setNewMsg]             = useState('');
+  const [showNewConv, setShowNewConv]       = useState(false);
+  const [newPhone, setNewPhone]             = useState('');
+  const [newName, setNewName]               = useState('');
+  const [newMsg, setNewMsg]                 = useState('');
+  const [selectedCountry, setSelectedCountry] = useState(COUNTRIES[0]);
+  const [showCountryDrop, setShowCountryDrop] = useState(false);
+  const [countrySearch, setCountrySearch]   = useState('');
   // Track whether we're on desktop (≥1024px) — bypasses Tailwind JIT issue
   const [isDesktop, setIsDesktop]       = useState(window.innerWidth >= 1024);
 
@@ -148,7 +297,8 @@ const MessagesPage: React.FC = () => {
     e.preventDefault();
     if (!newPhone.trim()) return toast.error('رقم الهاتف مطلوب');
     if (!newMsg.trim()) return toast.error('الرسالة مطلوبة');
-    newConvMutation.mutate({ phone: newPhone.trim(), name: newName.trim(), message: newMsg.trim() });
+    const fullPhone = selectedCountry.dial + newPhone.trim().replace(/^0+/, '');
+    newConvMutation.mutate({ phone: fullPhone, name: newName.trim(), message: newMsg.trim() });
   };
 
   const handleSelect = (id: number) => { setSelectedId(id); setMobileShowChat(true); };
@@ -215,14 +365,58 @@ const MessagesPage: React.FC = () => {
             <form onSubmit={handleNewConv} className="p-5 space-y-4">
               <div>
                 <label className="block text-xs font-bold text-slate-600 mb-1.5">رقم الهاتف *</label>
-                <input
-                  type="text"
-                  value={newPhone}
-                  onChange={e => setNewPhone(e.target.value)}
-                  placeholder="مثال: 96650000000"
-                  className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                  dir="ltr"
-                />
+                <div className="flex gap-2">
+                  {/* Country picker */}
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => { setShowCountryDrop(v => !v); setCountrySearch(''); }}
+                      className="h-11 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm flex items-center gap-1.5 hover:border-indigo-400 transition-colors whitespace-nowrap"
+                    >
+                      <span className="text-lg leading-none">{flag(selectedCountry.code)}</span>
+                      <span className="text-slate-600 font-medium">+{selectedCountry.dial}</span>
+                    </button>
+                    {showCountryDrop && (
+                      <div className="absolute top-12 right-0 z-50 bg-white border border-slate-200 rounded-xl shadow-xl w-64 overflow-hidden">
+                        <div className="p-2 border-b border-slate-100">
+                          <input
+                            autoFocus
+                            type="text"
+                            value={countrySearch}
+                            onChange={e => setCountrySearch(e.target.value)}
+                            placeholder="ابحث عن دولة..."
+                            className="w-full h-8 px-3 bg-slate-50 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                          />
+                        </div>
+                        <div className="max-h-52 overflow-y-auto">
+                          {COUNTRIES.filter(c =>
+                            !countrySearch || c.name.includes(countrySearch) || c.dial.includes(countrySearch)
+                          ).map(c => (
+                            <button
+                              key={c.code + c.dial}
+                              type="button"
+                              onClick={() => { setSelectedCountry(c); setShowCountryDrop(false); }}
+                              className="w-full flex items-center gap-2 px-3 py-2 hover:bg-indigo-50 text-right transition-colors"
+                            >
+                              <span className="text-base leading-none">{flag(c.code)}</span>
+                              <span className="text-xs text-slate-700 flex-1 text-right">{c.name}</span>
+                              <span className="text-xs text-slate-400 font-mono">+{c.dial}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  {/* Phone number */}
+                  <input
+                    type="text"
+                    value={newPhone}
+                    onChange={e => setNewPhone(e.target.value)}
+                    placeholder="5XXXXXXXX"
+                    className="flex-1 h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                    dir="ltr"
+                  />
+                </div>
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-600 mb-1.5">الاسم (اختياري)</label>
