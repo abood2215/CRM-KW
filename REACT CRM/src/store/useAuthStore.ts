@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { User } from '../types';
 
 interface AuthState {
@@ -18,7 +18,6 @@ export const useAuthStore = create<AuthState>()(
       token: null,
       isAuthenticated: false,
       setAuth: (user, token) => {
-        localStorage.setItem('crm_token', token);
         set({ user, token, isAuthenticated: true });
       },
       updateUser: (userData) => {
@@ -27,12 +26,12 @@ export const useAuthStore = create<AuthState>()(
         }));
       },
       logout: () => {
-        localStorage.removeItem('crm_token');
         set({ user: null, token: null, isAuthenticated: false });
       },
     }),
     {
       name: 'crm-auth-storage',
+      storage: createJSONStorage(() => sessionStorage),
     }
   )
 );
