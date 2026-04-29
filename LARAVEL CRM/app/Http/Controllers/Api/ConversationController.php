@@ -40,7 +40,7 @@ class ConversationController extends Controller
             $client = CrmClient::create([
                 'phone'   => $phone,
                 'name'    => $request->name ?: $phone,
-                'source'  => 'manual',
+                'source'  => 'whatsapp',
                 'status'  => 'new',
                 'user_id' => $request->user()->id,
             ]);
