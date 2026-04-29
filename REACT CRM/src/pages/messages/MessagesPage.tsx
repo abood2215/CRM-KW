@@ -5,7 +5,7 @@ import { Conversation, Message } from '../../types';
 import {
   Search, Send, Paperclip, Smile, MoreVertical, Phone,
   CheckCheck, Check, Clock, Loader2, MessageSquare, Lock,
-  ArrowRight, Mic, Video, Filter
+  ArrowRight, Mic, Video, Filter, Plus, X
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -62,6 +62,10 @@ const MessagesPage: React.FC = () => {
   const [filter, setFilter]             = useState<'open' | 'pending' | 'resolved'>('open');
   const [isPrivate, setIsPrivate]       = useState(false);
   const [mobileShowChat, setMobileShowChat] = useState(false);
+  const [showNewConv, setShowNewConv]   = useState(false);
+  const [newPhone, setNewPhone]         = useState('');
+  const [newName, setNewName]           = useState('');
+  const [newMsg, setNewMsg]             = useState('');
   // Track whether we're on desktop (≥1024px) — bypasses Tailwind JIT issue
   const [isDesktop, setIsDesktop]       = useState(window.innerWidth >= 1024);
 
@@ -126,6 +130,27 @@ const MessagesPage: React.FC = () => {
   }, [messages]);
 
   // ── handlers ─────────────────────────────────────────────────────────────
+  const newConvMutation = useMutation({
+    mutationFn: (data: { phone: string; name: string; message: string }) =>
+      api.post('/conversations', data),
+    onSuccess: (res) => {
+      const conv = res.data.conversation;
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      setShowNewConv(false);
+      setNewPhone(''); setNewName(''); setNewMsg('');
+      setTimeout(() => { setSelectedId(conv.id); setMobileShowChat(true); }, 300);
+      toast.success('تم إنشاء المحادثة وإرسال الرسالة');
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.message || 'فشل إرسال الرسالة'),
+  });
+
+  const handleNewConv = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPhone.trim()) return toast.error('رقم الهاتف مطلوب');
+    if (!newMsg.trim()) return toast.error('الرسالة مطلوبة');
+    newConvMutation.mutate({ phone: newPhone.trim(), name: newName.trim(), message: newMsg.trim() });
+  };
+
   const handleSelect = (id: number) => { setSelectedId(id); setMobileShowChat(true); };
   const handleSend = (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -170,6 +195,71 @@ const MessagesPage: React.FC = () => {
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
+    <>
+    {/* New Conversation Modal */}
+    <AnimatePresence>
+      {showNewConv && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-sm"
+          >
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+              <h3 className="font-bold text-slate-800">محادثة جديدة</h3>
+              <button onClick={() => setShowNewConv(false)} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 transition-all">
+                <X size={18} />
+              </button>
+            </div>
+            <form onSubmit={handleNewConv} className="p-5 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-1.5">رقم الهاتف *</label>
+                <input
+                  type="text"
+                  value={newPhone}
+                  onChange={e => setNewPhone(e.target.value)}
+                  placeholder="مثال: 96650000000"
+                  className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                  dir="ltr"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-1.5">الاسم (اختياري)</label>
+                <input
+                  type="text"
+                  value={newName}
+                  onChange={e => setNewName(e.target.value)}
+                  placeholder="اسم العميل"
+                  className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-1.5">الرسالة الأولى *</label>
+                <textarea
+                  value={newMsg}
+                  onChange={e => setNewMsg(e.target.value)}
+                  placeholder="اكتب رسالتك..."
+                  rows={3}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 resize-none"
+                />
+              </div>
+              <div className="flex gap-3 pt-1">
+                <button type="button" onClick={() => setShowNewConv(false)}
+                  className="flex-1 h-11 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-all text-sm">
+                  إلغاء
+                </button>
+                <button type="submit" disabled={newConvMutation.isPending}
+                  className="flex-1 h-11 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-all disabled:opacity-70 flex items-center justify-center gap-2 text-sm">
+                  {newConvMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <Send size={15} />}
+                  إرسال
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
     <div
       className="flex bg-white rounded-2xl border border-slate-200 shadow-lg font-cairo overflow-hidden"
       style={{ height: containerHeight }}
@@ -192,11 +282,15 @@ const MessagesPage: React.FC = () => {
             <span className="text-sm font-bold text-slate-700 truncate">{user?.name ?? ''}</span>
           </div>
           <div className="flex items-center gap-1">
-            <button className="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors">
-              <Filter size={16} />
+            <button
+              onClick={() => setShowNewConv(true)}
+              className="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+              title="محادثة جديدة"
+            >
+              <Plus size={18} />
             </button>
             <button className="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors">
-              <MoreVertical size={16} />
+              <Filter size={16} />
             </button>
           </div>
         </div>
@@ -517,6 +611,7 @@ const MessagesPage: React.FC = () => {
         )}
       </div>
     </div>
+    </>
   );
 };
 

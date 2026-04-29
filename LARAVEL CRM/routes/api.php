@@ -79,6 +79,7 @@ Route::middleware(['auth:sanctum', 'update.last.seen', 'log.activity'])->group(f
     Route::put('/tasks/{id}/complete', [TaskController::class, 'complete']);
 
     // --- Conversations ---
+    Route::post('/conversations', [ConversationController::class, 'store']);
     Route::get('/conversations', [ConversationController::class, 'index']);
     Route::get('/conversations/{id}', [ConversationController::class, 'show']);
     Route::get('/conversations/{id}/messages', [ConversationController::class, 'messages']);

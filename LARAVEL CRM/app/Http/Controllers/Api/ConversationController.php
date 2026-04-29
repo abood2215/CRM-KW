@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\ConversationResource;
 use App\Http\Resources\MessageResource;
 use App\Models\Conversation;
+use App\Models\CrmClient;
 use App\Models\Message;
 use App\Models\WhatsappNumber;
 use App\Events\NewMessageEvent;
@@ -22,6 +23,92 @@ class ConversationController extends Controller
         protected ChatwootService $chatwoot,
         protected WhatsAppService $whatsapp
     ) {}
+
+    public function store(Request $request): JsonResponse
+    {
+        $request->validate([
+            'phone'   => 'required|string',
+            'name'    => 'nullable|string|max:255',
+            'message' => 'required|string',
+        ]);
+
+        $phone = $request->phone;
+
+        // Find existing client by phone or create new one
+        $client = CrmClient::where('phone', $phone)->first();
+        if (!$client) {
+            $client = CrmClient::create([
+                'phone'   => $phone,
+                'name'    => $request->name ?: $phone,
+                'source'  => 'manual',
+                'status'  => 'new',
+                'user_id' => $request->user()->id,
+            ]);
+        }
+
+        // Reuse existing open conversation or create new one
+        $conversation = Conversation::where('client_id', $client->id)
+            ->where('status', 'open')
+            ->where('source', 'whatsapp')
+            ->first();
+
+        if (!$conversation) {
+            $conversation = Conversation::create([
+                'client_id'       => $client->id,
+                'source'          => 'whatsapp',
+                'status'          => 'open',
+                'last_message_at' => now(),
+            ]);
+        }
+
+        // Send via WhatsApp Cloud API
+        $waMessageId = null;
+        $whatsappNumber = WhatsappNumber::whereNotNull('phone_number_id')
+            ->where('status', 'connected')
+            ->first();
+
+        if ($whatsappNumber) {
+            try {
+                $result = $this->whatsapp->sendMessage(
+                    $phone,
+                    $request->message,
+                    $whatsappNumber->phone_number_id
+                );
+                $waMessageId = $result['messages'][0]['id'] ?? null;
+                $whatsappNumber->incrementSent();
+            } catch (\Exception $e) {
+                Log::error('[ConversationController] store - WhatsApp send failed', [
+                    'phone' => $phone,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        $message = Message::create([
+            'conversation_id'     => $conversation->id,
+            'whatsapp_message_id' => $waMessageId,
+            'content'             => $request->message,
+            'type'                => 'text',
+            'direction'           => 'out',
+            'is_private'          => false,
+            'sender_name'         => $request->user()->name,
+            'status'              => $waMessageId ? 'sent' : null,
+            'sent_at'             => now(),
+        ]);
+
+        $conversation->update([
+            'last_message'    => $request->message,
+            'last_message_at' => now(),
+        ]);
+
+        event(new NewMessageEvent($message));
+        event(new ConversationUpdatedEvent($conversation->fresh()));
+
+        return response()->json([
+            'conversation' => new ConversationResource($conversation->fresh()->load(['client', 'assignedUser'])),
+            'message'      => new MessageResource($message),
+        ], 201);
+    }
 
     public function index(Request $request): JsonResponse
     {
