@@ -6,6 +6,8 @@ use App\Events\ConversationUpdatedEvent;
 use App\Events\NewMessageEvent;
 use App\Models\AutoReply;
 use App\Models\BusinessHour;
+use App\Models\Campaign;
+use App\Models\CampaignRecipient;
 use App\Models\Conversation;
 use App\Models\CrmClient;
 use App\Models\Message;
@@ -138,6 +140,9 @@ class ProcessWhatsAppWebhookJob implements ShouldQueue
 
         Log::info('[WhatsApp Webhook] Message saved', ['message_id' => $message->id]);
 
+        // Check if this is a reply to a campaign and increment reply_count
+        $this->handleCampaignReply($fromPhone);
+
         // Auto-reply logic
         $this->handleAutoReply($conversation, $fromPhone, $phoneNumberId, $whatsapp);
     }
@@ -145,23 +150,77 @@ class ProcessWhatsAppWebhookJob implements ShouldQueue
     protected function handleStatusUpdate(array $statusData): void
     {
         $waMessageId = $statusData['id']     ?? null;
-        $status      = $statusData['status'] ?? null;
+        $status      = $statusData['status'] ?? null; // sent, delivered, read, failed
 
         if (!$waMessageId || !$status) {
             return;
         }
 
-        Log::info('[WhatsApp Webhook] Status update', [
-            'wamid'  => $waMessageId,
-            'status' => $status,
-        ]);
+        Log::info('[WhatsApp Webhook] Status update', ['wamid' => $waMessageId, 'status' => $status]);
 
+        // Update conversation message status
         $message = Message::where('whatsapp_message_id', $waMessageId)->first();
-
         if ($message) {
             $message->update(['status' => $status]);
             event(new ConversationUpdatedEvent($message->conversation));
         }
+
+        // Update campaign recipient status
+        $recipient = CampaignRecipient::where('whatsapp_message_id', $waMessageId)->first();
+        if (!$recipient) {
+            return;
+        }
+
+        $recipientStatus = match ($status) {
+            'delivered' => 'delivered',
+            'read'      => 'read',
+            'failed'    => 'failed',
+            default     => null,
+        };
+
+        if ($recipientStatus) {
+            $recipient->update(['status' => $recipientStatus]);
+        }
+
+        // Detect block/spam reports from Meta error codes
+        if ($status === 'failed') {
+            $errorCode = $statusData['errors'][0]['code'] ?? null;
+
+            // Error 131026 = message undeliverable (user blocked business)
+            // Error 131047 = re-engagement message (24h rule)
+            $isBlock = in_array($errorCode, [131026, 131047, 368]);
+
+            if ($isBlock) {
+                $recipient->campaign?->increment('block_count');
+                Log::warning('[WhatsApp Webhook] Block/spam detected', [
+                    'phone'      => $recipient->phone,
+                    'error_code' => $errorCode,
+                    'campaign'   => $recipient->campaign_id,
+                ]);
+            }
+        }
+    }
+
+    protected function handleCampaignReply(string $fromPhone): void
+    {
+        // Find the most recent sent recipient for this phone across all running/completed campaigns
+        $recipient = CampaignRecipient::where('phone', $fromPhone)
+            ->whereIn('status', ['sent', 'delivered', 'read'])
+            ->latest('sent_at')
+            ->first();
+
+        if (!$recipient) {
+            return;
+        }
+
+        $recipient->update(['status' => 'replied']);
+
+        Campaign::where('id', $recipient->campaign_id)->increment('reply_count');
+
+        Log::info('[WhatsApp Webhook] Campaign reply tracked', [
+            'campaign_id' => $recipient->campaign_id,
+            'phone'       => $fromPhone,
+        ]);
     }
 
     protected function resolveConversation(?CrmClient $client, string $fromPhone, ?string $phoneNumberId): Conversation

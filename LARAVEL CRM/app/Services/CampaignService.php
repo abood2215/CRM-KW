@@ -61,13 +61,14 @@ class CampaignService
         return $campaign->fresh();
     }
 
-    // حساب التأخير العشوائي بين الرسائل (120-300 ثانية)
+    // حساب التأخير العشوائي بين الرسائل
+    // يضيف عشوائية ±20% على القيمة المحددة لتجنب نمط ثابت يكشفه Meta
     public function calculateDelay(Campaign $campaign): int
     {
-        $min = max(120, $campaign->delay_seconds ?? 120);
-        $max = min(300, ($campaign->delay_seconds ?? 120) + 60);
+        $base  = max(120, $campaign->delay_seconds ?? 120);
+        $jitter = (int) ($base * 0.2);
 
-        return rand($min, $max);
+        return rand($base, $base + $jitter);
     }
 
     // التحقق من معدل الفشل (يتوقف إذا تجاوز 10%)

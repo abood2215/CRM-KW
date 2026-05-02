@@ -64,12 +64,14 @@ Route::middleware(['auth:sanctum', 'update.last.seen', 'log.activity'])->group(f
     // --- CRM Clients ---
     Route::get('/clients', [ClientController::class, 'index']);
     Route::post('/clients', [ClientController::class, 'store']);
-    Route::get('/clients/export/csv', [ClientController::class, 'exportCsv']);
     Route::get('/clients/pipeline', [ClientController::class, 'pipeline']);
     Route::get('/clients/{id}', [ClientController::class, 'show']);
     Route::get('/clients/{id}/timeline', [ClientController::class, 'timeline']);
     Route::put('/clients/{id}', [ClientController::class, 'update']);
     Route::delete('/clients/{id}', [ClientController::class, 'destroy']);
+    Route::middleware('role:admin,manager')->group(function () {
+        Route::get('/clients/export/csv', [ClientController::class, 'exportCsv']);
+    });
 
     // --- Tasks ---
     Route::get('/tasks', [TaskController::class, 'index']);
@@ -85,17 +87,21 @@ Route::middleware(['auth:sanctum', 'update.last.seen', 'log.activity'])->group(f
     Route::get('/conversations/{id}/messages', [ConversationController::class, 'messages']);
     Route::post('/conversations/{id}/messages', [ConversationController::class, 'sendMessage']);
     Route::put('/conversations/{id}/status', [ConversationController::class, 'updateStatus']);
-    Route::put('/conversations/{id}/assign', [ConversationController::class, 'assign']);
     Route::post('/conversations/{id}/notes', [ConversationController::class, 'addNote']);
+    Route::middleware('role:admin,manager')->group(function () {
+        Route::put('/conversations/{id}/assign', [ConversationController::class, 'assign']);
+    });
 
     // --- Contacts ---
     Route::get('/contacts', [ContactController::class, 'index']);
     Route::post('/contacts', [ContactController::class, 'store']);
     Route::post('/contacts/import/csv', [ContactController::class, 'importCsv']);
-    Route::get('/contacts/export/csv', [ContactController::class, 'exportCsv']);
     Route::put('/contacts/{id}', [ContactController::class, 'update']);
     Route::delete('/contacts/{id}', [ContactController::class, 'destroy']);
     Route::put('/contacts/{id}/opt-out', [ContactController::class, 'optOut']);
+    Route::middleware('role:admin,manager')->group(function () {
+        Route::get('/contacts/export/csv', [ContactController::class, 'exportCsv']);
+    });
 
     // --- Contact Lists ---
     Route::get('/contact-lists', [ContactListController::class, 'index']);

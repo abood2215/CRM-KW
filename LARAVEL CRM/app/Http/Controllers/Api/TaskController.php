@@ -14,7 +14,15 @@ class TaskController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        $user  = $request->user();
         $query = CrmTask::with(['user', 'client']);
+
+        // Agents see only their own tasks
+        if ($user->role === 'agent') {
+            $query->where('user_id', $user->id);
+        } elseif ($request->has('user_id')) {
+            $query->where('user_id', $request->user_id);
+        }
 
         if ($request->has('status')) {
             $query->where('status', $request->status);
@@ -26,10 +34,6 @@ class TaskController extends Controller
 
         if ($request->has('type')) {
             $query->where('type', $request->type);
-        }
-
-        if ($request->has('user_id')) {
-            $query->where('user_id', $request->user_id);
         }
 
         if ($request->has('client_id')) {
@@ -59,9 +63,11 @@ class TaskController extends Controller
     public function store(StoreTaskRequest $request): JsonResponse
     {
         $data = $request->validated();
+        $user = $request->user();
 
-        if (!isset($data['user_id'])) {
-            $data['user_id'] = $request->user()->id;
+        // Only admin/manager can assign a task to another user
+        if ($user->role === 'agent' || !isset($data['user_id'])) {
+            $data['user_id'] = $user->id;
         }
 
         $task = CrmTask::create($data);
@@ -74,8 +80,22 @@ class TaskController extends Controller
 
     public function update(UpdateTaskRequest $request, int $id): JsonResponse
     {
-        $task = CrmTask::findOrFail($id);
-        $task->update($request->validated());
+        $user  = $request->user();
+        $query = CrmTask::query();
+
+        if ($user->role === 'agent') {
+            $query->where('user_id', $user->id);
+        }
+
+        $task = $query->findOrFail($id);
+        $data = $request->validated();
+
+        // Only admin/manager can reassign a task to another user
+        if ($user->role === 'agent') {
+            unset($data['user_id']);
+        }
+
+        $task->update($data);
 
         return response()->json([
             'task' => new TaskResource($task->fresh()->load(['user', 'client'])),
@@ -83,9 +103,16 @@ class TaskController extends Controller
         ]);
     }
 
-    public function destroy(int $id): JsonResponse
+    public function destroy(Request $request, int $id): JsonResponse
     {
-        $task = CrmTask::findOrFail($id);
+        $user  = $request->user();
+        $query = CrmTask::query();
+
+        if ($user->role === 'agent') {
+            $query->where('user_id', $user->id);
+        }
+
+        $task = $query->findOrFail($id);
         $task->delete();
 
         return response()->json([
@@ -93,9 +120,16 @@ class TaskController extends Controller
         ]);
     }
 
-    public function complete(int $id): JsonResponse
+    public function complete(Request $request, int $id): JsonResponse
     {
-        $task = CrmTask::findOrFail($id);
+        $user  = $request->user();
+        $query = CrmTask::query();
+
+        if ($user->role === 'agent') {
+            $query->where('user_id', $user->id);
+        }
+
+        $task = $query->findOrFail($id);
         $task->markAsCompleted();
 
         return response()->json([

@@ -110,15 +110,28 @@ class ConversationController extends Controller
         ], 201);
     }
 
+    private function agentConversationScope($query, $user): void
+    {
+        if ($user->role === 'agent') {
+            $query->where(function ($q) use ($user) {
+                $q->where('assigned_user_id', $user->id)
+                  ->orWhereNull('assigned_user_id');
+            });
+        }
+    }
+
     public function index(Request $request): JsonResponse
     {
+        $user  = $request->user();
         $query = Conversation::with(['client', 'assignedUser'])->withCount('messages');
+
+        $this->agentConversationScope($query, $user);
 
         if ($request->has('status')) {
             $query->where('status', $request->status);
         }
 
-        if ($request->has('assigned_user_id')) {
+        if ($user->role !== 'agent' && $request->has('assigned_user_id')) {
             $query->where('assigned_user_id', $request->assigned_user_id);
         }
 
@@ -140,13 +153,14 @@ class ConversationController extends Controller
         ]);
     }
 
-    public function show(int $id): JsonResponse
+    public function show(Request $request, int $id): JsonResponse
     {
-        $conversation = Conversation::with(['client', 'assignedUser'])
-            ->withCount('messages')
-            ->findOrFail($id);
+        $user  = $request->user();
+        $query = Conversation::with(['client', 'assignedUser'])->withCount('messages');
 
-        // Reset unread count
+        $this->agentConversationScope($query, $user);
+
+        $conversation = $query->findOrFail($id);
         $conversation->update(['unread_count' => 0]);
 
         return response()->json([
@@ -156,7 +170,12 @@ class ConversationController extends Controller
 
     public function messages(Request $request, int $id): JsonResponse
     {
-        $conversation = Conversation::findOrFail($id);
+        $user  = $request->user();
+        $query = Conversation::query();
+
+        $this->agentConversationScope($query, $user);
+
+        $conversation = $query->findOrFail($id);
 
         $messages = $conversation->messages()
             ->orderBy('sent_at', 'desc')
@@ -181,7 +200,12 @@ class ConversationController extends Controller
             'is_private' => 'sometimes|boolean',
         ]);
 
-        $conversation = Conversation::with('client')->findOrFail($id);
+        $user  = $request->user();
+        $query = Conversation::with('client');
+
+        $this->agentConversationScope($query, $user);
+
+        $conversation = $query->findOrFail($id);
 
         $waMessageId = null;
 
@@ -265,7 +289,12 @@ class ConversationController extends Controller
             'status' => 'required|in:open,resolved,pending',
         ]);
 
-        $conversation = Conversation::findOrFail($id);
+        $user  = $request->user();
+        $query = Conversation::query();
+
+        $this->agentConversationScope($query, $user);
+
+        $conversation = $query->findOrFail($id);
 
         if ($conversation->chatwoot_conv_id) {
             $this->chatwoot->toggleStatus($conversation->chatwoot_conv_id, $request->status);
@@ -307,7 +336,12 @@ class ConversationController extends Controller
             'content' => 'required|string',
         ]);
 
-        $conversation = Conversation::findOrFail($id);
+        $user  = $request->user();
+        $query = Conversation::query();
+
+        $this->agentConversationScope($query, $user);
+
+        $conversation = $query->findOrFail($id);
 
         if ($conversation->chatwoot_conv_id) {
             $this->chatwoot->sendMessage($conversation->chatwoot_conv_id, $request->content, true);

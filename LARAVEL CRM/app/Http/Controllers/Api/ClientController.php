@@ -16,7 +16,15 @@ class ClientController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        $user  = $request->user();
         $query = CrmClient::with('user')->withCount('tasks');
+
+        // Agents see only their own clients
+        if ($user->role === 'agent') {
+            $query->where('user_id', $user->id);
+        } elseif ($request->has('user_id')) {
+            $query->where('user_id', $request->user_id);
+        }
 
         if ($request->has('status')) {
             $query->where('status', $request->status);
@@ -24,10 +32,6 @@ class ClientController extends Controller
 
         if ($request->has('source')) {
             $query->where('source', $request->source);
-        }
-
-        if ($request->has('user_id')) {
-            $query->where('user_id', $request->user_id);
         }
 
         if ($request->has('search')) {
@@ -39,7 +43,7 @@ class ClientController extends Controller
             });
         }
 
-        $perPage = min((int) ($request->per_page ?? 20), 100); // cap at 100
+        $perPage = min((int) ($request->per_page ?? 20), 100);
         $clients = $query->orderBy('created_at', 'desc')->paginate($perPage);
 
         return response()->json([
@@ -56,9 +60,11 @@ class ClientController extends Controller
     public function store(StoreClientRequest $request): JsonResponse
     {
         $data = $request->validated();
+        $user = $request->user();
 
-        if (!isset($data['user_id'])) {
-            $data['user_id'] = $request->user()->id;
+        // Only admin/manager can assign a client to another user
+        if ($user->role === 'agent' || !isset($data['user_id'])) {
+            $data['user_id'] = $user->id;
         }
 
         $client = CrmClient::create($data);
@@ -69,9 +75,16 @@ class ClientController extends Controller
         ], 201);
     }
 
-    public function show(int $id): JsonResponse
+    public function show(Request $request, int $id): JsonResponse
     {
-        $client = CrmClient::with(['user', 'tasks', 'conversations'])->withCount('tasks')->findOrFail($id);
+        $user  = $request->user();
+        $query = CrmClient::with(['user', 'tasks', 'conversations'])->withCount('tasks');
+
+        if ($user->role === 'agent') {
+            $query->where('user_id', $user->id);
+        }
+
+        $client = $query->findOrFail($id);
 
         return response()->json([
             'client' => new ClientResource($client),
@@ -80,8 +93,22 @@ class ClientController extends Controller
 
     public function update(UpdateClientRequest $request, int $id): JsonResponse
     {
-        $client = CrmClient::findOrFail($id);
-        $client->update($request->validated());
+        $user  = $request->user();
+        $query = CrmClient::query();
+
+        if ($user->role === 'agent') {
+            $query->where('user_id', $user->id);
+        }
+
+        $client = $query->findOrFail($id);
+        $data   = $request->validated();
+
+        // Only admin/manager can reassign a client to another user
+        if ($user->role === 'agent') {
+            unset($data['user_id']);
+        }
+
+        $client->update($data);
 
         return response()->json([
             'client' => new ClientResource($client->fresh()->load('user')),
@@ -89,9 +116,16 @@ class ClientController extends Controller
         ]);
     }
 
-    public function destroy(int $id): JsonResponse
+    public function destroy(Request $request, int $id): JsonResponse
     {
-        $client = CrmClient::findOrFail($id);
+        $user  = $request->user();
+        $query = CrmClient::query();
+
+        if ($user->role === 'agent') {
+            $query->where('user_id', $user->id);
+        }
+
+        $client = $query->findOrFail($id);
         $client->delete();
 
         return response()->json([
@@ -140,12 +174,16 @@ class ClientController extends Controller
     /**
      * Timeline أحداث العميل: رسائل، مهام، حملات، سجل نشاط
      */
-    public function timeline(int $id): JsonResponse
+    public function timeline(Request $request, int $id): JsonResponse
     {
-        $client = CrmClient::with([
-            'conversations.messages',
-            'tasks',
-        ])->findOrFail($id);
+        $user  = $request->user();
+        $query = CrmClient::with(['conversations.messages', 'tasks']);
+
+        if ($user->role === 'agent') {
+            $query->where('user_id', $user->id);
+        }
+
+        $client = $query->findOrFail($id);
 
         $events = collect();
 

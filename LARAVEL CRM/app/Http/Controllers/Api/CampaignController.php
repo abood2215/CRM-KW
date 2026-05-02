@@ -8,6 +8,8 @@ use App\Http\Resources\CampaignResource;
 use App\Jobs\ProcessCampaignJob;
 use App\Models\Campaign;
 use App\Models\CampaignRecipient;
+use App\Models\Contact;
+use App\Models\ContactList;
 use App\Services\CampaignService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -38,34 +40,89 @@ class CampaignController extends Controller
     public function store(StoreCampaignRequest $request): JsonResponse
     {
         $data = $request->validated();
-        $recipients = $data['recipients'];
+
+        // Build recipient list: from explicit array OR from a contact list
+        $recipientInput = $data['recipients'] ?? [];
         unset($data['recipients']);
 
-        $data['user_id'] = $request->user()->id;
-        $data['total_recipients'] = count($recipients);
+        if (empty($recipientInput) && !empty($data['contact_list_id'])) {
+            $list = ContactList::with('contacts')->find($data['contact_list_id']);
+            if ($list) {
+                foreach ($list->contacts as $contact) {
+                    $recipientInput[] = ['phone' => $contact->phone, 'name' => $contact->name];
+                }
+            }
+        }
+
+        if (empty($recipientInput)) {
+            return response()->json(['message' => 'لا يوجد مستلمون للحملة.'], 422);
+        }
+
+        // Filter out blacklisted / opted-out contacts
+        $blockedPhones = Contact::where(function ($q) {
+            $q->where('is_blacklisted', true)->orWhere('opt_out', true);
+        })->pluck('phone')->flip();
+
+        $filtered   = [];
+        $skipped    = 0;
+        $seenPhones = [];
+
+        foreach ($recipientInput as $r) {
+            $phone = $r['phone'] ?? null;
+            if (!$phone) continue;
+
+            // Skip duplicates within this campaign
+            if (isset($seenPhones[$phone])) {
+                $skipped++;
+                continue;
+            }
+
+            // Skip blacklisted / opted-out
+            if (isset($blockedPhones[$phone])) {
+                $skipped++;
+                continue;
+            }
+
+            $seenPhones[$phone] = true;
+            $filtered[]         = $r;
+        }
+
+        if (empty($filtered)) {
+            return response()->json(['message' => 'جميع المستلمين محظورون أو وافقوا على إلغاء الاشتراك.'], 422);
+        }
+
+        $data['user_id']          = $request->user()->id;
+        $data['total_recipients'] = count($filtered);
+        $data['status']           = 'draft';
 
         $campaign = Campaign::create($data);
 
-        foreach ($recipients as $recipient) {
+        foreach ($filtered as $recipient) {
             CampaignRecipient::create([
                 'campaign_id' => $campaign->id,
-                'phone' => $recipient['phone'],
-                'name' => $recipient['name'] ?? null,
+                'phone'       => $recipient['phone'],
+                'name'        => $recipient['name'] ?? null,
+                'variables'   => $recipient['variables'] ?? null,
             ]);
         }
 
-        // If scheduled, dispatch later; otherwise dispatch now
+        $response = [
+            'campaign' => new CampaignResource($campaign->load('user')),
+            'message'  => 'تم إنشاء الحملة بنجاح.',
+        ];
+
+        if ($skipped > 0) {
+            $response['skipped'] = $skipped;
+            $response['skipped_message'] = "تم تخطي {$skipped} مستلم (محظور أو ألغى الاشتراك أو مكرر).";
+        }
+
+        // Auto-dispatch if not a draft-only creation
         if ($campaign->scheduled_at) {
             ProcessCampaignJob::dispatch($campaign->id)->delay($campaign->scheduled_at);
             $campaign->update(['status' => 'scheduled']);
-        } else {
-            ProcessCampaignJob::dispatch($campaign->id);
         }
 
-        return response()->json([
-            'campaign' => new CampaignResource($campaign->load('user')),
-            'message' => 'تم إنشاء الحملة بنجاح.',
-        ], 201);
+        return response()->json($response, 201);
     }
 
     public function show(int $id): JsonResponse
@@ -175,7 +232,12 @@ class CampaignController extends Controller
     public function start(int $id): JsonResponse
     {
         $campaign = Campaign::findOrFail($id);
-        $service  = new CampaignService();
+
+        if (!$campaign->template_name && !$campaign->message_text) {
+            return response()->json(['message' => 'الحملة لا تحتوي على رسالة أو قالب.'], 422);
+        }
+
+        $service = new CampaignService();
 
         try {
             $campaign = $service->startCampaign($campaign);

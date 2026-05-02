@@ -23,18 +23,22 @@ class ResetDailyLimitJob implements ShouldQueue
         // الأسبوع 1 (0-6 أيام):  حد يومي 250 رسالة
         // الأسبوع 2 (7-13 يوم):  حد يومي 500 رسالة
         // الأسبوع 3+ (14+ يوم):  حد يومي 1000 رسالة
-        WhatsappNumber::all()->each(function (WhatsappNumber $number) {
-            // حساب عدد الأيام منذ إنشاء الرقم
+        $dailyLimitMap = [1 => 250, 2 => 500, 3 => 1000];
+
+        WhatsappNumber::all()->each(function (WhatsappNumber $number) use ($dailyLimitMap) {
             $daysSinceCreated = (int) $number->created_at->diffInDays(now());
+            $calculatedWeek   = min(3, (int) floor($daysSinceCreated / 7) + 1);
 
-            // تحديد رقم الأسبوع (بحد أقصى 3)
-            $calculatedWeek = min(3, (int) floor($daysSinceCreated / 7) + 1);
+            $updates = [];
 
-            // نحدّث فقط إذا ارتفع رقم الأسبوع (لا نرجع للخلف)
             if ($calculatedWeek > $number->week_number) {
-                $number->update(['week_number' => $calculatedWeek]);
+                $updates['week_number']  = $calculatedWeek;
+                $updates['daily_limit']  = $dailyLimitMap[$calculatedWeek];
+                Log::info("WhatsApp رقم #{$number->id} ({$number->phone}) ارتقى إلى الأسبوع {$calculatedWeek} — حد يومي جديد: {$dailyLimitMap[$calculatedWeek]}");
+            }
 
-                Log::info("WhatsApp رقم #{$number->id} ({$number->phone}) ارتقى إلى الأسبوع {$calculatedWeek}");
+            if (!empty($updates)) {
+                $number->update($updates);
             }
         });
     }
