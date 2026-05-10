@@ -152,7 +152,7 @@ const PrivacyPolicyPage: React.FC = () => {
             <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 text-center">
               <Mail className="w-5 h-5 text-indigo-600 mx-auto mb-1.5" />
               <div className="text-xs text-slate-400 mb-1">البريد الإلكتروني</div>
-              <div className="text-xs font-bold text-slate-700">privacy@motmaina-center.com</div>
+              <div className="text-xs font-bold text-slate-700">motmaenak@gmail.com</div>
             </div>
           </div>
           <p className="text-xs text-slate-400 mt-4 text-center">

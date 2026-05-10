@@ -460,7 +460,7 @@
             </div>
             <div class="contact-item">
                 <div class="contact-icon">📧</div>
-                <div class="contact-ar">privacy@motmaina-center.com</div>
+                <div class="contact-ar">motmaenak@gmail.com</div>
                 <div class="contact-en">Email</div>
             </div>
             <div class="contact-item">
