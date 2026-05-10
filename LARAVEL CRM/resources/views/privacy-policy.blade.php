@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>سياسة الخصوصية - مركز مطمئنة الطبي</title>
-    <meta name="description" content="سياسة الخصوصية لمركز مطمئنة الطبي - كيفية جمع واستخدام وحماية بياناتك الشخصية">
+    <title>سياسة الخصوصية - مركز مطمئنة</title>
+    <meta name="description" content="سياسة الخصوصية لمركز مطمئنة - كيفية جمع واستخدام وحماية بياناتك الشخصية">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -15,7 +15,7 @@
             font-size: 16px;
         }
         header {
-            background: linear-gradient(135deg, #1e3a5f 0%, #2d6a4f 100%);
+            background: linear-gradient(135deg, #1e1b4b 0%, #312e81 60%, #4338ca 100%);
             color: white;
             padding: 40px 20px;
             text-align: center;
@@ -64,7 +64,7 @@
             border-radius: 16px;
             padding: 28px 32px;
             margin-bottom: 32px;
-            border-right: 5px solid #2d6a4f;
+            border-right: 5px solid #4f46e5;
             box-shadow: 0 1px 6px rgba(0,0,0,0.07);
         }
         .intro-card p {
@@ -82,7 +82,7 @@
             box-shadow: 0 1px 6px rgba(0,0,0,0.07);
         }
         section h2 {
-            color: #1e3a5f;
+            color: #1e1b4b;
             font-size: 1.2rem;
             font-weight: 700;
             margin-bottom: 16px;
@@ -95,7 +95,7 @@
         section h2 .icon {
             width: 32px;
             height: 32px;
-            background: #f0fdf4;
+            background: #eef2ff;
             border-radius: 8px;
             display: flex;
             align-items: center;
@@ -116,16 +116,16 @@
             margin-bottom: 8px;
         }
         li::marker {
-            color: #2d6a4f;
+            color: #4f46e5;
         }
         .highlight-box {
-            background: #f0fdf4;
-            border: 1px solid #bbf7d0;
+            background: #eef2ff;
+            border: 1px solid #c7d2fe;
             border-radius: 10px;
             padding: 14px 18px;
             margin-top: 14px;
             font-size: 0.93rem;
-            color: #166534;
+            color: #3730a3;
         }
         .warning-box {
             background: #fff7ed;
@@ -151,8 +151,8 @@
         }
         .contact-item .contact-icon { font-size: 24px; margin-bottom: 6px; }
         .contact-item .contact-label { font-size: 0.82rem; color: #94a3b8; margin-bottom: 4px; }
-        .contact-item .contact-value { font-size: 0.95rem; font-weight: 600; color: #1e3a5f; }
-        .contact-item a { color: #2d6a4f; text-decoration: none; }
+        .contact-item .contact-value { font-size: 0.95rem; font-weight: 600; color: #1e1b4b; }
+        .contact-item a { color: #4f46e5; text-decoration: none; }
         .contact-item a:hover { text-decoration: underline; }
         .update-notice {
             background: #eff6ff;
@@ -185,8 +185,8 @@
     <div class="logo">
         <div class="logo-icon">🏥</div>
         <div>
-            <div style="font-size:1.4rem;font-weight:700;">مركز مطمئنة الطبي</div>
-            <div style="font-size:0.85rem;opacity:0.8;">Motmaina Medical Center</div>
+            <div style="font-size:1.4rem;font-weight:700;">مركز مطمئنة</div>
+            <div style="font-size:0.85rem;opacity:0.8;">Motmaina Center — Kuwait</div>
         </div>
     </div>
     <h1>سياسة الخصوصية</h1>
@@ -198,7 +198,7 @@
 
     <div class="intro-card">
         <p>
-            يلتزم <strong>مركز مطمئنة الطبي</strong> بحماية خصوصيتك وأمان بياناتك الشخصية.
+            يلتزم <strong>مركز مطمئنة</strong> بحماية خصوصيتك وأمان بياناتك الشخصية.
             توضح هذه السياسة كيفية جمع معلوماتك واستخدامها وحمايتها عند تفاعلك معنا عبر
             منصة واتساب للأعمال أو موقعنا الإلكتروني أو أي قناة تواصل أخرى.
             باستخدامك لخدماتنا، فإنك توافق على الشروط الواردة في هذه الوثيقة.
@@ -346,7 +346,7 @@
             <div class="contact-item">
                 <div class="contact-icon">🏥</div>
                 <div class="contact-label">المركز</div>
-                <div class="contact-value">مركز مطمئنة الطبي</div>
+                <div class="contact-value">مركز مطمئنة</div>
             </div>
             <div class="contact-item">
                 <div class="contact-icon">🌐</div>
@@ -377,7 +377,7 @@
 
 <footer>
     <p>
-        &copy; {{ date('Y') }} <strong>مركز مطمئنة الطبي</strong> — جميع الحقوق محفوظة.
+        &copy; {{ date('Y') }} <strong>مركز مطمئنة</strong> — جميع الحقوق محفوظة.
     </p>
     <p style="margin-top:6px;">
         هذه الصفحة متاحة للعموم دون الحاجة إلى تسجيل دخول.

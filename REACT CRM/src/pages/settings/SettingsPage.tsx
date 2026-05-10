@@ -215,7 +215,7 @@ const SettingsPage: React.FC = () => {
               <div className="flex items-center justify-between">
                 <h3 className="text-base lg:text-xl font-black text-slate-800">توقيتات العمل</h3>
                 <div className="px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-xl text-xs font-black">
-                  Amman/Asia
+                  Asia/Kuwait
                 </div>
               </div>
               <div className="space-y-3">
