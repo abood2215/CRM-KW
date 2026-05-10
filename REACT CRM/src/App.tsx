@@ -24,6 +24,7 @@ const Contacts = lazy(() => import('./pages/contacts/ContactsPage'));
 const Templates = lazy(() => import('./pages/templates/TemplatesPage'));
 const Notifications = lazy(() => import('./pages/notifications/NotificationsPage'));
 const Drive = lazy(() => import('./pages/drive/DrivePage'));
+const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicyPage'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -86,6 +87,8 @@ function App() {
         <ErrorBoundary>
           <Suspense fallback={<LoadingFallback />}>
             <Routes>
+              <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+
               <Route
                 path="/login"
                 element={isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />}
