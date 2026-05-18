@@ -60,16 +60,6 @@ class ProcessCampaignJob implements ShouldQueue
             return;
         }
 
-        if ($service->checkFailRate($campaign)) {
-            Log::warning("[Campaign #{$campaign->id}] معدل الفشل تجاوز {$campaign->stop_on_fail_rate}%");
-            $this->pauseWithNotification(
-                $campaign,
-                'معدل فشل مرتفع',
-                "الحملة \"{$campaign->name}\" موقوفة تلقائياً: معدل الفشل تجاوز {$campaign->stop_on_fail_rate}%."
-            );
-            return;
-        }
-
         // Get next pending recipient
         $recipient = $campaign->recipients()->where('status', 'pending')->first();
 
@@ -81,6 +71,16 @@ class ProcessCampaignJob implements ShouldQueue
                 'اكتملت الحملة',
                 "الحملة \"{$campaign->name}\" اكتملت. أُرسلت: {$campaign->sent_count} | فشلت: {$campaign->failed_count}",
                 ['campaign_id' => $campaign->id]
+            );
+            return;
+        }
+
+        if ($service->checkFailRate($campaign)) {
+            Log::warning("[Campaign #{$campaign->id}] معدل الفشل تجاوز {$campaign->stop_on_fail_rate}%");
+            $this->pauseWithNotification(
+                $campaign,
+                'معدل فشل مرتفع',
+                "الحملة \"{$campaign->name}\" موقوفة تلقائياً: معدل الفشل تجاوز {$campaign->stop_on_fail_rate}%."
             );
             return;
         }
