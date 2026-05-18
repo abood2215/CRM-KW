@@ -219,7 +219,23 @@ class CampaignController extends Controller
             'stop_on_fail_rate'  => 'sometimes|integer|min:1|max:100',
         ]);
 
-        $campaign->update($validated);
+        $scheduledAtChanged = array_key_exists('scheduled_at', $validated)
+            && $validated['scheduled_at'] !== $campaign->scheduled_at?->toDateTimeString();
+
+        // إذا تغير وقت الجدولة، نعيد ضبط الحالة وندفع job جديد بالتأخير الصحيح
+        if ($scheduledAtChanged) {
+            if (!empty($validated['scheduled_at'])) {
+                $validated['status'] = 'scheduled';
+                $campaign->update($validated);
+                ProcessCampaignJob::dispatch($campaign->id)->delay($campaign->fresh()->scheduled_at);
+            } else {
+                // أُزيل وقت الجدولة → تحويل لـ draft
+                $validated['status'] = 'draft';
+                $campaign->update($validated);
+            }
+        } else {
+            $campaign->update($validated);
+        }
 
         return response()->json([
             'campaign' => new CampaignResource($campaign->fresh('user')),

@@ -188,7 +188,13 @@ const CampaignsPage: React.FC = () => {
                     <div className="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between">
                       <div className="flex items-center gap-1.5 text-slate-400 text-[10px] font-bold">
                         <Clock size={12} />
-                        <span>{format(new Date(campaign.created_at), 'dd MMM yyyy')}</span>
+                        {campaign.status === 'scheduled' && campaign.scheduled_at ? (
+                          <span className="text-indigo-500">
+                            {format(new Date(campaign.scheduled_at), 'dd MMM yyyy – HH:mm', { locale: ar })}
+                          </span>
+                        ) : (
+                          <span>{format(new Date(campaign.created_at), 'dd MMM yyyy', { locale: ar })}</span>
+                        )}
                       </div>
                       {campaign.status === 'running' ? (
                         <button
