@@ -5,7 +5,7 @@ import { Conversation, Message, WhatsappTemplate } from '../../types';
 import {
   Search, Send, Paperclip, Smile, MoreVertical, Phone,
   CheckCheck, Check, Clock, Loader2, MessageSquare, Lock,
-  ArrowRight, Mic, Video, Filter, Plus, X, LayoutTemplate, ChevronLeft, RefreshCw
+  ArrowRight, Mic, Video, Filter, Plus, X, LayoutTemplate, ChevronLeft, ChevronDown, RefreshCw
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -208,10 +208,13 @@ const MessagesPage: React.FC = () => {
   const [filter, setFilter]             = useState<'open' | 'pending' | 'resolved'>('open');
   const [isPrivate, setIsPrivate]       = useState(false);
   const [mobileShowChat, setMobileShowChat] = useState(false);
-  const [showNewConv, setShowNewConv]       = useState(false);
-  const [newPhone, setNewPhone]             = useState('');
-  const [newName, setNewName]               = useState('');
-  const [newMsg, setNewMsg]                 = useState('');
+  const [showNewConv, setShowNewConv]         = useState(false);
+  const [newPhone, setNewPhone]               = useState('');
+  const [newName, setNewName]                 = useState('');
+  const [newMsg, setNewMsg]                   = useState('');
+  const [newMsgMode, setNewMsgMode]           = useState<'template' | 'text'>('template');
+  const [newTemplate, setNewTemplate]         = useState<WhatsappTemplate | null>(null);
+  const [showNewTemplateDrop, setShowNewTemplateDrop] = useState(false);
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [selectedTemplate, setSelectedTemplate]   = useState<WhatsappTemplate | null>(null);
   const [templateVars, setTemplateVars]           = useState<string[]>([]);
@@ -255,8 +258,16 @@ const MessagesPage: React.FC = () => {
       const { data } = await api.get('/templates', { params: { status: 'approved' } });
       return data.templates;
     },
-    enabled: showTemplateModal,
+    enabled: showTemplateModal || (showNewConv && newMsgMode === 'template'),
+    staleTime: 5 * 60_000,
   });
+
+  // Auto-select first template when opening new conv in template mode
+  useEffect(() => {
+    if (showNewConv && newMsgMode === 'template' && approvedTemplates.length > 0 && !newTemplate) {
+      setNewTemplate(approvedTemplates[0]);
+    }
+  }, [showNewConv, newMsgMode, approvedTemplates, newTemplate]);
 
   const syncTemplatesMutation = useMutation({
     mutationFn: async () => {
@@ -321,13 +332,13 @@ const MessagesPage: React.FC = () => {
 
   // ── handlers ─────────────────────────────────────────────────────────────
   const newConvMutation = useMutation({
-    mutationFn: (data: { phone: string; name: string; message: string }) =>
-      api.post('/conversations', data),
+    mutationFn: (data: any) => api.post('/conversations', data),
     onSuccess: (res) => {
       const conv = res.data.conversation;
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
       setShowNewConv(false);
       setNewPhone(''); setNewName(''); setNewMsg('');
+      setNewTemplate(null); setNewMsgMode('template');
       setTimeout(() => { setSelectedId(conv.id); setMobileShowChat(true); }, 300);
       toast.success('تم إنشاء المحادثة وإرسال الرسالة');
     },
@@ -337,9 +348,20 @@ const MessagesPage: React.FC = () => {
   const handleNewConv = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPhone.trim()) return toast.error('رقم الهاتف مطلوب');
-    if (!newMsg.trim()) return toast.error('الرسالة مطلوبة');
     const fullPhone = selectedCountry.dial + newPhone.trim().replace(/^0+/, '');
-    newConvMutation.mutate({ phone: fullPhone, name: newName.trim(), message: newMsg.trim() });
+    if (newMsgMode === 'template') {
+      if (!newTemplate) return toast.error('اختر قالباً');
+      newConvMutation.mutate({
+        phone: fullPhone,
+        name: newName.trim(),
+        message: newTemplate.body_text,
+        template_name: newTemplate.name,
+        template_language: newTemplate.language,
+      });
+    } else {
+      if (!newMsg.trim()) return toast.error('الرسالة مطلوبة');
+      newConvMutation.mutate({ phone: fullPhone, name: newName.trim(), message: newMsg.trim() });
+    }
   };
 
   const handleSelect = (id: number) => { setSelectedId(id); setMobileShowChat(true); };
@@ -469,15 +491,72 @@ const MessagesPage: React.FC = () => {
                   className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
                 />
               </div>
+
+              {/* Message type toggle */}
               <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1.5">الرسالة الأولى *</label>
-                <textarea
-                  value={newMsg}
-                  onChange={e => setNewMsg(e.target.value)}
-                  placeholder="اكتب رسالتك..."
-                  rows={3}
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 resize-none"
-                />
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-bold text-slate-600">الرسالة *</label>
+                  <div className="flex gap-1 p-0.5 bg-slate-100 rounded-lg">
+                    <button type="button" onClick={() => setNewMsgMode('template')}
+                      className={cn('flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold transition-all',
+                        newMsgMode === 'template' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-500')}>
+                      <LayoutTemplate size={11} /> قالب
+                    </button>
+                    <button type="button" onClick={() => setNewMsgMode('text')}
+                      className={cn('flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold transition-all',
+                        newMsgMode === 'text' ? 'bg-white text-slate-700 shadow-sm' : 'text-slate-500')}>
+                      <MessageSquare size={11} /> نص
+                    </button>
+                  </div>
+                </div>
+
+                {newMsgMode === 'template' ? (
+                  <div className="space-y-2">
+                    <div className="relative">
+                      <button type="button"
+                        onClick={() => setShowNewTemplateDrop(v => !v)}
+                        className={cn(
+                          'w-full h-11 px-4 bg-slate-50 border rounded-xl text-sm flex items-center justify-between transition-colors',
+                          newTemplate ? 'border-indigo-300 text-slate-800' : 'border-slate-200 text-slate-400'
+                        )}>
+                        <span className="font-medium truncate">
+                          {newTemplate ? newTemplate.name : (loadingTemplates ? 'جاري التحميل...' : 'اختر قالباً...')}
+                        </span>
+                        <ChevronDown size={15} className="text-slate-400 flex-shrink-0" />
+                      </button>
+                      {showNewTemplateDrop && (
+                        <div className="absolute top-12 right-0 left-0 z-50 bg-white border border-slate-200 rounded-xl shadow-xl max-h-44 overflow-y-auto">
+                          {approvedTemplates.length === 0 ? (
+                            <p className="text-center text-slate-400 text-xs py-4">لا توجد قوالب معتمدة</p>
+                          ) : approvedTemplates.map(t => (
+                            <button key={t.id} type="button"
+                              onClick={() => { setNewTemplate(t); setShowNewTemplateDrop(false); }}
+                              className="w-full flex items-start justify-between gap-2 px-4 py-2.5 hover:bg-indigo-50 text-right border-b border-slate-50 last:border-0 transition-colors">
+                              <div className="min-w-0">
+                                <p className="text-sm font-bold text-slate-800">{t.name}</p>
+                                <p className="text-xs text-slate-400 truncate">{t.body_text}</p>
+                              </div>
+                              {newTemplate?.id === t.id && <Check size={14} className="text-indigo-600 flex-shrink-0 mt-1" />}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    {newTemplate && (
+                      <div className="px-3 py-2 bg-indigo-50 rounded-xl text-xs text-slate-600 leading-relaxed border border-indigo-100">
+                        {newTemplate.body_text}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <textarea
+                    value={newMsg}
+                    onChange={e => setNewMsg(e.target.value)}
+                    placeholder="اكتب رسالتك..."
+                    rows={3}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 resize-none"
+                  />
+                )}
               </div>
               <div className="flex gap-3 pt-1">
                 <button type="button" onClick={() => setShowNewConv(false)}

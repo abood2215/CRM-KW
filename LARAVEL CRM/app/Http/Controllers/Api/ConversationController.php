@@ -28,9 +28,11 @@ class ConversationController extends Controller
     public function store(Request $request): JsonResponse
     {
         $request->validate([
-            'phone'   => 'required|string',
-            'name'    => 'nullable|string|max:255',
-            'message' => 'required|string',
+            'phone'             => 'required|string',
+            'name'              => 'nullable|string|max:255',
+            'message'           => 'required|string',
+            'template_name'     => 'nullable|string',
+            'template_language' => 'nullable|string',
         ]);
 
         $phone = $request->phone;
@@ -74,7 +76,15 @@ class ConversationController extends Controller
                     $whatsappNumber->access_token,
                     $whatsappNumber->phone_number_id
                 );
-                $result = $waService->sendMessage($phone, $request->message);
+                if ($request->template_name) {
+                    $result = $waService->sendTemplate(
+                        $phone,
+                        $request->template_name,
+                        $request->template_language ?? 'ar'
+                    );
+                } else {
+                    $result = $waService->sendMessage($phone, $request->message);
+                }
                 $waMessageId = $result['messages'][0]['id'] ?? null;
                 $whatsappNumber->incrementSent();
             } catch (\Exception $e) {
