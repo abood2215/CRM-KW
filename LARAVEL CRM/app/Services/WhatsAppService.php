@@ -240,7 +240,7 @@ class WhatsAppService
         $phone = preg_replace('/[^0-9]/', '', $phone);
 
         if (str_starts_with($phone, '0')) {
-            $phone = '962' . substr($phone, 1);
+            $phone = '965' . substr($phone, 1);
         }
 
         return $phone;

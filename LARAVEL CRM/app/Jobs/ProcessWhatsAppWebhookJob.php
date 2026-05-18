@@ -287,15 +287,14 @@ class ProcessWhatsAppWebhookJob implements ShouldQueue
             ->where('status', 'connected')
             ->first();
 
-        $pidToUse = $phoneNumberId ?? $whatsappNumber?->phone_number_id;
-
-        if (!$pidToUse) {
-            Log::warning('[WhatsApp Webhook] No phone_number_id for auto-reply');
+        if (!$whatsappNumber || !$whatsappNumber->access_token) {
+            Log::warning('[WhatsApp Webhook] No connected number with token for auto-reply');
             return;
         }
 
         try {
-            $result = $whatsapp->sendMessage($toPhone, $autoReply->message, $pidToUse);
+            $waService = new WhatsAppService($whatsappNumber->access_token, $whatsappNumber->phone_number_id);
+            $result = $waService->sendMessage($toPhone, $autoReply->message);
 
             Message::create([
                 'conversation_id'    => $conversation->id,

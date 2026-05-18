@@ -69,11 +69,11 @@ class ConversationController extends Controller
 
         if ($whatsappNumber) {
             try {
-                $result = $this->whatsapp->sendMessage(
-                    $phone,
-                    $request->message,
+                $waService = new WhatsAppService(
+                    $whatsappNumber->access_token,
                     $whatsappNumber->phone_number_id
                 );
+                $result = $waService->sendMessage($phone, $request->message);
                 $waMessageId = $result['messages'][0]['id'] ?? null;
                 $whatsappNumber->incrementSent();
             } catch (\Exception $e) {
@@ -229,20 +229,15 @@ class ConversationController extends Controller
                 if ($whatsappNumber) {
                     try {
                         $type = $request->type ?? 'text';
+                        $waService = new WhatsAppService(
+                            $whatsappNumber->access_token,
+                            $whatsappNumber->phone_number_id
+                        );
 
                         if ($type === 'image' && $request->content) {
-                            $result = $this->whatsapp->sendImage(
-                                $clientPhone,
-                                $request->content,
-                                null,
-                                $whatsappNumber->phone_number_id
-                            );
+                            $result = $waService->sendImage($clientPhone, $request->content);
                         } else {
-                            $result = $this->whatsapp->sendMessage(
-                                $clientPhone,
-                                $request->content,
-                                $whatsappNumber->phone_number_id
-                            );
+                            $result = $waService->sendMessage($clientPhone, $request->content);
                         }
 
                         $waMessageId = $result['messages'][0]['id'] ?? null;
