@@ -18,6 +18,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class ProcessWhatsAppWebhookJob implements ShouldQueue
@@ -229,30 +230,35 @@ class ProcessWhatsAppWebhookJob implements ShouldQueue
 
     protected function resolveConversation(?CrmClient $client, string $fromPhone, ?string $phoneNumberId): Conversation
     {
-        $query = Conversation::where('source', 'whatsapp')->where('status', 'open');
-
-        if ($client) {
-            $conv = $query->where('client_id', $client->id)->latest('last_message_at')->first();
-        } else {
-            // Match by whatsapp_phone in meta when no client found
+        return \DB::transaction(function () use ($client, $fromPhone) {
             $conv = null;
-        }
 
-        if (!$conv) {
-            $conv = Conversation::create([
-                'client_id'    => $client?->id,
-                'status'       => 'open',
-                'source'       => 'whatsapp',
-                'unread_count' => 0,
-            ]);
+            if ($client) {
+                // Lock the row to prevent race conditions with concurrent webhook jobs
+                $conv = Conversation::where('source', 'whatsapp')
+                    ->where('status', 'open')
+                    ->where('client_id', $client->id)
+                    ->lockForUpdate()
+                    ->latest('last_message_at')
+                    ->first();
+            }
 
-            Log::info('[WhatsApp Webhook] New conversation created', [
-                'conversation_id' => $conv->id,
-                'from'            => $fromPhone,
-            ]);
-        }
+            if (!$conv) {
+                $conv = Conversation::create([
+                    'client_id'    => $client?->id,
+                    'status'       => 'open',
+                    'source'       => 'whatsapp',
+                    'unread_count' => 0,
+                ]);
 
-        return $conv;
+                Log::info('[WhatsApp Webhook] New conversation created', [
+                    'conversation_id' => $conv->id,
+                    'from'            => $fromPhone,
+                ]);
+            }
+
+            return $conv;
+        });
     }
 
     protected function handleAutoReply(
@@ -283,6 +289,21 @@ class ProcessWhatsAppWebhookJob implements ShouldQueue
         }
 
         if (!$autoReply) {
+            return;
+        }
+
+        // Cooldown: don't send auto-reply more than once per hour per conversation
+        $alreadySent = $conversation->messages()
+            ->where('sender_name', 'Auto Reply')
+            ->where('direction', 'out')
+            ->where('sent_at', '>=', now()->subHour())
+            ->exists();
+
+        if ($alreadySent) {
+            Log::debug('[WhatsApp Webhook] Auto-reply cooldown, skipping', [
+                'conversation_id' => $conversation->id,
+                'trigger'         => $autoReply->trigger,
+            ]);
             return;
         }
 
