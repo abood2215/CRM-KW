@@ -60,8 +60,14 @@ class ProcessCampaignJob implements ShouldQueue
             return;
         }
 
-        // Get next pending recipient
-        $recipient = $campaign->recipients()->where('status', 'pending')->first();
+        // Get next pending recipient (locked inside transaction to prevent race conditions)
+        $recipient = \DB::transaction(function () use ($campaign) {
+            $r = $campaign->recipients()->where('status', 'pending')->lockForUpdate()->first();
+            if ($r) {
+                $r->update(['status' => 'processing']);
+            }
+            return $r;
+        });
 
         if (!$recipient) {
             $campaign->update(['status' => 'completed', 'completed_at' => now()]);

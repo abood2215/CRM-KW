@@ -20,9 +20,15 @@ class CampaignService
             throw new \Exception('لا يمكن بدء هذه الحملة بحالتها الحالية.');
         }
 
-        // التحقق من وجود مستلمين
-        if ($campaign->recipients()->where('status', 'pending')->count() === 0) {
+        // التحقق من وجود مستلمين (pending أو failed قابلين للإعادة)
+        if ($campaign->recipients()->whereIn('status', ['pending', 'failed'])->count() === 0) {
             throw new \Exception('لا يوجد مستلمون في انتظار الإرسال.');
+        }
+
+        // إعادة failed إلى pending عند إعادة تشغيل الحملة
+        if (in_array($campaign->status, ['paused'])) {
+            $campaign->recipients()->where('status', 'failed')->update(['status' => 'pending', 'error_message' => null]);
+            $campaign->update(['failed_count' => 0]);
         }
 
         $campaign->update([

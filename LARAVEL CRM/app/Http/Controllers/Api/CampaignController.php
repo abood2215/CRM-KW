@@ -167,16 +167,15 @@ class CampaignController extends Controller
         $campaign = Campaign::findOrFail($id);
 
         if ($campaign->status !== 'paused') {
-            return response()->json([
-                'message' => 'الحملة ليست موقوفة.',
-            ], 422);
+            return response()->json(['message' => 'الحملة ليست موقوفة.'], 422);
         }
 
+        $campaign->update(['status' => 'running']);
         ProcessCampaignJob::dispatch($campaign->id);
 
         return response()->json([
             'campaign' => new CampaignResource($campaign->fresh()),
-            'message' => 'تم استئناف الحملة.',
+            'message'  => 'تم استئناف الحملة.',
         ]);
     }
 
