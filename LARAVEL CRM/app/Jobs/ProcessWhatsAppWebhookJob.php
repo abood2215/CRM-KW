@@ -365,9 +365,11 @@ class ProcessWhatsAppWebhookJob implements ShouldQueue
 
     protected function formatPhoneForSearch(string $phone): string
     {
-        // Strip country code to find local format in DB
-        if (str_starts_with($phone, '962')) {
-            return '0' . substr($phone, 3);
+        // Try stripping known Gulf/Arab country codes to match local format in DB
+        foreach (['965', '966', '971', '962', '970', '974', '973', '968', '967'] as $code) {
+            if (str_starts_with($phone, $code)) {
+                return substr($phone, strlen($code));      // e.g. 96556551112 → 56551112
+            }
         }
         return $phone;
     }

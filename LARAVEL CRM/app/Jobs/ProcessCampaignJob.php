@@ -125,15 +125,39 @@ class ProcessCampaignJob implements ShouldQueue
         self::dispatch($this->campaignId)->delay(now()->addSeconds($delay));
     }
 
+    private function normalizePhone(string $phone): string
+    {
+        $phone = preg_replace('/\D/', '', $phone); // digits only
+        // Already has a country code (10+ digits starting with known prefixes)
+        if (strlen($phone) >= 10) {
+            return $phone;
+        }
+        // 8-digit Kuwait local number → prepend 965
+        return '965' . $phone;
+    }
+
     private function sendToRecipient(
         WhatsAppService $whatsapp,
         Campaign $campaign,
         CampaignRecipient $recipient,
         string $phoneNumberId
     ): array {
+        $phone = $this->normalizePhone($recipient->phone);
         if ($campaign->template_name) {
+            // Always use local body_text if available — avoids Meta returning stale approved content
+            $localTemplate = \App\Models\WhatsappTemplate::where('name', $campaign->template_name)->first();
+
+            if ($localTemplate) {
+                $text = $localTemplate->body_text;
+                $vars = $recipient->variables ?? $campaign->template_variables ?? [];
+                foreach (array_values($vars) as $i => $val) {
+                    $text = str_replace('{{' . ($i + 1) . '}}', (string) $val, $text);
+                }
+                return $whatsapp->sendMessage($phone, $text, $phoneNumberId);
+            }
+
             return $whatsapp->sendTemplate(
-                $recipient->phone,
+                $phone,
                 $campaign->template_name,
                 $campaign->template_language ?? 'ar',
                 $this->buildTemplateComponents($campaign, $recipient),
@@ -143,7 +167,7 @@ class ProcessCampaignJob implements ShouldQueue
 
         if ($campaign->image_path) {
             return $whatsapp->sendImage(
-                $recipient->phone,
+                $phone,
                 $campaign->image_path,
                 $campaign->message_text,
                 $phoneNumberId
@@ -151,7 +175,7 @@ class ProcessCampaignJob implements ShouldQueue
         }
 
         return $whatsapp->sendMessage(
-            $recipient->phone,
+            $phone,
             $campaign->message_text,
             $phoneNumberId
         );

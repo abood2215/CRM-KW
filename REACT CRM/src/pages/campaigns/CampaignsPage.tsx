@@ -51,6 +51,12 @@ const CampaignsPage: React.FC = () => {
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['campaigns'] }); toast.success('تم استئناف الحملة'); },
   });
 
+  const startMutation = useMutation({
+    mutationFn: (id: number) => api.post(`/campaigns/${id}/start`),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['campaigns'] }); toast.success('تم بدء الحملة'); },
+    onError: (e: any) => toast.error(e?.response?.data?.message || 'فشل بدء الحملة'),
+  });
+
   const statusMap: Record<string, { label: string; color: string; icon: any }> = {
     draft:     { label: 'مسودة',        color: 'bg-slate-100 text-slate-500',   icon: <Clock size={13} /> },
     scheduled: { label: 'مجدولة',       color: 'bg-indigo-50 text-indigo-600',  icon: <Clock size={13} /> },
@@ -197,6 +203,15 @@ const CampaignsPage: React.FC = () => {
                           className="w-9 h-9 bg-emerald-500 text-white rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20 hover:bg-emerald-600 transition-all"
                         >
                           <Play size={16} />
+                        </button>
+                      ) : campaign.status === 'draft' || campaign.status === 'scheduled' ? (
+                        <button
+                          onClick={() => startMutation.mutate(campaign.id)}
+                          disabled={startMutation.isPending}
+                          title="بدء الحملة الآن"
+                          className="w-9 h-9 bg-indigo-600 text-white rounded-xl flex items-center justify-center shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-all disabled:opacity-60"
+                        >
+                          {startMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />}
                         </button>
                       ) : (
                         <button

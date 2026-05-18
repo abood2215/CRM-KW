@@ -376,21 +376,22 @@ class ConversationController extends Controller
             $components[] = ['type' => 'body', 'parameters' => $params];
         }
 
+        // Build the final message body with variables replaced
+        $sentBody = $template->body_text;
+        foreach ($variables as $i => $val) {
+            $sentBody = str_replace('{{' . ($i + 1) . '}}', $val, $sentBody);
+        }
+
         $waMessageId = null;
         try {
             $waService = new WhatsAppService($whatsappNumber->access_token, $whatsappNumber->phone_number_id);
-            $result    = $waService->sendTemplate($clientPhone, $template->name, $template->language, $components);
+            // Use plain sendMessage so local body_text edits are always reflected
+            $result      = $waService->sendMessage($clientPhone, $sentBody);
             $waMessageId = $result['messages'][0]['id'] ?? null;
             $whatsappNumber->incrementSent();
         } catch (\Exception $e) {
             Log::error('[ConversationController] sendTemplate failed', ['error' => $e->getMessage()]);
             return response()->json(['message' => 'فشل إرسال القالب: ' . $e->getMessage()], 500);
-        }
-
-        // Build preview of the sent message
-        $sentBody = $template->body_text;
-        foreach ($variables as $i => $val) {
-            $sentBody = str_replace('{{' . ($i + 1) . '}}', $val, $sentBody);
         }
 
         $message = Message::create([
