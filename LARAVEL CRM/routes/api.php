@@ -134,7 +134,10 @@ Route::middleware(['auth:sanctum', 'update.last.seen', 'log.activity'])->group(f
     // --- WhatsApp Templates ---
     Route::get('/templates', [TemplateController::class, 'index']);
     Route::post('/templates/sync', [TemplateController::class, 'sync']);
+    Route::post('/templates', [TemplateController::class, 'store']);
     Route::get('/templates/{id}', [TemplateController::class, 'show']);
+    Route::put('/templates/{id}', [TemplateController::class, 'update']);
+    Route::delete('/templates/{id}', [TemplateController::class, 'destroy']);
     Route::get('/templates/{name}/preview', [TemplateController::class, 'preview']);
 
     // --- WhatsApp Numbers ---

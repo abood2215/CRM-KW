@@ -54,6 +54,66 @@ class TemplateController extends Controller
         return response()->json(['template' => $template]);
     }
 
+    // إنشاء قالب محلي جديد
+    public function store(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'name'           => ['required', 'string', 'max:255', 'regex:/^[a-z0-9_]+$/'],
+            'language'       => 'required|string|max:10',
+            'category'       => 'required|in:marketing,utility,authentication',
+            'status'         => 'sometimes|in:approved,pending,rejected',
+            'header_type'    => 'sometimes|in:none,text,image,video,document',
+            'header_content' => 'nullable|string',
+            'body_text'      => 'required|string',
+            'footer_text'    => 'nullable|string',
+            'buttons'        => 'nullable|array',
+        ]);
+
+        preg_match_all('/\{\{\d+\}\}/', $data['body_text'], $matches);
+        $data['variables_count'] = count($matches[0]);
+        $data['status']      = $data['status']      ?? 'approved';
+        $data['header_type'] = $data['header_type'] ?? 'none';
+
+        $template = WhatsappTemplate::create($data);
+
+        return response()->json(['template' => $template], 201);
+    }
+
+    // تعديل قالب
+    public function update(Request $request, int $id): JsonResponse
+    {
+        $template = WhatsappTemplate::findOrFail($id);
+
+        $data = $request->validate([
+            'name'           => ['sometimes', 'string', 'max:255', 'regex:/^[a-z0-9_]+$/'],
+            'language'       => 'sometimes|string|max:10',
+            'category'       => 'sometimes|in:marketing,utility,authentication',
+            'status'         => 'sometimes|in:approved,pending,rejected',
+            'header_type'    => 'sometimes|in:none,text,image,video,document',
+            'header_content' => 'nullable|string',
+            'body_text'      => 'sometimes|string',
+            'footer_text'    => 'nullable|string',
+            'buttons'        => 'nullable|array',
+        ]);
+
+        if (isset($data['body_text'])) {
+            preg_match_all('/\{\{\d+\}\}/', $data['body_text'], $matches);
+            $data['variables_count'] = count($matches[0]);
+        }
+
+        $template->update($data);
+
+        return response()->json(['template' => $template->fresh()]);
+    }
+
+    // حذف قالب
+    public function destroy(int $id): JsonResponse
+    {
+        WhatsappTemplate::findOrFail($id)->delete();
+
+        return response()->json(['message' => 'تم حذف القالب.']);
+    }
+
     // مزامنة القوالب من Meta API
     public function sync(Request $request): JsonResponse
     {
