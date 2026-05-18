@@ -49,13 +49,32 @@ chmod -R 775 "$LARAVEL_DIR/storage"
 chmod -R 775 "$LARAVEL_DIR/bootstrap/cache"
 
 # ── 5. Restart Services ──────────────────────
-echo -e "\n${GREEN}[5/5] إعادة تشغيل الخدمات...${NC}"
+echo -e "\n${GREEN}[5/6] إعادة تشغيل الخدمات...${NC}"
 systemctl reload nginx
 systemctl restart php8.2-fpm
 
-# Horizon (اختياري - شغّله لو مستخدم Queue)
-# systemctl restart horizon
+# ── 6. Queue Worker ──────────────────────────
+echo -e "\n${GREEN}[6/6] إعادة تشغيل Queue Worker...${NC}"
+cd "$LARAVEL_DIR"
+
+# أوقف أي queue:work قديم
+php artisan queue:restart
+
+# شغّل queue worker عبر supervisor لو متوفر، وإلا شغّله مباشرة
+if command -v supervisorctl &> /dev/null; then
+    supervisorctl restart crm-worker:* 2>/dev/null || supervisorctl restart all 2>/dev/null || true
+    echo -e "${GREEN}  ✓ Supervisor أعاد تشغيل الـ worker${NC}"
+else
+    # تشغيل مباشر في الخلفية (fallback)
+    pkill -f "artisan queue:work" 2>/dev/null || true
+    sleep 1
+    nohup php artisan queue:work --tries=3 --timeout=120 --sleep=3 >> /var/log/crm-queue.log 2>&1 &
+    echo -e "${GREEN}  ✓ Queue worker يعمل في الخلفية (PID: $!)${NC}"
+fi
 
 echo -e "\n${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${GREEN}   ✅ تم النشر بنجاح!${NC}"
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}\n"
+
+echo -e "${YELLOW}تذكير: تأكد من وجود هذا السطر في crontab (crontab -e):${NC}"
+echo -e "  * * * * * cd \"$LARAVEL_DIR\" && php artisan schedule:run >> /dev/null 2>&1\n"
