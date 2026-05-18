@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../api/axios';
-import { Conversation, Message } from '../../types';
+import { Conversation, Message, WhatsappTemplate } from '../../types';
 import {
   Search, Send, Paperclip, Smile, MoreVertical, Phone,
   CheckCheck, Check, Clock, Loader2, MessageSquare, Lock,
-  ArrowRight, Mic, Video, Filter, Plus, X
+  ArrowRight, Mic, Video, Filter, Plus, X, LayoutTemplate, ChevronLeft
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -212,6 +212,9 @@ const MessagesPage: React.FC = () => {
   const [newPhone, setNewPhone]             = useState('');
   const [newName, setNewName]               = useState('');
   const [newMsg, setNewMsg]                 = useState('');
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [selectedTemplate, setSelectedTemplate]   = useState<WhatsappTemplate | null>(null);
+  const [templateVars, setTemplateVars]           = useState<string[]>([]);
   const [selectedCountry, setSelectedCountry] = useState(COUNTRIES[0]);
   const [showCountryDrop, setShowCountryDrop] = useState(false);
   const [countrySearch, setCountrySearch]   = useState('');
@@ -244,6 +247,29 @@ const MessagesPage: React.FC = () => {
       return data.messages;
     },
     enabled: !!selectedId,
+  });
+
+  const { data: approvedTemplates = [] } = useQuery<WhatsappTemplate[]>({
+    queryKey: ['templates-approved'],
+    queryFn: async () => {
+      const { data } = await api.get('/templates', { params: { status: 'approved' } });
+      return data.templates;
+    },
+    enabled: showTemplateModal,
+  });
+
+  const sendTemplateMutation = useMutation({
+    mutationFn: (p: { template_id: number; variables: string[] }) =>
+      api.post(`/conversations/${selectedId}/send-template`, p),
+    onSuccess: () => {
+      setShowTemplateModal(false);
+      setSelectedTemplate(null);
+      setTemplateVars([]);
+      queryClient.invalidateQueries({ queryKey: ['messages', selectedId] });
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      toast.success('تم إرسال القالب بنجاح');
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.message || 'فشل إرسال القالب'),
   });
 
   const sendMutation = useMutation({
@@ -454,6 +480,126 @@ const MessagesPage: React.FC = () => {
         </div>
       )}
     </AnimatePresence>
+    {/* ── Template Picker Modal ── */}
+    <AnimatePresence>
+      {showTemplateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col"
+            style={{ maxHeight: '85vh' }}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 flex-shrink-0">
+              {selectedTemplate ? (
+                <button onClick={() => { setSelectedTemplate(null); setTemplateVars([]); }}
+                  className="flex items-center gap-1.5 text-slate-500 hover:text-indigo-600 transition-colors text-sm font-medium">
+                  <ChevronLeft size={16} />
+                  رجوع
+                </button>
+              ) : (
+                <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                  <LayoutTemplate size={16} className="text-indigo-600" />
+                  اختر قالباً
+                </h3>
+              )}
+              <button onClick={() => { setShowTemplateModal(false); setSelectedTemplate(null); setTemplateVars([]); }}
+                className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 transition-all">
+                <X size={18} />
+              </button>
+            </div>
+
+            {!selectedTemplate ? (
+              /* Template List */
+              <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                {approvedTemplates.length === 0 ? (
+                  <div className="text-center py-12 text-slate-400 text-sm">
+                    <LayoutTemplate size={32} className="mx-auto mb-3 text-slate-200" />
+                    لا توجد قوالب معتمدة. اذهب إلى إعدادات القوالب وزامن من Meta.
+                  </div>
+                ) : approvedTemplates.map(t => (
+                  <button
+                    key={t.id}
+                    onClick={() => { setSelectedTemplate(t); setTemplateVars(Array(t.variables_count).fill('')); }}
+                    className="w-full text-right p-4 rounded-xl border border-slate-200 hover:border-indigo-400 hover:bg-indigo-50/50 transition-all group"
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-1">
+                      <span className="text-sm font-bold text-slate-800 group-hover:text-indigo-700">{t.name}</span>
+                      <span className={cn(
+                        'text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0',
+                        t.category === 'marketing' ? 'bg-purple-100 text-purple-700' :
+                        t.category === 'utility'   ? 'bg-blue-100 text-blue-700' :
+                        'bg-slate-100 text-slate-600'
+                      )}>
+                        {t.category === 'marketing' ? 'تسويق' : t.category === 'utility' ? 'خدمات' : 'مصادقة'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">{t.body_text}</p>
+                    {t.variables_count > 0 && (
+                      <p className="text-xs text-indigo-500 mt-1 font-medium">{t.variables_count} متغير</p>
+                    )}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              /* Variable Inputs + Preview */
+              <div className="flex-1 overflow-y-auto p-5 space-y-4">
+                <div>
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">معاينة القالب</p>
+                  <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">
+                    {selectedTemplate.body_text.replace(/\{\{(\d+)\}\}/g, (_, n) => {
+                      const val = templateVars[parseInt(n) - 1];
+                      return val ? `[${val}]` : `{{${n}}}`;
+                    })}
+                  </div>
+                  {selectedTemplate.footer_text && (
+                    <p className="text-xs text-slate-400 mt-1 px-1">{selectedTemplate.footer_text}</p>
+                  )}
+                </div>
+
+                {selectedTemplate.variables_count > 0 && (
+                  <div className="space-y-3">
+                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">تعبئة المتغيرات</p>
+                    {Array.from({ length: selectedTemplate.variables_count }, (_, i) => (
+                      <div key={i}>
+                        <label className="block text-xs font-medium text-slate-600 mb-1">المتغير {`{{${i + 1}}}`}</label>
+                        <input
+                          type="text"
+                          value={templateVars[i] ?? ''}
+                          onChange={e => setTemplateVars(v => { const n = [...v]; n[i] = e.target.value; return n; })}
+                          placeholder={`قيمة المتغير ${i + 1}`}
+                          className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="flex gap-3 pt-1">
+                  <button type="button"
+                    onClick={() => { setShowTemplateModal(false); setSelectedTemplate(null); setTemplateVars([]); }}
+                    className="flex-1 h-11 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-all text-sm">
+                    إلغاء
+                  </button>
+                  <button
+                    type="button"
+                    disabled={sendTemplateMutation.isPending || (selectedTemplate.variables_count > 0 && templateVars.some(v => !v.trim()))}
+                    onClick={() => sendTemplateMutation.mutate({ template_id: selectedTemplate.id, variables: templateVars })}
+                    className="flex-1 h-11 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-all disabled:opacity-60 flex items-center justify-center gap-2 text-sm"
+                  >
+                    {sendTemplateMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <Send size={15} />}
+                    إرسال القالب
+                  </button>
+                </div>
+              </div>
+            )}
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
+
     <div
       className="flex bg-white rounded-2xl border border-slate-200 shadow-lg font-cairo overflow-hidden"
       style={{ height: containerHeight }}
@@ -716,6 +862,14 @@ const MessagesPage: React.FC = () => {
                 </button>
                 <button type="button" className="w-9 h-9 flex items-center justify-center rounded-full text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors">
                   <Paperclip size={20} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowTemplateModal(true)}
+                  title="إرسال قالب"
+                  className="w-9 h-9 flex items-center justify-center rounded-full text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                >
+                  <LayoutTemplate size={18} />
                 </button>
               </div>
 

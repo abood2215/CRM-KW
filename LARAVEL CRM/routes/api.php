@@ -86,6 +86,7 @@ Route::middleware(['auth:sanctum', 'update.last.seen', 'log.activity'])->group(f
     Route::get('/conversations/{id}', [ConversationController::class, 'show']);
     Route::get('/conversations/{id}/messages', [ConversationController::class, 'messages']);
     Route::post('/conversations/{id}/messages', [ConversationController::class, 'sendMessage']);
+    Route::post('/conversations/{id}/send-template', [ConversationController::class, 'sendTemplateMessage']);
     Route::put('/conversations/{id}/status', [ConversationController::class, 'updateStatus']);
     Route::post('/conversations/{id}/notes', [ConversationController::class, 'addNote']);
     Route::middleware('role:admin,manager')->group(function () {
