@@ -156,7 +156,11 @@ class ProcessWhatsAppWebhookJob implements ShouldQueue
             return;
         }
 
-        Log::info('[WhatsApp Webhook] Status update', ['wamid' => $waMessageId, 'status' => $status]);
+        Log::info('[WhatsApp Webhook] Status update', [
+            'wamid'   => $waMessageId,
+            'status'  => $status,
+            'errors'  => $statusData['errors'] ?? null,
+        ]);
 
         // Update conversation message status
         $message = Message::where('whatsapp_message_id', $waMessageId)->first();
