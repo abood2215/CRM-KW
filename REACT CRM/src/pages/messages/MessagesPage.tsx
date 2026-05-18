@@ -5,7 +5,7 @@ import { Conversation, Message, WhatsappTemplate } from '../../types';
 import {
   Search, Send, Paperclip, Smile, MoreVertical, Phone,
   CheckCheck, Check, Clock, Loader2, MessageSquare, Lock,
-  ArrowRight, Mic, Video, Filter, Plus, X, LayoutTemplate, ChevronLeft
+  ArrowRight, Mic, Video, Filter, Plus, X, LayoutTemplate, ChevronLeft, RefreshCw
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -249,13 +249,28 @@ const MessagesPage: React.FC = () => {
     enabled: !!selectedId,
   });
 
-  const { data: approvedTemplates = [] } = useQuery<WhatsappTemplate[]>({
+  const { data: approvedTemplates = [], isLoading: loadingTemplates, refetch: refetchTemplates } = useQuery<WhatsappTemplate[]>({
     queryKey: ['templates-approved'],
     queryFn: async () => {
       const { data } = await api.get('/templates', { params: { status: 'approved' } });
       return data.templates;
     },
     enabled: showTemplateModal,
+  });
+
+  const syncTemplatesMutation = useMutation({
+    mutationFn: async () => {
+      const { data } = await api.get('/whatsapp-numbers');
+      const numbers: any[] = data.whatsapp_numbers ?? [];
+      const cloud = numbers.find((n: any) => n.phone_number_id && n.status === 'connected');
+      if (!cloud) throw new Error('لا يوجد رقم Cloud API متصل');
+      await api.post('/templates/sync', { whatsapp_number_id: cloud.id });
+    },
+    onSuccess: () => {
+      toast.success('تمت المزامنة');
+      refetchTemplates();
+    },
+    onError: (e: any) => toast.error(e?.message || 'فشلت المزامنة'),
   });
 
   const sendTemplateMutation = useMutation({
@@ -514,10 +529,24 @@ const MessagesPage: React.FC = () => {
             {!selectedTemplate ? (
               /* Template List */
               <div className="flex-1 overflow-y-auto p-4 space-y-2">
-                {approvedTemplates.length === 0 ? (
-                  <div className="text-center py-12 text-slate-400 text-sm">
-                    <LayoutTemplate size={32} className="mx-auto mb-3 text-slate-200" />
-                    لا توجد قوالب معتمدة. اذهب إلى إعدادات القوالب وزامن من Meta.
+                {loadingTemplates ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="animate-spin text-indigo-500" size={28} />
+                  </div>
+                ) : approvedTemplates.length === 0 ? (
+                  <div className="text-center py-10 text-slate-400 text-sm space-y-4">
+                    <LayoutTemplate size={32} className="mx-auto text-slate-200" />
+                    <p>لا توجد قوالب معتمدة بعد.</p>
+                    <button
+                      onClick={() => syncTemplatesMutation.mutate()}
+                      disabled={syncTemplatesMutation.isPending}
+                      className="mx-auto flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-all disabled:opacity-60"
+                    >
+                      {syncTemplatesMutation.isPending
+                        ? <Loader2 size={14} className="animate-spin" />
+                        : <RefreshCw size={14} />}
+                      مزامنة القوالب من Meta
+                    </button>
                   </div>
                 ) : approvedTemplates.map(t => (
                   <button
