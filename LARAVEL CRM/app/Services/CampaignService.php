@@ -65,7 +65,7 @@ class CampaignService
     // يضيف عشوائية ±20% على القيمة المحددة لتجنب نمط ثابت يكشفه Meta
     public function calculateDelay(Campaign $campaign): int
     {
-        $base  = max(120, $campaign->delay_seconds ?? 120);
+        $base  = max(1, $campaign->delay_seconds ?? 5);
         $jitter = (int) ($base * 0.2);
 
         return rand($base, $base + $jitter);

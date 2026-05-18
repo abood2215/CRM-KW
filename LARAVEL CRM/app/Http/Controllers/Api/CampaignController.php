@@ -216,7 +216,7 @@ class CampaignController extends Controller
             'template_variables' => 'nullable|array',
             'contact_list_id'    => 'nullable|exists:contact_lists,id',
             'scheduled_at'       => 'nullable|date|after:now',
-            'delay_seconds'      => 'sometimes|integer|min:120|max:300',
+            'delay_seconds'      => 'sometimes|integer|min:1|max:3600',
             'stop_on_fail_rate'  => 'sometimes|integer|min:1|max:100',
         ]);
 

@@ -30,8 +30,7 @@ class StoreCampaignRequest extends FormRequest
 
             'scheduled_at'       => 'nullable|date|after:now',
 
-            // Min 120s to avoid Meta rate-limiting and quality flagging
-            'delay_seconds'      => 'sometimes|integer|min:120|max:300',
+            'delay_seconds'      => 'sometimes|integer|min:1|max:3600',
 
             // Stop the campaign if fail rate exceeds this percentage
             'stop_on_fail_rate'  => 'sometimes|integer|min:1|max:100',
