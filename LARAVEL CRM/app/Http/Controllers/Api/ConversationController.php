@@ -189,7 +189,7 @@ class ConversationController extends Controller
         $conversation = $query->findOrFail($id);
 
         $messages = $conversation->messages()
-            ->orderBy('sent_at', 'desc')
+            ->orderBy('sent_at', 'asc')
             ->paginate($request->per_page ?? 50);
 
         return response()->json([

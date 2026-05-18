@@ -301,13 +301,41 @@ const MessagesPage: React.FC = () => {
   const sendMutation = useMutation({
     mutationFn: (p: { content: string; is_private: boolean }) =>
       api.post(`/conversations/${selectedId}/messages`, p),
-    onSuccess: () => {
+    onMutate: async (vars) => {
+      // Clear input instantly
       setMessage('');
       if (inputRef.current) inputRef.current.style.height = '44px';
+
+      await queryClient.cancelQueries({ queryKey: ['messages', selectedId] });
+      const prev = queryClient.getQueryData<Message[]>(['messages', selectedId]);
+
+      queryClient.setQueryData<Message[]>(['messages', selectedId], (old = []) => [
+        ...old,
+        {
+          id: -Date.now(),
+          conversation_id: selectedId!,
+          content: vars.content,
+          type: 'text',
+          direction: 'out',
+          is_private: vars.is_private,
+          sender_name: user?.name ?? '',
+          status: undefined,
+          sent_at: new Date().toISOString(),
+          created_at: new Date().toISOString(),
+        } as Message,
+      ]);
+
+      return { prev };
+    },
+    onError: (_, __, ctx) => {
+      if (ctx?.prev !== undefined)
+        queryClient.setQueryData(['messages', selectedId], ctx.prev);
+      toast.error('فشل إرسال الرسالة');
+    },
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['messages', selectedId] });
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
     },
-    onError: () => toast.error('فشل إرسال الرسالة'),
   });
 
   // ── realtime ─────────────────────────────────────────────────────────────
@@ -325,9 +353,13 @@ const MessagesPage: React.FC = () => {
     };
   }, [echo, selectedId, queryClient]);
 
+  const prevMsgCountRef = useRef(0);
   useEffect(() => {
-    if (scrollRef.current)
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    if (!scrollRef.current) return;
+    const el = scrollRef.current;
+    const isInitialLoad = prevMsgCountRef.current === 0 && messages.length > 0;
+    prevMsgCountRef.current = messages.length;
+    el.scrollTo({ top: el.scrollHeight, behavior: isInitialLoad ? 'instant' : 'smooth' });
   }, [messages]);
 
   // ── handlers ─────────────────────────────────────────────────────────────
@@ -364,7 +396,11 @@ const MessagesPage: React.FC = () => {
     }
   };
 
-  const handleSelect = (id: number) => { setSelectedId(id); setMobileShowChat(true); };
+  const handleSelect = (id: number) => {
+    prevMsgCountRef.current = 0;
+    setSelectedId(id);
+    setMobileShowChat(true);
+  };
   const handleSend = (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!message.trim() || !selectedId || sendMutation.isPending) return;
@@ -938,9 +974,12 @@ const MessagesPage: React.FC = () => {
                     </span>
                   </div>
 
-                  {msgs.map(msg => {
+                  {msgs.map((msg, msgIdx) => {
                     const isSent = msg.direction === 'out' && !msg.is_private;
                     const isNote = msg.is_private;
+                    const isOptimistic = msg.id < 0;
+                    const prevMsg = msgs[msgIdx - 1];
+                    const isFirstInGroup = !prevMsg || prevMsg.direction !== msg.direction || prevMsg.is_private !== msg.is_private;
 
                     if (isNote) return (
                       <motion.div key={msg.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
@@ -955,15 +994,18 @@ const MessagesPage: React.FC = () => {
                     return (
                       <motion.div
                         key={msg.id}
-                        initial={{ opacity: 0, y: 5 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.12 }}
-                        className={cn('flex', isSent ? 'justify-start' : 'justify-end')}
+                        initial={{ opacity: 0, y: 4 }}
+                        animate={{ opacity: isOptimistic ? 0.75 : 1, y: 0 }}
+                        transition={{ duration: 0.1 }}
+                        className={cn('flex', isSent ? 'justify-end' : 'justify-start')}
+                        style={{ marginTop: isFirstInGroup ? 6 : 2 }}
                       >
                         <div
                           className={cn(
                             'relative px-3 pt-1.5 pb-1.5 shadow-sm',
-                            isSent ? 'rounded-2xl rounded-tr-sm' : 'rounded-2xl rounded-tl-sm'
+                            isSent
+                              ? isFirstInGroup ? 'rounded-2xl rounded-bl-sm' : 'rounded-2xl'
+                              : isFirstInGroup ? 'rounded-2xl rounded-br-sm' : 'rounded-2xl'
                           )}
                           style={{
                             maxWidth: isDesktop ? '58%' : '80%',
@@ -971,15 +1013,7 @@ const MessagesPage: React.FC = () => {
                             border: isSent ? 'none' : '1px solid #e2e8f0',
                           }}
                         >
-                          {/* tail */}
-                          {isSent ? (
-                            <div className="absolute top-0 -right-2 w-0 h-0"
-                              style={{ borderLeft: '8px solid #d9fdd3', borderBottom: '8px solid transparent' }} />
-                          ) : (
-                            <div className="absolute top-0 -left-2 w-0 h-0"
-                              style={{ borderRight: '8px solid #ffffff', borderBottom: '8px solid transparent' }} />
-                          )}
-                          {isSent && msg.sender_name && (
+                          {isSent && msg.sender_name && isFirstInGroup && (
                             <p className="text-[10px] font-bold text-emerald-700 mb-0.5">
                               {msg.sender_name}
                             </p>
@@ -987,7 +1021,7 @@ const MessagesPage: React.FC = () => {
                           <p className="text-sm leading-relaxed whitespace-pre-wrap break-words text-slate-800">
                             {msg.content}
                           </p>
-                          <div className="flex items-center justify-end gap-1 mt-1">
+                          <div className="flex items-center justify-end gap-1 mt-0.5">
                             <span className="text-slate-400" style={{ fontSize: 10 }}>
                               {format(new Date(msg.sent_at), 'HH:mm')}
                             </span>
@@ -1000,16 +1034,6 @@ const MessagesPage: React.FC = () => {
                 </React.Fragment>
               ))}
 
-              {sendMutation.isPending && (
-                <div className="flex justify-start">
-                  <div className="bg-slate-100 rounded-2xl rounded-tr-sm px-4 py-3 flex items-center gap-1.5 shadow-sm">
-                    {[0,1,2].map(i => (
-                      <div key={i} className="w-2 h-2 bg-slate-400 rounded-full animate-bounce"
-                        style={{ animationDelay: `${i*150}ms` }} />
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* Input */}
