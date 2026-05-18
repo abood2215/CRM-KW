@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../api/axios';
-import { X, Loader2, Plus, Trash2, Search, Check } from 'lucide-react';
+import { WhatsappTemplate } from '../types';
+import { X, Loader2, Plus, Trash2, Search, Check, Upload, LayoutTemplate, MessageSquare, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -14,14 +15,29 @@ interface CreateCampaignModalProps {
 
 const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ open, onClose }) => {
   const queryClient = useQueryClient();
+  const csvRef = useRef<HTMLInputElement>(null);
+
   const [form, setForm] = useState({
     name: '', message_text: '', delay_seconds: '5', scheduled_at: '',
   });
-  const [recipients, setRecipients] = useState<Recipient[]>([{ phone: '', name: '' }]);
-  const [jsonText, setJsonText] = useState('');
-  const [inputMode, setInputMode] = useState<'manual' | 'json' | 'contacts'>('manual');
-  const [contactSearch, setContactSearch] = useState('');
+  const [msgMode, setMsgMode]               = useState<'text' | 'template'>('text');
+  const [selectedTemplate, setSelectedTemplate] = useState<WhatsappTemplate | null>(null);
+  const [showTemplateDrop, setShowTemplateDrop] = useState(false);
+
+  const [recipients, setRecipients]         = useState<Recipient[]>([{ phone: '', name: '' }]);
+  const [jsonText, setJsonText]             = useState('');
+  const [inputMode, setInputMode]           = useState<'manual' | 'json' | 'contacts' | 'csv'>('manual');
+  const [contactSearch, setContactSearch]   = useState('');
   const [selectedContactIds, setSelectedContactIds] = useState<number[]>([]);
+
+  const { data: approvedTemplates = [] } = useQuery<WhatsappTemplate[]>({
+    queryKey: ['templates-approved'],
+    queryFn: async () => {
+      const { data } = await api.get('/templates', { params: { status: 'approved' } });
+      return data.templates;
+    },
+    enabled: open && msgMode === 'template',
+  });
 
   const { data: contacts = [] } = useQuery<any[]>({
     queryKey: ['contacts-all'],
@@ -60,6 +76,8 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ open, onClose
     setSelectedContactIds([]);
     setContactSearch('');
     setInputMode('manual');
+    setMsgMode('text');
+    setSelectedTemplate(null);
   };
 
   const addRecipient = () => setRecipients(r => [...r, { phone: '', name: '' }]);
@@ -85,13 +103,46 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ open, onClose
     }
   };
 
+  const handleCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = ev.target?.result as string;
+      const lines = text.trim().split('\n').filter(Boolean);
+      const result: Recipient[] = [];
+
+      for (const line of lines) {
+        const cols = line.split(/[,\t;]/).map(c => c.trim().replace(/^["']|["']$/g, ''));
+        const phone = cols[0]?.replace(/[^0-9]/g, '');
+        const name  = cols[1] ?? '';
+        if (phone && phone.length >= 8) result.push({ phone, name });
+      }
+
+      if (!result.length) return toast.error('لم يُعثر على أرقام صالحة في الملف');
+      setRecipients(result);
+      setInputMode('manual');
+      toast.success(`تم استيراد ${result.length} رقم من CSV`);
+    };
+    reader.readAsText(file, 'UTF-8');
+    e.target.value = '';
+  };
+
+  const recipientCount = (() => {
+    if (inputMode === 'contacts') return selectedContactIds.length;
+    return recipients.filter(r => r.phone.trim()).length;
+  })();
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim()) return toast.error('اسم الحملة مطلوب');
-    if (!form.message_text.trim()) return toast.error('نص الرسالة مطلوب');
+
+    if (msgMode === 'text' && !form.message_text.trim())
+      return toast.error('نص الرسالة مطلوب');
+    if (msgMode === 'template' && !selectedTemplate)
+      return toast.error('اختر قالباً');
 
     let finalRecipients: Recipient[] = [];
-
     if (inputMode === 'contacts') {
       if (!selectedContactIds.length) return toast.error('اختر جهة اتصال واحدة على الأقل');
       finalRecipients = contacts
@@ -102,17 +153,28 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ open, onClose
       if (!finalRecipients.length) return toast.error('أضف مستلماً واحداً على الأقل');
     }
 
-    mutation.mutate({
-      ...form,
-      delay_seconds: Number(form.delay_seconds) || 5,
-      scheduled_at: form.scheduled_at || undefined,
-      recipients: finalRecipients,
-    });
+    const payload: any = {
+      name:           form.name,
+      delay_seconds:  Number(form.delay_seconds) || 5,
+      scheduled_at:   form.scheduled_at || undefined,
+      recipients:     finalRecipients,
+    };
+
+    if (msgMode === 'template' && selectedTemplate) {
+      payload.template_name     = selectedTemplate.name;
+      payload.template_language = selectedTemplate.language;
+      payload.message_text      = selectedTemplate.body_text;
+    } else {
+      payload.message_text = form.message_text;
+    }
+
+    mutation.mutate(payload);
   };
 
-  const modes = [
-    { id: 'manual', label: 'يدوي' },
-    { id: 'json', label: 'JSON' },
+  const recipientModes = [
+    { id: 'manual',   label: 'يدوي' },
+    { id: 'json',     label: 'JSON' },
+    { id: 'csv',      label: 'CSV' },
     { id: 'contacts', label: 'جهات الاتصال' },
   ];
 
@@ -134,6 +196,8 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ open, onClose
             </div>
 
             <form onSubmit={handleSubmit} className="p-8 space-y-5 max-h-[75vh] overflow-y-auto">
+
+              {/* Name + Delay */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-black text-slate-600 mb-1.5">اسم الحملة *</label>
@@ -150,14 +214,73 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ open, onClose
                 </div>
               </div>
 
+              {/* Message Type Toggle */}
               <div>
-                <label className="block text-xs font-black text-slate-600 mb-1.5">نص الرسالة *</label>
-                <textarea rows={4} required
-                  value={form.message_text} onChange={e => setForm(f => ({ ...f, message_text: e.target.value }))}
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 resize-none"
-                  placeholder="اكتب نص الرسالة التي ستُرسل لجميع المستلمين..." />
+                <label className="block text-xs font-black text-slate-600 mb-2">نوع الرسالة</label>
+                <div className="flex gap-2 p-1 bg-slate-100 rounded-xl w-fit">
+                  <button type="button" onClick={() => setMsgMode('text')}
+                    className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-all ${msgMode === 'text' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'}`}>
+                    <MessageSquare size={13} /> نص حر
+                  </button>
+                  <button type="button" onClick={() => setMsgMode('template')}
+                    className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-all ${msgMode === 'template' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'}`}>
+                    <LayoutTemplate size={13} /> قالب Template
+                  </button>
+                </div>
+                {msgMode === 'template' && (
+                  <p className="text-xs text-indigo-600 mt-1.5 font-medium">
+                    ✓ مناسب للأرقام الجديدة التي لم تتواصل معك من قبل
+                  </p>
+                )}
               </div>
 
+              {/* Message Content */}
+              {msgMode === 'text' ? (
+                <div>
+                  <label className="block text-xs font-black text-slate-600 mb-1.5">نص الرسالة *</label>
+                  <textarea rows={4}
+                    value={form.message_text} onChange={e => setForm(f => ({ ...f, message_text: e.target.value }))}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 resize-none"
+                    placeholder="اكتب نص الرسالة..." />
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-xs font-black text-slate-600 mb-1.5">اختر القالب *</label>
+                  <div className="relative">
+                    <button type="button" onClick={() => setShowTemplateDrop(v => !v)}
+                      className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm flex items-center justify-between hover:border-indigo-400 transition-colors">
+                      <span className={selectedTemplate ? 'text-slate-800 font-medium' : 'text-slate-400'}>
+                        {selectedTemplate ? selectedTemplate.name : 'اختر قالباً معتمداً...'}
+                      </span>
+                      <ChevronDown size={16} className="text-slate-400" />
+                    </button>
+                    {showTemplateDrop && (
+                      <div className="absolute top-12 right-0 left-0 z-20 bg-white border border-slate-200 rounded-xl shadow-xl max-h-52 overflow-y-auto">
+                        {approvedTemplates.length === 0 ? (
+                          <p className="text-center text-slate-400 text-sm py-6">لا توجد قوالب معتمدة</p>
+                        ) : approvedTemplates.map(t => (
+                          <button key={t.id} type="button"
+                            onClick={() => { setSelectedTemplate(t); setShowTemplateDrop(false); }}
+                            className="w-full flex items-start justify-between gap-2 px-4 py-3 hover:bg-indigo-50 text-right border-b border-slate-50 last:border-0 transition-colors">
+                            <div>
+                              <p className="text-sm font-bold text-slate-800">{t.name}</p>
+                              <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">{t.body_text}</p>
+                            </div>
+                            {selectedTemplate?.id === t.id && <Check size={16} className="text-indigo-600 flex-shrink-0 mt-1" />}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  {selectedTemplate && (
+                    <div className="mt-2 p-3 bg-slate-50 rounded-xl text-xs text-slate-600 leading-relaxed border border-slate-200">
+                      {selectedTemplate.body_text}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Scheduled At */}
               <div>
                 <label className="block text-xs font-black text-slate-600 mb-1.5">جدولة (اختياري)</label>
                 <input type="datetime-local"
@@ -165,12 +288,14 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ open, onClose
                   className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500" />
               </div>
 
-              {/* Recipients Section */}
+              {/* Recipients */}
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <label className="text-xs font-black text-slate-600">المستلمون *</label>
-                  <div className="flex gap-2">
-                    {modes.map(m => (
+                  <label className="text-xs font-black text-slate-600">
+                    المستلمون * {recipientCount > 0 && <span className="text-indigo-600">({recipientCount} رقم)</span>}
+                  </label>
+                  <div className="flex gap-1.5 flex-wrap">
+                    {recipientModes.map(m => (
                       <button key={m.id} type="button" onClick={() => setInputMode(m.id as any)}
                         className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${inputMode === m.id ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
                         {m.label}
@@ -178,6 +303,24 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ open, onClose
                     ))}
                   </div>
                 </div>
+
+                {inputMode === 'csv' && (
+                  <div
+                    onClick={() => csvRef.current?.click()}
+                    className="flex flex-col items-center justify-center gap-3 border-2 border-dashed border-indigo-200 rounded-xl p-8 cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/50 transition-all"
+                  >
+                    <input ref={csvRef} type="file" accept=".csv,.txt,.tsv" className="hidden" onChange={handleCSV} />
+                    <Upload size={28} className="text-indigo-400" />
+                    <div className="text-center">
+                      <p className="text-sm font-bold text-slate-700">اضغط لرفع ملف CSV</p>
+                      <p className="text-xs text-slate-400 mt-1">العمود الأول: رقم الهاتف | العمود الثاني: الاسم (اختياري)</p>
+                      <p className="text-xs text-slate-400">مثال: <code className="bg-slate-100 px-1 rounded">96555344117,أحمد</code></p>
+                    </div>
+                    {recipients.filter(r=>r.phone).length > 0 && inputMode === 'csv' && (
+                      <p className="text-xs font-bold text-indigo-600">تم استيراد {recipients.filter(r=>r.phone).length} رقم</p>
+                    )}
+                  </div>
+                )}
 
                 {inputMode === 'manual' && (
                   <div className="space-y-2 max-h-48 overflow-y-auto">
@@ -209,7 +352,7 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ open, onClose
                     <textarea rows={5}
                       value={jsonText} onChange={e => setJsonText(e.target.value)}
                       className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 resize-none"
-                      placeholder={'الصيغة: ["96555344117","96560003501"]\nأو: [{"phone":"96555344117","name":"أحمد"}]'} />
+                      placeholder={'["96555344117","96560003501"]\nأو: [{"phone":"96555344117","name":"أحمد"}]'} />
                     <button type="button" onClick={parseJson}
                       className="w-full h-10 bg-slate-100 text-slate-600 font-bold rounded-xl text-sm hover:bg-slate-200 transition-all">
                       تحليل JSON ({recipients.filter(r => r.phone).length} رقم حالياً)
