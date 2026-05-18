@@ -638,102 +638,154 @@ const MessagesPage: React.FC = () => {
           SIDEBAR — Conversation List
       ════════════════════════════════════════════════ */}
       <div
-        className="flex flex-col border-l border-slate-200 bg-white flex-shrink-0"
+        className="flex flex-col bg-white flex-shrink-0"
         style={{
-          width: isDesktop ? '320px' : '100%',
+          width: isDesktop ? '340px' : '100%',
           display: showSidebar ? 'flex' : 'none',
+          borderLeft: '1px solid #f1f5f9',
         }}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 border-b border-slate-100 flex-shrink-0" style={{ height: 60 }}>
-          <div className="flex items-center gap-2">
-            <Av name={user?.name ?? 'U'} size={36} />
-            <span className="text-sm font-bold text-slate-700 truncate">{user?.name ?? ''}</span>
+        {/* ── Header ── */}
+        <div className="flex items-center justify-between px-4 flex-shrink-0" style={{ height: 64, borderBottom: '1px solid #f1f5f9' }}>
+          <div className="flex items-center gap-2.5 min-w-0">
+            <Av name={user?.name ?? 'U'} size={38} />
+            <div className="min-w-0">
+              <p className="text-sm font-bold text-slate-800 truncate leading-tight">{user?.name ?? ''}</p>
+              <p className="text-[10px] text-slate-400 font-medium">
+                {conversations.filter(c => c.unread_count > 0).length > 0
+                  ? `${conversations.filter(c => c.unread_count > 0).length} غير مقروءة`
+                  : 'كل شيء مقروء'}
+              </p>
+            </div>
           </div>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => setShowNewConv(true)}
-              className="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
-              title="محادثة جديدة"
-            >
-              <Plus size={18} />
-            </button>
-            <button className="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors">
-              <Filter size={16} />
-            </button>
-          </div>
+          <button
+            onClick={() => setShowNewConv(true)}
+            title="محادثة جديدة"
+            className="w-9 h-9 flex items-center justify-center rounded-full bg-indigo-600 text-white hover:bg-indigo-700 transition-colors shadow-sm shadow-indigo-600/30"
+          >
+            <Plus size={17} />
+          </button>
         </div>
 
-        {/* Search */}
-        <div className="px-3 py-2 border-b border-slate-100 flex-shrink-0">
+        {/* ── Search ── */}
+        <div className="px-3 pt-3 pb-2 flex-shrink-0">
           <div className="relative">
-            <Search size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            <Search size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
             <input
               type="text"
-              placeholder="بحث في المحادثات..."
+              placeholder="ابحث باسم أو رقم أو رسالة..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="w-full h-9 pr-8 pl-3 bg-slate-100 rounded-xl text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:bg-white transition-all border border-transparent"
+              className="w-full h-9 pr-8 pl-3 bg-slate-100 rounded-xl text-xs text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-300/60 focus:bg-white transition-all border border-transparent focus:border-indigo-200"
             />
           </div>
         </div>
 
-        {/* Filter tabs */}
-        <div className="flex gap-1 px-3 py-2 border-b border-slate-100 flex-shrink-0">
-          {(['open', 'pending', 'resolved'] as const).map(f => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={cn(
-                'flex-1 py-1 rounded-lg text-xs font-semibold transition-all',
-                filter === f ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100'
-              )}
-            >
-              {f === 'open' ? 'نشطة' : f === 'pending' ? 'معلقة' : 'مكتملة'}
-            </button>
-          ))}
+        {/* ── Filter tabs ── */}
+        <div className="flex px-3 pb-2 gap-1 flex-shrink-0">
+          {([
+            { id: 'open',     label: 'نشطة' },
+            { id: 'pending',  label: 'معلقة' },
+            { id: 'resolved', label: 'مكتملة' },
+          ] as const).map(f => {
+            const count = conversations.filter(c => c.status === f.id).length;
+            return (
+              <button key={f.id} onClick={() => setFilter(f.id)}
+                className={cn(
+                  'flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-[11px] font-bold transition-all',
+                  filter === f.id ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100'
+                )}>
+                {f.label}
+                {count > 0 && (
+                  <span className={cn('text-[9px] font-black px-1 rounded-full leading-4',
+                    filter === f.id ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-500')}>
+                    {count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
 
-        {/* List */}
-        <div className="flex-1 overflow-y-auto">
+        {/* ── Conversation List ── */}
+        <div className="flex-1 overflow-y-auto" style={{ borderTop: '1px solid #f8fafc' }}>
           {loadingConvs ? (
-            <div className="flex items-center justify-center h-20">
-              <Loader2 className="animate-spin text-indigo-500" size={20} />
+            <div className="flex flex-col items-center justify-center gap-2 py-16">
+              <Loader2 className="animate-spin text-indigo-400" size={22} />
+              <p className="text-xs text-slate-400">جاري التحميل...</p>
             </div>
           ) : filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-2 py-16 text-slate-400">
-              <MessageSquare size={32} className="text-slate-200" />
-              <p className="text-xs">{search ? 'لا نتائج' : 'لا توجد محادثات'}</p>
+              <MessageSquare size={28} className="text-slate-200" />
+              <p className="text-xs font-medium">{search ? 'لا توجد نتائج' : 'لا توجد محادثات'}</p>
             </div>
           ) : filtered.map(conv => {
-            const active = selectedId === conv.id;
+            const active  = selectedId === conv.id;
+            const hasUnread = conv.unread_count > 0;
+            const name    = conv.client?.name ?? 'مجهول';
+            const phone   = conv.client?.phone ?? '';
+            const preview = conv.last_message || '—';
+
             return (
               <button
                 key={conv.id}
                 onClick={() => handleSelect(conv.id)}
-                className="w-full flex items-center gap-3 px-3 py-3 border-b border-slate-50 text-right transition-colors"
-                style={{ backgroundColor: active ? '#eef2ff' : 'white' }}
-                onMouseEnter={e => { if (!active) e.currentTarget.style.backgroundColor = '#f8fafc'; }}
-                onMouseLeave={e => { if (!active) e.currentTarget.style.backgroundColor = 'white'; }}
+                className={cn(
+                  'w-full flex items-center gap-3 px-3 py-3 text-right transition-all relative',
+                  active
+                    ? 'bg-indigo-50'
+                    : 'hover:bg-slate-50/80'
+                )}
               >
+                {/* Active indicator */}
+                {active && (
+                  <div className="absolute right-0 top-2 bottom-2 w-0.5 bg-indigo-600 rounded-full" />
+                )}
+
+                {/* Avatar */}
                 <div className="relative flex-shrink-0">
-                  <Av name={conv.client?.name ?? ''} size={46} />
-                  <div className="absolute bottom-0 left-0 w-3 h-3 rounded-full bg-emerald-400 border-2 border-white" />
+                  <Av name={name} size={44} />
+                  <div className={cn(
+                    'absolute bottom-0 left-0 w-2.5 h-2.5 rounded-full border-2 border-white',
+                    conv.source === 'whatsapp' ? 'bg-emerald-400' : 'bg-sky-400'
+                  )} />
                 </div>
-                <div className="flex-1 min-w-0 text-right">
-                  <div className="flex items-center justify-between mb-0.5">
-                    <span className={cn('text-sm truncate', active ? 'font-bold text-indigo-700' : 'font-semibold text-slate-800')}>
-                      {conv.client?.name ?? 'مجهول'}
+
+                {/* Content */}
+                <div className="flex-1 min-w-0">
+                  {/* Row 1: name + time */}
+                  <div className="flex items-baseline justify-between gap-1 mb-0.5">
+                    <span className={cn(
+                      'text-sm truncate leading-snug',
+                      hasUnread ? 'font-bold text-slate-900' : 'font-semibold text-slate-700',
+                      active && 'text-indigo-700'
+                    )}>
+                      {name}
                     </span>
-                    <span className={cn('text-xs flex-shrink-0 mr-2', conv.unread_count > 0 ? 'text-indigo-600 font-bold' : 'text-slate-400')}>
+                    <span className={cn(
+                      'text-[10px] flex-shrink-0 tabular-nums',
+                      hasUnread ? 'font-bold text-indigo-600' : 'text-slate-400'
+                    )}>
                       {fmtTime(conv.last_message_at)}
                     </span>
                   </div>
+
+                  {/* Row 2: phone */}
+                  {phone && (
+                    <p className="text-[10px] text-slate-400 truncate mb-0.5" dir="ltr">{phone}</p>
+                  )}
+
+                  {/* Row 3: preview + badge */}
                   <div className="flex items-center justify-between gap-1">
-                    <p className="text-xs text-slate-400 truncate">{conv.last_message || 'ابدأ المحادثة...'}</p>
-                    {conv.unread_count > 0 && (
+                    <p className={cn(
+                      'text-xs truncate leading-relaxed',
+                      hasUnread ? 'text-slate-600 font-medium' : 'text-slate-400'
+                    )}>
+                      {preview}
+                    </p>
+                    {hasUnread && (
                       <span className="flex-shrink-0 bg-indigo-600 text-white rounded-full font-bold flex items-center justify-center"
-                        style={{ minWidth: 18, height: 18, fontSize: 10, padding: '0 4px' }}>
+                        style={{ minWidth: 18, height: 18, fontSize: 9, padding: '0 5px' }}>
                         {conv.unread_count > 99 ? '99+' : conv.unread_count}
                       </span>
                     )}
