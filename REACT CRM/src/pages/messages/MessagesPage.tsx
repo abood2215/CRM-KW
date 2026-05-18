@@ -343,6 +343,9 @@ const MessagesPage: React.FC = () => {
     if (!echo) return;
     const channel = echo.channel('conversations');
     channel.listen('.NewMessageEvent', (e: { message: Message }) => {
+      // Skip outgoing messages — handled by optimistic update + onSuccess invalidation
+      if (e.message.direction === 'out') return;
+
       if (e.message.conversation_id === selectedId)
         queryClient.setQueryData(['messages', selectedId],
           (old: Message[] | undefined) => old ? [...old, e.message] : [e.message]);
@@ -400,6 +403,13 @@ const MessagesPage: React.FC = () => {
     prevMsgCountRef.current = 0;
     setSelectedId(id);
     setMobileShowChat(true);
+    // Reset unread count immediately in cache
+    queryClient.setQueryData<Conversation[]>(
+      ['conversations', filter],
+      (old = []) => old.map(c => c.id === id ? { ...c, unread_count: 0 } : c)
+    );
+    // Persist reset to DB via show() endpoint
+    api.get(`/conversations/${id}`).catch(() => {});
   };
   const handleSend = (e?: React.FormEvent) => {
     e?.preventDefault();

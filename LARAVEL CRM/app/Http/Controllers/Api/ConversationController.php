@@ -277,8 +277,9 @@ class ConversationController extends Controller
         ]);
 
         $conversation->update([
-            'last_message' => $request->content,
+            'last_message'    => $request->content,
             'last_message_at' => now(),
+            'unread_count'    => 0,
         ]);
 
         event(new NewMessageEvent($message));
@@ -407,6 +408,7 @@ class ConversationController extends Controller
         $conversation->update([
             'last_message'    => $sentBody,
             'last_message_at' => now(),
+            'unread_count'    => 0,
         ]);
 
         event(new NewMessageEvent($message));
