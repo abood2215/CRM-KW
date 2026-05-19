@@ -28,8 +28,8 @@ class SyncTemplatesJob implements ShouldQueue
     {
         // إما رقم محدد أو كل الأرقام النشطة
         $numbers = $this->whatsappNumberId
-            ? WhatsappNumber::where('id', $this->whatsappNumberId)->where('status', 'active')->get()
-            : WhatsappNumber::where('status', 'active')->get();
+            ? WhatsappNumber::where('id', $this->whatsappNumberId)->get()
+            : WhatsappNumber::whereIn('status', ['connected', 'active'])->get();
 
         foreach ($numbers as $number) {
             if (!$number->access_token || !$number->phone_number_id) {
