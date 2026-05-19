@@ -56,10 +56,16 @@ class SyncTemplatesJob implements ShouldQueue
                         switch ($component['type']) {
                             case 'HEADER':
                                 $headerType    = strtolower($component['format'] ?? 'text');
-                                $headerContent = $component['text']
+                                $remoteUrl     = $component['text']
                                     ?? $component['example']['header_handle'][0]
                                     ?? $component['example']['header_url'][0]
                                     ?? null;
+                                // Download image and store locally so URL stays valid
+                                if ($headerType === 'image' && $remoteUrl) {
+                                    $headerContent = $this->downloadAndStoreImage($remoteUrl);
+                                } else {
+                                    $headerContent = $remoteUrl;
+                                }
                                 break;
                             case 'BODY':
                                 $bodyText = $component['text'] ?? '';
@@ -100,6 +106,25 @@ class SyncTemplatesJob implements ShouldQueue
             } catch (\Exception $e) {
                 Log::error("SyncTemplatesJob فشل للرقم {$number->id}: " . $e->getMessage());
             }
+        }
+    }
+
+    private function downloadAndStoreImage(string $url): ?string
+    {
+        try {
+            $contents = file_get_contents($url);
+            if (!$contents) return null;
+
+            $ext      = 'jpg';
+            $filename = 'template-' . md5($url) . '.' . $ext;
+            $path     = 'template-images/' . $filename;
+
+            \Illuminate\Support\Facades\Storage::disk('public')->put($path, $contents);
+
+            return \Illuminate\Support\Facades\Storage::disk('public')->url($path);
+        } catch (\Exception $e) {
+            Log::warning("SyncTemplatesJob: فشل تحميل صورة القالب: " . $e->getMessage());
+            return $url;
         }
     }
 }
