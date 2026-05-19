@@ -36,6 +36,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const { user, logout } = useAuthStore();
   const { sidebarOpen, setSidebarOpen, unreadCount, setUnreadCount, incrementUnread } = useUIStore();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [unreadMessages, setUnreadMessages] = useState(0);
   const navigate = useNavigate();
   const location = useLocation();
   const echo = useEcho();
@@ -46,6 +47,18 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       setUnreadCount(data.unread_count ?? 0);
     }).catch(() => {});
   }, [setUnreadCount]);
+
+  // Fetch unread messages count (separate from notifications)
+  useEffect(() => {
+    const fetchUnread = () => {
+      api.get('/stats').then(({ data }) => {
+        setUnreadMessages(data.unread_messages ?? 0);
+      }).catch(() => {});
+    };
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 10000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Listen for new notifications in real-time
   useEffect(() => {
@@ -68,7 +81,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     { title: 'لوحة التحكم', icon: <LayoutDashboard size={20} />, path: '/' },
     { title: 'لوحة المتابعة', icon: <Columns size={20} />, path: '/pipeline' },
     { title: 'سجل العملاء', icon: <Users size={20} />, path: '/clients' },
-    { title: 'صندوق الرسائل', icon: <MessageSquare size={20} />, path: '/messages', badge: unreadCount },
+    { title: 'صندوق الرسائل', icon: <MessageSquare size={20} />, path: '/messages', badge: unreadMessages },
     { title: 'إدارة المهام', icon: <CheckSquare size={20} />, path: '/tasks' },
     { title: 'جهات الاتصال', icon: <Contact size={20} />, path: '/contacts' },
     { title: 'الحملات الترويجية', icon: <Megaphone size={20} />, path: '/campaigns' },
@@ -89,7 +102,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const bottomNavItems = [
     { title: 'الرئيسية', icon: <LayoutDashboard size={22} />, path: '/' },
     { title: 'العملاء', icon: <Users size={22} />, path: '/clients' },
-    { title: 'الرسائل', icon: <MessageSquare size={22} />, path: '/messages', badge: unreadCount },
+    { title: 'الرسائل', icon: <MessageSquare size={22} />, path: '/messages', badge: unreadMessages },
     { title: 'المهام', icon: <CheckSquare size={22} />, path: '/tasks' },
     { title: 'القائمة', icon: <Menu size={22} />, path: null, action: () => setMobileSidebarOpen(true) },
   ];
