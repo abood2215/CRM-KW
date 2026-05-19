@@ -42,6 +42,13 @@ cd "$REACT_DIR"
 npm ci --silent
 npm run build
 
+# تأكد أن البناء نجح
+if [ ! -f "$REACT_DIR/build/index.html" ]; then
+    echo -e "${RED}  ✗ فشل بناء React — index.html غير موجود!${NC}"
+    exit 1
+fi
+echo -e "${GREEN}  ✓ React build ناجح ($(du -sh "$REACT_DIR/build" | cut -f1))${NC}"
+
 # ── 4. Permissions ───────────────────────────
 echo -e "\n${GREEN}[4/5] ضبط الصلاحيات...${NC}"
 chown -R www-data:www-data "$LARAVEL_DIR/storage"
@@ -51,8 +58,17 @@ chmod -R 775 "$LARAVEL_DIR/bootstrap/cache"
 
 # ── 5. Restart Services ──────────────────────
 echo -e "\n${GREEN}[5/6] إعادة تشغيل الخدمات...${NC}"
+
+# امسح كاش nginx إن وجد
+if [ -d /var/cache/nginx ]; then
+    rm -rf /var/cache/nginx/* 2>/dev/null || true
+fi
+
 systemctl reload nginx
 systemctl restart php8.2-fpm
+
+# تأكد أن index.html محدث (امسح كاش PHP OPcache)
+php -r "opcache_reset();" 2>/dev/null || true
 
 # ── 6. Queue Worker ──────────────────────────
 echo -e "\n${GREEN}[6/6] إعادة تشغيل Queue Worker...${NC}"

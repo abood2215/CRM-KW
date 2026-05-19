@@ -11,6 +11,26 @@ import toast from 'react-hot-toast';
 import { User, BusinessHour, AutoReply } from '../../types';
 import AddUserModal from '../../components/AddUserModal';
 
+const Toggle: React.FC<{ checked: boolean; onChange: (v: boolean) => void; color?: string }> = ({
+  checked, onChange, color = 'bg-indigo-600',
+}) => (
+  <button
+    type="button"
+    onClick={() => onChange(!checked)}
+    className={cn(
+      'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none',
+      checked ? color : 'bg-slate-200'
+    )}
+  >
+    <span
+      className={cn(
+        'pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform duration-200',
+        checked ? 'translate-x-5' : 'translate-x-0'
+      )}
+    />
+  </button>
+);
+
 // ── Edit User Modal ────────────────────────────────────────────────────────────
 interface EditUserModalProps {
   user: User | null;
@@ -116,11 +136,10 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onSaved })
           {/* Status */}
           <div className="flex items-center justify-between py-2">
             <span className="text-xs font-bold text-slate-600">الحالة</span>
-            <label dir="ltr" className="relative inline-flex items-center cursor-pointer gap-2">
-              <input type="checkbox" checked={isActive} onChange={e => setIsActive(e.target.checked)} className="sr-only peer" />
-              <div className="w-10 h-5 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500 relative" />
+            <div className="flex items-center gap-2">
+              <Toggle checked={isActive} onChange={setIsActive} color="bg-emerald-500" />
               <span className="text-xs font-bold text-slate-600">{isActive ? 'نشط' : 'معطل'}</span>
-            </label>
+            </div>
           </div>
 
           {/* Actions */}
@@ -357,11 +376,11 @@ const SettingsPage: React.FC = () => {
                 ) : localHours.map((day, idx) => (
                   <div key={day.id} className="p-4 rounded-2xl border border-slate-100 bg-slate-50/30 flex items-center justify-between gap-4 flex-wrap hover:bg-white transition-all">
                     <div className="flex items-center gap-3">
-                      <label dir="ltr" className="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" checked={day.is_active} className="sr-only peer"
-                          onChange={e => setLocalHours(h => h.map((d, i) => i === idx ? { ...d, is_active: e.target.checked } : d))} />
-                        <div className="w-10 h-5 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
-                      </label>
+                      <Toggle
+                        checked={day.is_active}
+                        onChange={v => setLocalHours(h => h.map((d, i) => i === idx ? { ...d, is_active: v } : d))}
+                        color="bg-emerald-500"
+                      />
                       <span className="text-sm font-black text-slate-700 w-16">{daysLabel[day.day_of_week]}</span>
                     </div>
                     <div className="flex items-center gap-2">
@@ -399,11 +418,10 @@ const SettingsPage: React.FC = () => {
                           {reply.trigger === 'outside_hours' ? 'رد خارج أوقات العمل' : 'ترحيب العملاء الجدد'}
                         </span>
                       </div>
-                      <label dir="ltr" className="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" checked={reply.is_active} className="sr-only peer"
-                          onChange={e => setLocalReplies(r => r.map((rep, i) => i === idx ? { ...rep, is_active: e.target.checked } : rep))} />
-                        <div className="w-10 h-5 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
-                      </label>
+                      <Toggle
+                        checked={reply.is_active}
+                        onChange={v => setLocalReplies(r => r.map((rep, i) => i === idx ? { ...rep, is_active: v } : rep))}
+                      />
                     </div>
                     <textarea
                       className="w-full h-28 lg:h-32 px-4 py-3 bg-white border border-slate-100 rounded-2xl text-sm font-medium focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 resize-none"
