@@ -252,7 +252,8 @@ const MessagesPage: React.FC = () => {
       const { data } = await api.get('/conversations', { params: { status: filter } });
       return data.conversations;
     },
-    refetchInterval: 4_000,
+    refetchInterval: 2_000,
+    refetchIntervalInBackground: true,
   });
 
   // Fetch counts for all statuses to show correct tab badges
@@ -282,7 +283,8 @@ const MessagesPage: React.FC = () => {
       return data.messages;
     },
     enabled: !!selectedId,
-    refetchInterval: 4_000,
+    refetchInterval: 2_000,
+    refetchIntervalInBackground: true,
   });
 
   const { data: approvedTemplates = [], isLoading: loadingTemplates, refetch: refetchTemplates } = useQuery<WhatsappTemplate[]>({
