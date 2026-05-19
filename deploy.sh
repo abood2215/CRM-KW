@@ -43,11 +43,15 @@ npm ci --silent
 npm run build
 
 # تأكد أن البناء نجح
-if [ ! -f "$REACT_DIR/build/index.html" ]; then
+if [ -f "$REACT_DIR/dist/index.html" ]; then
+    BUILD_DIR="$REACT_DIR/dist"
+elif [ -f "$REACT_DIR/build/index.html" ]; then
+    BUILD_DIR="$REACT_DIR/build"
+else
     echo -e "${RED}  ✗ فشل بناء React — index.html غير موجود!${NC}"
     exit 1
 fi
-echo -e "${GREEN}  ✓ React build ناجح ($(du -sh "$REACT_DIR/build" | cut -f1))${NC}"
+echo -e "${GREEN}  ✓ React build ناجح ($(du -sh "$BUILD_DIR" | cut -f1))${NC}"
 
 # ── 4. Permissions ───────────────────────────
 echo -e "\n${GREEN}[4/5] ضبط الصلاحيات...${NC}"
