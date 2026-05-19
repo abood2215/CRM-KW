@@ -2,7 +2,7 @@ import React, { useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../api/axios';
 import { WhatsappTemplate } from '../types';
-import { X, Loader2, Plus, Trash2, Search, Check, Upload, LayoutTemplate, MessageSquare, ChevronDown } from 'lucide-react';
+import { X, Loader2, Plus, Trash2, Search, Check, Upload, LayoutTemplate, MessageSquare, ChevronDown, Image } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -18,9 +18,9 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ open, onClose
   const csvRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState({
-    name: '', message_text: '', delay_seconds: '5', scheduled_at: '',
+    name: '', message_text: '', delay_seconds: '5', scheduled_at: '', image_path: '',
   });
-  const [msgMode, setMsgMode]               = useState<'text' | 'template'>('text');
+  const [msgMode, setMsgMode]               = useState<'text' | 'template' | 'image'>('text');
   const [selectedTemplate, setSelectedTemplate] = useState<WhatsappTemplate | null>(null);
   const [showTemplateDrop, setShowTemplateDrop] = useState(false);
 
@@ -70,7 +70,7 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ open, onClose
 
   const handleClose = () => {
     onClose();
-    setForm({ name: '', message_text: '', delay_seconds: '5', scheduled_at: '' });
+    setForm({ name: '', message_text: '', delay_seconds: '5', scheduled_at: '', image_path: '' });
     setRecipients([{ phone: '', name: '' }]);
     setJsonText('');
     setSelectedContactIds([]);
@@ -141,6 +141,8 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ open, onClose
       return toast.error('نص الرسالة مطلوب');
     if (msgMode === 'template' && !selectedTemplate)
       return toast.error('اختر قالباً');
+    if (msgMode === 'image' && !form.image_path.trim())
+      return toast.error('رابط الصورة مطلوب');
 
     let finalRecipients: Recipient[] = [];
     if (inputMode === 'contacts') {
@@ -164,6 +166,9 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ open, onClose
       payload.template_name     = selectedTemplate.name;
       payload.template_language = selectedTemplate.language;
       payload.message_text      = selectedTemplate.body_text;
+    } else if (msgMode === 'image') {
+      payload.image_path   = form.image_path;
+      payload.message_text = form.message_text; // caption (optional)
     } else {
       payload.message_text = form.message_text;
     }
@@ -222,6 +227,10 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ open, onClose
                     className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-all ${msgMode === 'text' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'}`}>
                     <MessageSquare size={13} /> نص حر
                   </button>
+                  <button type="button" onClick={() => setMsgMode('image')}
+                    className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-all ${msgMode === 'image' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'}`}>
+                    <Image size={13} /> صورة
+                  </button>
                   <button type="button" onClick={() => setMsgMode('template')}
                     className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-all ${msgMode === 'template' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'}`}>
                     <LayoutTemplate size={13} /> قالب Template
@@ -230,6 +239,11 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ open, onClose
                 {msgMode === 'template' && (
                   <p className="text-xs text-indigo-600 mt-1.5 font-medium">
                     ✓ مناسب للأرقام الجديدة التي لم تتواصل معك من قبل
+                  </p>
+                )}
+                {msgMode === 'image' && (
+                  <p className="text-xs text-amber-600 mt-1.5 font-medium">
+                    ⚠ الرابط يجب أن يكون متاحاً للعامة (HTTPS مباشر)
                   </p>
                 )}
               </div>
@@ -242,6 +256,36 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ open, onClose
                     value={form.message_text} onChange={e => setForm(f => ({ ...f, message_text: e.target.value }))}
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 resize-none"
                     placeholder="اكتب نص الرسالة..." />
+                </div>
+              ) : msgMode === 'image' ? (
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-black text-slate-600 mb-1.5">رابط الصورة (URL) *</label>
+                    <input type="url"
+                      value={form.image_path} onChange={e => setForm(f => ({ ...f, image_path: e.target.value }))}
+                      className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 ltr"
+                      placeholder="https://example.com/image.jpg" />
+                    <p className="text-xs text-slate-400 mt-1">
+                      الصق رابطاً مباشراً للصورة — مثال: رابط من Google Drive (مشاركة عامة) أو Imgur أو أي CDN
+                    </p>
+                  </div>
+                  {form.image_path && (
+                    <div className="rounded-xl overflow-hidden border border-slate-200 bg-slate-50 p-2">
+                      <img
+                        src={form.image_path}
+                        alt="معاينة"
+                        className="max-h-40 mx-auto rounded-lg object-contain"
+                        onError={e => (e.currentTarget.style.display = 'none')}
+                      />
+                    </div>
+                  )}
+                  <div>
+                    <label className="block text-xs font-black text-slate-600 mb-1.5">تعليق (Caption) — اختياري</label>
+                    <textarea rows={2}
+                      value={form.message_text} onChange={e => setForm(f => ({ ...f, message_text: e.target.value }))}
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 resize-none"
+                      placeholder="نص يظهر تحت الصورة..." />
+                  </div>
                 </div>
               ) : (
                 <div>

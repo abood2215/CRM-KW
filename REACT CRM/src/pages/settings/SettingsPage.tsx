@@ -4,12 +4,142 @@ import { Navigate } from 'react-router-dom';
 import api from '../../api/axios';
 import { useAuthStore } from '../../store/useAuthStore';
 import {
-  Clock, MessageSquare, Users, Save, Plus, Edit, Trash2, Loader2, FileText, Lock
+  Clock, MessageSquare, Users, Save, Plus, Edit, Trash2, Loader2, FileText, Lock, X, Eye, EyeOff
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import toast from 'react-hot-toast';
 import { User, BusinessHour, AutoReply } from '../../types';
 import AddUserModal from '../../components/AddUserModal';
+
+// ── Edit User Modal ────────────────────────────────────────────────────────────
+interface EditUserModalProps {
+  user: User | null;
+  onClose: () => void;
+  onSaved: () => void;
+}
+
+const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onSaved }) => {
+  const [name, setName]         = useState('');
+  const [email, setEmail]       = useState('');
+  const [password, setPassword] = useState('');
+  const [role, setRole]         = useState<'admin' | 'manager' | 'agent'>('agent');
+  const [isActive, setIsActive] = useState(true);
+  const [showPass, setShowPass] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      setName(user.name);
+      setEmail(user.email);
+      setPassword('');
+      setRole(user.role as any);
+      setIsActive(user.is_active ?? true);
+    }
+  }, [user]);
+
+  const mutation = useMutation({
+    mutationFn: (payload: Record<string, any>) => api.put(`/users/${user!.id}`, payload),
+    onSuccess: () => { toast.success('تم تحديث المستخدم'); onSaved(); onClose(); },
+    onError: (e: any) => toast.error(e?.response?.data?.message || 'فشل التحديث'),
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim() || !email.trim()) return toast.error('الاسم والبريد مطلوبان');
+    const payload: Record<string, any> = { name: name.trim(), email: email.trim(), role, is_active: isActive };
+    if (password.trim()) {
+      if (password.length < 8) return toast.error('كلمة المرور يجب أن تكون 8 أحرف على الأقل');
+      payload.password = password;
+    }
+    mutation.mutate(payload);
+  };
+
+  if (!user) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm font-cairo">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+          <h3 className="font-black text-slate-800">تعديل المستخدم</h3>
+          <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 transition-all">
+            <X size={18} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+          {/* Name */}
+          <div>
+            <label className="block text-xs font-bold text-slate-600 mb-1.5">الاسم *</label>
+            <input
+              type="text" value={name} onChange={e => setName(e.target.value)}
+              className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+            />
+          </div>
+
+          {/* Email */}
+          <div>
+            <label className="block text-xs font-bold text-slate-600 mb-1.5">البريد الإلكتروني *</label>
+            <input
+              type="email" value={email} onChange={e => setEmail(e.target.value)} dir="ltr"
+              className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+            />
+          </div>
+
+          {/* Password */}
+          <div>
+            <label className="block text-xs font-bold text-slate-600 mb-1.5">
+              كلمة المرور <span className="text-slate-400 font-normal">(اتركه فارغاً للإبقاء على الحالية)</span>
+            </label>
+            <div className="relative">
+              <input
+                type={showPass ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)}
+                placeholder="••••••••" dir="ltr"
+                className="w-full h-11 px-4 pr-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+              />
+              <button type="button" onClick={() => setShowPass(v => !v)}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
+              </button>
+            </div>
+          </div>
+
+          {/* Role */}
+          <div>
+            <label className="block text-xs font-bold text-slate-600 mb-1.5">الصلاحية</label>
+            <select value={role} onChange={e => setRole(e.target.value as any)}
+              className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
+              <option value="admin">مدير</option>
+              <option value="manager">مشرف</option>
+              <option value="agent">موظف</option>
+            </select>
+          </div>
+
+          {/* Status */}
+          <div className="flex items-center justify-between py-2">
+            <span className="text-xs font-bold text-slate-600">الحالة</span>
+            <label className="relative inline-flex items-center cursor-pointer gap-2">
+              <input type="checkbox" checked={isActive} onChange={e => setIsActive(e.target.checked)} className="sr-only peer" />
+              <div className="w-10 h-5 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500 relative" />
+              <span className="text-xs font-bold text-slate-600">{isActive ? 'نشط' : 'معطل'}</span>
+            </label>
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-3 pt-1">
+            <button type="button" onClick={onClose}
+              className="flex-1 h-11 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-all text-sm">
+              إلغاء
+            </button>
+            <button type="submit" disabled={mutation.isPending}
+              className="flex-1 h-11 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-all disabled:opacity-70 flex items-center justify-center gap-2 text-sm">
+              {mutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <Save size={15} />}
+              حفظ
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
 
 const SettingsPage: React.FC = () => {
   const { user } = useAuthStore();
@@ -50,7 +180,8 @@ const SettingsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'hours' | 'replies' | 'users'>('hours');
   const [localHours, setLocalHours] = useState<BusinessHour[]>([]);
   const [localReplies, setLocalReplies] = useState<AutoReply[]>([]);
-  const [addUserOpen, setAddUserOpen] = useState(false);
+  const [addUserOpen, setAddUserOpen]   = useState(false);
+  const [editingUser, setEditingUser]   = useState<User | null>(null);
 
   // Queries
   const { data: hoursData, isLoading: loadingHours } = useQuery<BusinessHour[]>({
@@ -334,15 +465,25 @@ const SettingsPage: React.FC = () => {
                           </span>
                         </td>
                         <td className="px-4 lg:px-6 py-3 lg:py-4 text-center">
-                          <button
-                            onClick={() => {
-                              if (window.confirm(`هل تريد حذف المستخدم "${u.name}"؟`))
-                                deleteUserMutation.mutate(u.id);
-                            }}
-                            className="p-2 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
-                          >
-                            <Trash2 size={16} />
-                          </button>
+                          <div className="flex items-center justify-center gap-1">
+                            <button
+                              onClick={() => setEditingUser(u)}
+                              className="p-2 text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
+                              title="تعديل"
+                            >
+                              <Edit size={15} />
+                            </button>
+                            <button
+                              onClick={() => {
+                                if (window.confirm(`هل تريد حذف المستخدم "${u.name}"؟`))
+                                  deleteUserMutation.mutate(u.id);
+                              }}
+                              className="p-2 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
+                              title="حذف"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -355,6 +496,11 @@ const SettingsPage: React.FC = () => {
       </div>
 
       <AddUserModal open={addUserOpen} onClose={() => setAddUserOpen(false)} />
+      <EditUserModal
+        user={editingUser}
+        onClose={() => setEditingUser(null)}
+        onSaved={() => queryClient.invalidateQueries({ queryKey: ['users'] })}
+      />
     </div>
   );
 };
