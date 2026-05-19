@@ -13,15 +13,16 @@ export function useEcho() {
   useEffect(() => {
     if (!token) return;
 
+    const forceTLS = import.meta.env.VITE_PUSHER_TLS === 'true';
     const echoInstance = new Echo({
       broadcaster: 'pusher',
       key: import.meta.env.VITE_PUSHER_APP_KEY || 'app-key',
-      cluster: import.meta.env.VITE_PUSHER_APP_CLUSTER || 'mt1',
       wsHost: import.meta.env.VITE_PUSHER_HOST || 'localhost',
-      wsPort: import.meta.env.VITE_PUSHER_PORT || 6001,
-      forceTLS: false,
+      wsPort: forceTLS ? 443 : (import.meta.env.VITE_PUSHER_PORT || 8080),
+      wssPort: 443,
+      forceTLS,
       disableStats: true,
-      enabledTransports: ['ws', 'wss'],
+      enabledTransports: forceTLS ? ['wss'] : ['ws'],
       authEndpoint: `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api'}/broadcasting/auth`,
       auth: {
         headers: {
