@@ -38,7 +38,8 @@
       "Bash(find 'c:/Users/abd-allah/Desktop/CRM/LARAVEL CRM/config' -name *.php)",
       "Bash(grep -n \"broadcastOn\\\\|broadcastAs\" \"c:/Users/abd-allah/Desktop/CRM/LARAVEL CRM/app/Events\"/*.php)",
       "Bash(find \"c:/Users/abd-allah/Desktop/CRM/LARAVEL CRM/app\" -name \"*.php\" -exec grep -l \"use.*NotificationService\\\\|use.*WhatsAppService\" {})",
-      "Bash(composer require:*)"
+      "Bash(composer require:*)",
+      "Bash(Get-ChildItem *)"
     ]
   }
 }
