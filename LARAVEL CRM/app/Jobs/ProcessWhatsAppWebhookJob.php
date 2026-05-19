@@ -233,31 +233,49 @@ class ProcessWhatsAppWebhookJob implements ShouldQueue
     protected function resolveConversation(?CrmClient $client, string $fromPhone, ?string $phoneNumberId): Conversation
     {
         return \DB::transaction(function () use ($client, $fromPhone) {
-            $conv = null;
-
             if ($client) {
-                // Lock the row to prevent race conditions with concurrent webhook jobs
+                // 1. Try existing open conversation first
                 $conv = Conversation::where('source', 'whatsapp')
                     ->where('status', 'open')
                     ->where('client_id', $client->id)
                     ->lockForUpdate()
                     ->latest('last_message_at')
                     ->first();
+
+                if ($conv) {
+                    return $conv;
+                }
+
+                // 2. Reopen most recent resolved/pending conversation instead of creating new one
+                $conv = Conversation::where('source', 'whatsapp')
+                    ->whereIn('status', ['resolved', 'pending'])
+                    ->where('client_id', $client->id)
+                    ->lockForUpdate()
+                    ->latest('last_message_at')
+                    ->first();
+
+                if ($conv) {
+                    $conv->update(['status' => 'open']);
+                    Log::info('[WhatsApp Webhook] Conversation reopened', [
+                        'conversation_id' => $conv->id,
+                        'from'            => $fromPhone,
+                    ]);
+                    return $conv;
+                }
             }
 
-            if (!$conv) {
-                $conv = Conversation::create([
-                    'client_id'    => $client?->id,
-                    'status'       => 'open',
-                    'source'       => 'whatsapp',
-                    'unread_count' => 0,
-                ]);
+            // 3. Create new conversation
+            $conv = Conversation::create([
+                'client_id'    => $client?->id,
+                'status'       => 'open',
+                'source'       => 'whatsapp',
+                'unread_count' => 0,
+            ]);
 
-                Log::info('[WhatsApp Webhook] New conversation created', [
-                    'conversation_id' => $conv->id,
-                    'from'            => $fromPhone,
-                ]);
-            }
+            Log::info('[WhatsApp Webhook] New conversation created', [
+                'conversation_id' => $conv->id,
+                'from'            => $fromPhone,
+            ]);
 
             return $conv;
         });

@@ -5,7 +5,8 @@ import { Conversation, Message, WhatsappTemplate } from '../../types';
 import {
   Search, Send, Paperclip, Smile, MoreVertical, Phone,
   CheckCheck, Check, Clock, Loader2, MessageSquare, Lock,
-  ArrowRight, Mic, Video, Filter, Plus, X, LayoutTemplate, ChevronLeft, ChevronDown, RefreshCw
+  ArrowRight, Mic, Video, Filter, Plus, X, LayoutTemplate, ChevronLeft, ChevronDown, RefreshCw,
+  CheckCircle2, RotateCcw
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -362,6 +363,23 @@ const MessagesPage: React.FC = () => {
     },
   });
 
+  const updateStatusMutation = useMutation({
+    mutationFn: (status: 'open' | 'resolved' | 'pending') =>
+      api.put(`/conversations/${selectedId}/status`, { status }),
+    onSuccess: (_, status) => {
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      queryClient.invalidateQueries({ queryKey: ['conversations-counts'] });
+      if (status === 'resolved') {
+        setSelectedId(null);
+        setMobileShowChat(false);
+        toast.success('تم إغلاق المحادثة');
+      } else {
+        toast.success('تم إعادة فتح المحادثة');
+      }
+    },
+    onError: () => toast.error('فشل تحديث حالة المحادثة'),
+  });
+
   // ── realtime ─────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!echo) return;
@@ -452,6 +470,14 @@ const MessagesPage: React.FC = () => {
     if (!message.trim() || !selectedId || sendMutation.isPending) return;
     sendMutation.mutate({ content: message, is_private: isPrivate });
   };
+
+  // Reset selected conversation when filter changes and it no longer exists in list
+  useEffect(() => {
+    if (selectedId && conversations.length > 0 && !conversations.find(c => c.id === selectedId)) {
+      setSelectedId(null);
+      setMobileShowChat(false);
+    }
+  }, [conversations, selectedId]);
 
   // ── derived ───────────────────────────────────────────────────────────────
   const selectedConv = conversations.find(c => c.id === selectedId);
@@ -992,12 +1018,32 @@ const MessagesPage: React.FC = () => {
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-0.5 flex-shrink-0">
-                {([<Video size={17}/>, <Phone size={17}/>, <Search size={17}/>, <MoreVertical size={17}/>] as React.ReactNode[]).map((icon, i) => (
-                  <button key={i} className="w-9 h-9 flex items-center justify-center rounded-full text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors">
-                    {icon}
+              <div className="flex items-center gap-1 flex-shrink-0">
+                {selectedConv?.status === 'resolved' ? (
+                  <button
+                    onClick={() => updateStatusMutation.mutate('open')}
+                    disabled={updateStatusMutation.isPending}
+                    title="إعادة فتح المحادثة"
+                    className="flex items-center gap-1.5 h-8 px-3 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-xs font-bold transition-all disabled:opacity-60"
+                  >
+                    {updateStatusMutation.isPending
+                      ? <Loader2 size={13} className="animate-spin" />
+                      : <RotateCcw size={13} />}
+                    إعادة فتح
                   </button>
-                ))}
+                ) : (
+                  <button
+                    onClick={() => updateStatusMutation.mutate('resolved')}
+                    disabled={updateStatusMutation.isPending}
+                    title="إغلاق المحادثة"
+                    className="flex items-center gap-1.5 h-8 px-3 rounded-xl bg-slate-100 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700 text-xs font-bold transition-all disabled:opacity-60"
+                  >
+                    {updateStatusMutation.isPending
+                      ? <Loader2 size={13} className="animate-spin" />
+                      : <CheckCircle2 size={13} />}
+                    إغلاق
+                  </button>
+                )}
               </div>
             </div>
 
