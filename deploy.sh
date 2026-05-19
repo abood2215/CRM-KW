@@ -26,6 +26,7 @@ cd "$LARAVEL_DIR"
 composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
 
 php artisan migrate --force
+php artisan storage:link --force 2>/dev/null || true
 php artisan config:clear
 php artisan cache:clear
 php artisan route:clear

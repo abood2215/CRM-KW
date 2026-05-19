@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useCallback } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../api/axios';
 import { WhatsappTemplate } from '../types';
@@ -15,12 +15,14 @@ interface CreateCampaignModalProps {
 
 const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ open, onClose }) => {
   const queryClient = useQueryClient();
-  const csvRef = useRef<HTMLInputElement>(null);
+  const csvRef   = useRef<HTMLInputElement>(null);
+  const imageRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState({
     name: '', message_text: '', delay_seconds: '5', scheduled_at: '', image_path: '',
   });
   const [msgMode, setMsgMode]               = useState<'text' | 'template' | 'image'>('text');
+  const [imageUploading, setImageUploading] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<WhatsappTemplate | null>(null);
   const [showTemplateDrop, setShowTemplateDrop] = useState(false);
 
@@ -132,6 +134,26 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ open, onClose
     if (inputMode === 'contacts') return selectedContactIds.length;
     return recipients.filter(r => r.phone.trim()).length;
   })();
+
+  const handleImageFile = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImageUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('image', file);
+      const { data } = await api.post('/campaigns/upload-image', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setForm(f => ({ ...f, image_path: data.url }));
+      toast.success('تم رفع الصورة');
+    } catch {
+      toast.error('فشل رفع الصورة');
+    } finally {
+      setImageUploading(false);
+      e.target.value = '';
+    }
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -260,13 +282,34 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ open, onClose
               ) : msgMode === 'image' ? (
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-xs font-black text-slate-600 mb-1.5">رابط الصورة (URL) *</label>
-                    <input type="url"
-                      value={form.image_path} onChange={e => setForm(f => ({ ...f, image_path: e.target.value }))}
-                      className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 ltr"
-                      placeholder="https://example.com/image.jpg" />
+                    <label className="block text-xs font-black text-slate-600 mb-1.5">الصورة *</label>
+                    <input
+                      ref={imageRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/gif,image/webp"
+                      className="hidden"
+                      onChange={handleImageFile}
+                    />
+                    <div className="flex gap-2">
+                      <input
+                        type="url"
+                        value={form.image_path}
+                        onChange={e => setForm(f => ({ ...f, image_path: e.target.value }))}
+                        className="flex-1 h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 ltr"
+                        placeholder="https://example.com/image.jpg"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => imageRef.current?.click()}
+                        disabled={imageUploading}
+                        className="h-11 px-4 bg-indigo-50 text-indigo-600 border border-indigo-200 rounded-xl text-xs font-bold hover:bg-indigo-100 transition-all flex items-center gap-1.5 whitespace-nowrap disabled:opacity-60"
+                      >
+                        {imageUploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+                        {imageUploading ? 'جاري الرفع...' : 'رفع من الجهاز'}
+                      </button>
+                    </div>
                     <p className="text-xs text-slate-400 mt-1">
-                      الصق رابطاً مباشراً للصورة — مثال: رابط من Google Drive (مشاركة عامة) أو Imgur أو أي CDN
+                      ارفع صورة من جهازك أو الصق رابطاً مباشراً (JPEG, PNG, GIF, WebP — حد 10MB)
                     </p>
                   </div>
                   {form.image_path && (

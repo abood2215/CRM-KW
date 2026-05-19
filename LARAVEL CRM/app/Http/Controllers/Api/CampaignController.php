@@ -13,6 +13,8 @@ use App\Models\ContactList;
 use App\Services\CampaignService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class CampaignController extends Controller
 {
@@ -346,5 +348,19 @@ class CampaignController extends Controller
             'hourly_stats' => $hourlyStats,
             'recipients'   => $recipients,
         ]);
+    }
+
+    public function uploadImage(Request $request): JsonResponse
+    {
+        $request->validate([
+            'image' => 'required|file|mimes:jpeg,jpg,png,gif,webp|max:10240',
+        ]);
+
+        $file       = $request->file('image');
+        $fileName   = Str::uuid() . '.' . $file->getClientOriginalExtension();
+        $path       = $file->storeAs('campaign-images', $fileName, 'public');
+        $url        = Storage::disk('public')->url($path);
+
+        return response()->json(['url' => $url]);
     }
 }

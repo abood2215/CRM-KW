@@ -130,6 +130,7 @@ Route::middleware(['auth:sanctum', 'update.last.seen', 'log.activity'])->group(f
     Route::get('/campaigns/{id}/analytics', [CampaignController::class, 'analytics']);
     Route::get('/campaigns/{id}/report', [CampaignController::class, 'report']);
     Route::delete('/campaigns/{id}', [CampaignController::class, 'destroy']);
+    Route::post('/campaigns/upload-image', [CampaignController::class, 'uploadImage']);
 
     // --- WhatsApp Templates ---
     Route::get('/templates', [TemplateController::class, 'index']);
