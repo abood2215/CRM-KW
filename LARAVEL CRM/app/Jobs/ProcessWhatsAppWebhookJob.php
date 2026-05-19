@@ -109,18 +109,24 @@ class ProcessWhatsAppWebhookJob implements ShouldQueue
 
         $msgTypeNorm = in_array($messageType, ['text', 'image', 'file']) ? $messageType : 'text';
 
-        // Find or create client
-        $client = CrmClient::where('phone', $fromPhone)
-            ->orWhere('phone', $this->formatPhoneForSearch($fromPhone))
-            ->first();
+        // Find or create client — lock on phone to prevent duplicate clients from concurrent jobs
+        $clientLock = Cache::lock('crm-client-phone:' . md5($fromPhone), 15);
+        $clientLock->block(10);
+        try {
+            $client = CrmClient::where('phone', $fromPhone)
+                ->orWhere('phone', $this->formatPhoneForSearch($fromPhone))
+                ->first();
 
-        if (!$client && $fromPhone) {
-            $client = CrmClient::create([
-                'phone' => $fromPhone,
-                'name'  => $contactName ?? $fromPhone,
-            ]);
-        } elseif ($client && $contactName && ($client->name === $client->phone || !$client->name)) {
-            $client->update(['name' => $contactName]);
+            if (!$client && $fromPhone) {
+                $client = CrmClient::create([
+                    'phone' => $fromPhone,
+                    'name'  => $contactName ?? $fromPhone,
+                ]);
+            } elseif ($client && $contactName && ($client->name === $client->phone || !$client->name)) {
+                $client->update(['name' => $contactName]);
+            }
+        } finally {
+            $clientLock->release();
         }
 
         // Find or create conversation
@@ -342,20 +348,14 @@ class ProcessWhatsAppWebhookJob implements ShouldQueue
             return;
         }
 
-        // Cooldown: don't send auto-reply more than once per hour per client (across all their conversations)
+        // Atomic cooldown via Cache::add() — prevents race conditions between concurrent jobs.
+        // Cache::add() only sets the key if it doesn't already exist (atomic operation).
         $clientId    = $conversation->client_id;
-        $alreadySent = Message::where('direction', 'out')
-            ->where('sender_name', 'Auto Reply')
-            ->where('sent_at', '>=', now()->subHour())
-            ->when($clientId, fn($q) => $q->whereHas(
-                'conversation',
-                fn($cq) => $cq->where('client_id', $clientId)
-            ))
-            ->when(!$clientId, fn($q) => $q->where('conversation_id', $conversation->id))
-            ->exists();
+        $cooldownKey = 'auto-reply-cooldown:' . $autoReply->trigger . ':' . ($clientId ?? 'conv:' . $conversation->id);
+        $ttl         = $autoReply->trigger === 'outside_hours' ? 3600 : 86400 * 7;
 
-        if ($alreadySent) {
-            Log::debug('[WhatsApp Webhook] Auto-reply cooldown, skipping', [
+        if (!Cache::add($cooldownKey, 1, $ttl)) {
+            Log::debug('[WhatsApp Webhook] Auto-reply cooldown active, skipping', [
                 'conversation_id' => $conversation->id,
                 'trigger'         => $autoReply->trigger,
             ]);
@@ -368,6 +368,7 @@ class ProcessWhatsAppWebhookJob implements ShouldQueue
             ->first();
 
         if (!$whatsappNumber || !$whatsappNumber->access_token) {
+            Cache::forget($cooldownKey);
             Log::warning('[WhatsApp Webhook] No connected number with token for auto-reply');
             return;
         }
@@ -396,6 +397,7 @@ class ProcessWhatsAppWebhookJob implements ShouldQueue
             Log::info('[WhatsApp Webhook] Auto-reply sent', ['trigger' => $autoReply->trigger]);
 
         } catch (\Exception $e) {
+            Cache::forget($cooldownKey);
             Log::error('[WhatsApp Webhook] Auto-reply failed', ['error' => $e->getMessage()]);
         }
     }
