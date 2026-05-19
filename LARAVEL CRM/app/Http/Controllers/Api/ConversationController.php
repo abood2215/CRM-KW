@@ -33,6 +33,8 @@ class ConversationController extends Controller
             'message'           => 'required|string',
             'template_name'     => 'nullable|string',
             'template_language' => 'nullable|string',
+            'variables'         => 'nullable|array',
+            'variables.*'       => 'string',
         ]);
 
         $phone = $request->phone;
@@ -77,10 +79,17 @@ class ConversationController extends Controller
                     $whatsappNumber->phone_number_id
                 );
                 if ($request->template_name) {
+                    $variables  = $request->variables ?? [];
+                    $components = [];
+                    if (!empty($variables)) {
+                        $params = array_map(fn($v) => ['type' => 'text', 'text' => (string) $v], array_values($variables));
+                        $components[] = ['type' => 'body', 'parameters' => $params];
+                    }
                     $result = $waService->sendTemplate(
                         $phone,
                         $request->template_name,
-                        $request->template_language ?? 'ar'
+                        $request->template_language ?? 'ar',
+                        $components
                     );
                 } else {
                     $result = $waService->sendMessage($phone, $request->message);

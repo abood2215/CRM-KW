@@ -226,17 +226,24 @@ const MessagesPage: React.FC = () => {
   const [selectedCountry, setSelectedCountry] = useState(COUNTRIES[0]);
   const [showCountryDrop, setShowCountryDrop] = useState(false);
   const [countrySearch, setCountrySearch]   = useState('');
+  const [newTemplateVars, setNewTemplateVars] = useState<string[]>([]);
   // Track whether we're on desktop (≥1024px) — bypasses Tailwind JIT issue
   const [isDesktop, setIsDesktop]       = useState(window.innerWidth >= 1024);
 
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const inputRef  = useRef<HTMLTextAreaElement>(null);
+  const scrollRef      = useRef<HTMLDivElement>(null);
+  const inputRef       = useRef<HTMLTextAreaElement>(null);
+  const selectedIdRef  = useRef<number | null>(null);
+  const filterRef      = useRef(filter);
 
   useEffect(() => {
     const onResize = () => setIsDesktop(window.innerWidth >= 1024);
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, []);
+
+  // Keep refs in sync so echo listeners always see the latest values without re-subscribing
+  useEffect(() => { selectedIdRef.current = selectedId; }, [selectedId]);
+  useEffect(() => { filterRef.current = filter; }, [filter]);
 
   // ── queries ──────────────────────────────────────────────────────────────
   const { data: conversations = [], isLoading: loadingConvs } = useQuery<Conversation[]>({
@@ -293,6 +300,11 @@ const MessagesPage: React.FC = () => {
       setNewTemplate(approvedTemplates[0]);
     }
   }, [showNewConv, newMsgMode, approvedTemplates, newTemplate]);
+
+  // Reset variable inputs whenever the selected template changes
+  useEffect(() => {
+    setNewTemplateVars(Array(newTemplate?.variables_count ?? 0).fill(''));
+  }, [newTemplate]);
 
   const syncTemplatesMutation = useMutation({
     mutationFn: async () => {
@@ -386,37 +398,72 @@ const MessagesPage: React.FC = () => {
     const channel = echo.channel('conversations');
 
     channel.listen('.NewMessageEvent', (e: { message: Message }) => {
-      // Skip outgoing messages — handled by optimistic update + onSuccess invalidation
-      if (e.message.direction === 'out') return;
+      // Skip only OUR OWN outgoing messages — already handled by optimistic update + onSuccess.
+      // Other agents' messages and server-generated messages (auto-reply) must be shown.
+      const isOwnOutgoing = e.message.direction === 'out' && e.message.sender_name === user?.name;
+      if (isOwnOutgoing) return;
 
-      if (e.message.conversation_id === selectedId)
-        queryClient.setQueryData(['messages', selectedId],
-          (old: Message[] | undefined) => old ? [...old, e.message] : [e.message]);
+      const curId = selectedIdRef.current;
+      if (e.message.conversation_id === curId) {
+        queryClient.setQueryData<Message[]>(['messages', curId],
+          (old = []) => [...old, e.message]);
+      }
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
       queryClient.invalidateQueries({ queryKey: ['conversations-counts'] });
     });
 
     channel.listen('.MessageStatusUpdatedEvent', (e: { id: number; conversation_id: number; status: string }) => {
-      if (e.conversation_id === selectedId) {
-        queryClient.setQueryData<Message[]>(['messages', selectedId], (old = []) =>
+      const curId = selectedIdRef.current;
+      if (e.conversation_id === curId) {
+        queryClient.setQueryData<Message[]>(['messages', curId], (old = []) =>
           old.map(m => m.id === e.id ? { ...m, status: e.status as Message['status'] } : m)
         );
+      }
+    });
+
+    // Update conversation in the list when backend changes it (auto-reply, status change, etc.)
+    channel.listen('.ConversationUpdatedEvent', (e: {
+      id: number; status: string; last_message: string;
+      last_message_at: string; unread_count: number;
+    }) => {
+      const curFilter = filterRef.current;
+      queryClient.setQueryData<Conversation[]>(['conversations', curFilter], (old = []) => {
+        const updated = old.map(c =>
+          c.id === e.id
+            ? { ...c, last_message: e.last_message, last_message_at: e.last_message_at, unread_count: e.unread_count, status: e.status as Conversation['status'] }
+            : c
+        );
+        // Re-sort by last_message_at descending
+        return [...updated].sort((a, b) => {
+          if (!a.last_message_at && !b.last_message_at) return 0;
+          if (!a.last_message_at) return 1;
+          if (!b.last_message_at) return -1;
+          return new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime();
+        });
+      });
+      if (e.status !== curFilter) {
+        queryClient.invalidateQueries({ queryKey: ['conversations-counts'] });
       }
     });
 
     return () => {
       channel.stopListening('.NewMessageEvent');
       channel.stopListening('.MessageStatusUpdatedEvent');
+      channel.stopListening('.ConversationUpdatedEvent');
     };
-  }, [echo, selectedId, queryClient]);
+  }, [echo, queryClient, user?.name]);
 
   const prevMsgCountRef = useRef(0);
   useEffect(() => {
     if (!scrollRef.current) return;
     const el = scrollRef.current;
     const isInitialLoad = prevMsgCountRef.current === 0 && messages.length > 0;
+    const isNearBottom  = el.scrollHeight - el.scrollTop - el.clientHeight < 150;
     prevMsgCountRef.current = messages.length;
-    el.scrollTo({ top: el.scrollHeight, behavior: isInitialLoad ? 'instant' : 'smooth' });
+    // Only auto-scroll on initial load or when the user is already near the bottom
+    if (isInitialLoad || isNearBottom) {
+      el.scrollTo({ top: el.scrollHeight, behavior: isInitialLoad ? 'instant' : 'smooth' });
+    }
   }, [messages]);
 
   // ── handlers ─────────────────────────────────────────────────────────────
@@ -427,7 +474,7 @@ const MessagesPage: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
       setShowNewConv(false);
       setNewPhone(''); setNewName(''); setNewMsg('');
-      setNewTemplate(null); setNewMsgMode('template');
+      setNewTemplate(null); setNewMsgMode('template'); setNewTemplateVars([]);
       setTimeout(() => { setSelectedId(conv.id); setMobileShowChat(true); }, 300);
       toast.success('تم إنشاء المحادثة وإرسال الرسالة');
     },
@@ -445,12 +492,18 @@ const MessagesPage: React.FC = () => {
     const fullPhone = selectedCountry.dial + localNumber;
     if (newMsgMode === 'template') {
       if (!newTemplate) return toast.error('اختر قالباً');
+      if (newTemplate.variables_count > 0 && newTemplateVars.some(v => !v.trim()))
+        return toast.error('يرجى تعبئة جميع متغيرات القالب');
+      // Build final message body with variables substituted
+      let msgBody = newTemplate.body_text;
+      newTemplateVars.forEach((val, i) => { msgBody = msgBody.replace(`{{${i + 1}}}`, val); });
       newConvMutation.mutate({
         phone: fullPhone,
         name: newName.trim(),
-        message: newTemplate.body_text,
+        message: msgBody,
         template_name: newTemplate.name,
         template_language: newTemplate.language,
+        variables: newTemplateVars.filter(v => v.trim()),
       });
     } else {
       if (!newMsg.trim()) return toast.error('الرسالة مطلوبة');
@@ -656,8 +709,26 @@ const MessagesPage: React.FC = () => {
                       )}
                     </div>
                     {newTemplate && (
-                      <div className="px-3 py-2 bg-indigo-50 rounded-xl text-xs text-slate-600 leading-relaxed border border-indigo-100">
-                        {newTemplate.body_text}
+                      <div className="px-3 py-2 bg-indigo-50 rounded-xl text-xs text-slate-600 leading-relaxed border border-indigo-100 whitespace-pre-wrap">
+                        {newTemplate.body_text.replace(/\{\{(\d+)\}\}/g, (_, n) => {
+                          const val = newTemplateVars[parseInt(n) - 1];
+                          return val ? `[${val}]` : `{{${n}}}`;
+                        })}
+                      </div>
+                    )}
+                    {(newTemplate?.variables_count ?? 0) > 0 && (
+                      <div className="space-y-2 mt-2">
+                        <p className="text-xs font-bold text-slate-500">تعبئة المتغيرات</p>
+                        {Array.from({ length: newTemplate!.variables_count }, (_, i) => (
+                          <input
+                            key={i}
+                            type="text"
+                            value={newTemplateVars[i] ?? ''}
+                            onChange={e => setNewTemplateVars(v => { const n = [...v]; n[i] = e.target.value; return n; })}
+                            placeholder={`المتغير {{${i + 1}}}`}
+                            className="w-full h-9 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400"
+                          />
+                        ))}
                       </div>
                     )}
                   </div>
