@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Events\ConversationUpdatedEvent;
+use App\Events\MessageStatusUpdatedEvent;
 use App\Events\NewMessageEvent;
 use App\Models\AutoReply;
 use App\Models\BusinessHour;
@@ -167,7 +168,8 @@ class ProcessWhatsAppWebhookJob implements ShouldQueue
         $message = Message::where('whatsapp_message_id', $waMessageId)->first();
         if ($message) {
             $message->update(['status' => $status]);
-            event(new ConversationUpdatedEvent($message->conversation));
+            event(new MessageStatusUpdatedEvent($message));
+            event(new ConversationUpdatedEvent($message->conversation()->first()));
         }
 
         // Update campaign recipient status

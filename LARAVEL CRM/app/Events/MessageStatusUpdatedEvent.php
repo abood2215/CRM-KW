@@ -9,7 +9,7 @@ use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class NewMessageEvent implements ShouldBroadcast
+class MessageStatusUpdatedEvent implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
@@ -30,14 +30,7 @@ class NewMessageEvent implements ShouldBroadcast
         return [
             'id'              => $this->message->id,
             'conversation_id' => $this->message->conversation_id,
-            'content'         => $this->message->content,
-            'type'            => $this->message->type,
-            'direction'       => $this->message->direction,
-            'is_private'      => $this->message->is_private,
-            'sender_name'     => $this->message->sender_name,
             'status'          => $this->message->status,
-            'sent_at'         => $this->message->sent_at?->toISOString(),
-            'created_at'      => $this->message->created_at?->toISOString(),
         ];
     }
 }

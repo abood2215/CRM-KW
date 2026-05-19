@@ -168,13 +168,16 @@ const avatarBg = (name = '') => PALETTE[(name.charCodeAt(0) || 0) % PALETTE.leng
 const fmtTime = (iso?: string) => {
   if (!iso) return '';
   const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
   if (isToday(d)) return format(d, 'HH:mm');
   if (isYesterday(d)) return 'أمس';
   return format(d, 'dd/MM/yy');
 };
 
-const fmtSep = (iso: string) => {
+const fmtSep = (iso?: string) => {
+  if (!iso) return '';
   const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
   if (isToday(d)) return 'اليوم';
   if (isYesterday(d)) return 'أمس';
   return format(d, 'EEEE، d MMMM', { locale: ar });
@@ -206,6 +209,7 @@ const MessagesPage: React.FC = () => {
   const [message, setMessage]           = useState('');
   const [search, setSearch]             = useState('');
   const [filter, setFilter]             = useState<'open' | 'pending' | 'resolved'>('open');
+  const [tabCounts, setTabCounts]       = useState<Record<string, number>>({});
   const [isPrivate, setIsPrivate]       = useState(false);
   const [mobileShowChat, setMobileShowChat] = useState(false);
   const [showNewConv, setShowNewConv]         = useState(false);
@@ -241,6 +245,26 @@ const MessagesPage: React.FC = () => {
       return data.conversations;
     },
     refetchInterval: 30_000,
+  });
+
+  // Fetch counts for all statuses to show correct tab badges
+  useQuery({
+    queryKey: ['conversations-counts'],
+    queryFn: async () => {
+      const [open, pending, resolved] = await Promise.all([
+        api.get('/conversations', { params: { status: 'open',     per_page: 1 } }),
+        api.get('/conversations', { params: { status: 'pending',  per_page: 1 } }),
+        api.get('/conversations', { params: { status: 'resolved', per_page: 1 } }),
+      ]);
+      const counts = {
+        open:     open.data.meta?.total     ?? 0,
+        pending:  pending.data.meta?.total  ?? 0,
+        resolved: resolved.data.meta?.total ?? 0,
+      };
+      setTabCounts(counts);
+      return counts;
+    },
+    refetchInterval: 60_000,
   });
 
   const { data: messages = [], isLoading: loadingMsgs } = useQuery<Message[]>({
@@ -342,6 +366,7 @@ const MessagesPage: React.FC = () => {
   useEffect(() => {
     if (!echo) return;
     const channel = echo.channel('conversations');
+
     channel.listen('.NewMessageEvent', (e: { message: Message }) => {
       // Skip outgoing messages — handled by optimistic update + onSuccess invalidation
       if (e.message.direction === 'out') return;
@@ -350,9 +375,20 @@ const MessagesPage: React.FC = () => {
         queryClient.setQueryData(['messages', selectedId],
           (old: Message[] | undefined) => old ? [...old, e.message] : [e.message]);
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      queryClient.invalidateQueries({ queryKey: ['conversations-counts'] });
     });
+
+    channel.listen('.MessageStatusUpdatedEvent', (e: { id: number; conversation_id: number; status: string }) => {
+      if (e.conversation_id === selectedId) {
+        queryClient.setQueryData<Message[]>(['messages', selectedId], (old = []) =>
+          old.map(m => m.id === e.id ? { ...m, status: e.status as Message['status'] } : m)
+        );
+      }
+    });
+
     return () => {
       channel.stopListening('.NewMessageEvent');
+      channel.stopListening('.MessageStatusUpdatedEvent');
     };
   }, [echo, selectedId, queryClient]);
 
@@ -431,7 +467,7 @@ const MessagesPage: React.FC = () => {
   const msgGroups = useMemo(() => {
     const g: { date: string; msgs: Message[] }[] = [];
     messages.forEach(m => {
-      const d = fmtSep(m.sent_at);
+      const d = fmtSep(m.sent_at ?? m.created_at) || 'اليوم';
       const last = g[g.length - 1];
       if (last?.date === d) last.msgs.push(m);
       else g.push({ date: d, msgs: [m] });
@@ -813,7 +849,7 @@ const MessagesPage: React.FC = () => {
             { id: 'pending',  label: 'معلقة' },
             { id: 'resolved', label: 'مكتملة' },
           ] as const).map(f => {
-            const count = conversations.filter(c => c.status === f.id).length;
+            const count = tabCounts[f.id] ?? 0;
             return (
               <button key={f.id} onClick={() => setFilter(f.id)}
                 className={cn(
@@ -1033,7 +1069,7 @@ const MessagesPage: React.FC = () => {
                           </p>
                           <div className="flex items-center justify-end gap-1 mt-0.5">
                             <span className="text-slate-400" style={{ fontSize: 10 }}>
-                              {format(new Date(msg.sent_at), 'HH:mm')}
+                              {fmtTime(msg.sent_at)}
                             </span>
                             {isSent && <Tick status={msg.status} />}
                           </div>
