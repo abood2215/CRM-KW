@@ -24,8 +24,6 @@ class CrmClient extends Model
     protected function casts(): array
     {
         return [
-            'phone' => 'encrypted',
-            'email' => 'encrypted',
             'budget' => 'decimal:2',
         ];
     }
