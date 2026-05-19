@@ -264,30 +264,36 @@ class ProcessWhatsAppWebhookJob implements ShouldQueue
     {
         return \DB::transaction(function () use ($client, $fromPhone) {
             if ($client) {
-                // 1. Any open whatsapp conversation for this client
-                $conv = Conversation::where('source', 'whatsapp')
+                // 1. Find ALL open conversations for this client (lock rows to block concurrent inserts)
+                //    Order by id (stable, never null) instead of last_message_at (can be null)
+                $openConvs = Conversation::where('source', 'whatsapp')
                     ->where('status', 'open')
                     ->where('client_id', $client->id)
                     ->lockForUpdate()
-                    ->latest('last_message_at')
-                    ->first();
+                    ->orderBy('id')
+                    ->get();
 
-                if ($conv) {
-                    // Close any OTHER duplicate open conversations for this client
-                    Conversation::where('source', 'whatsapp')
-                        ->where('status', 'open')
-                        ->where('client_id', $client->id)
-                        ->where('id', '!=', $conv->id)
-                        ->update(['status' => 'resolved']);
+                if ($openConvs->isNotEmpty()) {
+                    $conv = $openConvs->first();
+
+                    // Close any duplicate open conversations, keeping the oldest
+                    if ($openConvs->count() > 1) {
+                        Conversation::whereIn('id', $openConvs->skip(1)->pluck('id'))
+                            ->update(['status' => 'resolved']);
+                        Log::info('[WhatsApp Webhook] Closed duplicate open conversations', [
+                            'kept'    => $conv->id,
+                            'closed'  => $openConvs->skip(1)->pluck('id'),
+                        ]);
+                    }
 
                     return $conv;
                 }
 
-                // 2. Any non-open conversation → reopen it
+                // 2. Any non-open conversation → reopen the most recent one
                 $conv = Conversation::where('source', 'whatsapp')
                     ->where('client_id', $client->id)
                     ->lockForUpdate()
-                    ->latest('last_message_at')
+                    ->orderByDesc('id')
                     ->first();
 
                 if ($conv) {
@@ -300,7 +306,7 @@ class ProcessWhatsAppWebhookJob implements ShouldQueue
                 }
             }
 
-            // 3. Create new conversation (truly first time)
+            // 3. Create new conversation (first time ever for this client)
             $conv = Conversation::create([
                 'client_id'    => $client?->id,
                 'status'       => 'open',
@@ -325,6 +331,8 @@ class ProcessWhatsAppWebhookJob implements ShouldQueue
     ): void {
         $autoReply = null;
 
+        $clientId = $conversation->client_id;
+
         // Check outside business hours
         $isOutsideHours = !$this->isWithinBusinessHours();
 
@@ -334,10 +342,21 @@ class ProcessWhatsAppWebhookJob implements ShouldQueue
                 ->first();
         }
 
-        // Check first message
+        // Check first message — must be the very first auto-reply this client has EVER received
+        // (checked across ALL their conversations, not just the current one, to handle edge cases
+        // where multiple conversations were created for the same client)
         if (!$autoReply) {
-            $messageCount = $conversation->messages()->where('direction', 'in')->count();
-            if ($messageCount === 1) {
+            $alreadyReceivedAutoReply = $clientId
+                ? Message::where('direction', 'out')
+                    ->where('sender_name', 'Auto Reply')
+                    ->whereHas('conversation', fn($q) => $q->where('client_id', $clientId))
+                    ->exists()
+                : Message::where('direction', 'out')
+                    ->where('sender_name', 'Auto Reply')
+                    ->where('conversation_id', $conversation->id)
+                    ->exists();
+
+            if (!$alreadyReceivedAutoReply) {
                 $autoReply = AutoReply::where('trigger', 'first_message')
                     ->where('is_active', true)
                     ->first();
@@ -350,7 +369,6 @@ class ProcessWhatsAppWebhookJob implements ShouldQueue
 
         // Atomic cooldown via Cache::add() — prevents race conditions between concurrent jobs.
         // Cache::add() only sets the key if it doesn't already exist (atomic operation).
-        $clientId    = $conversation->client_id;
         $cooldownKey = 'auto-reply-cooldown:' . $autoReply->trigger . ':' . ($clientId ?? 'conv:' . $conversation->id);
         $ttl         = $autoReply->trigger === 'outside_hours' ? 3600 : 86400 * 7;
 
