@@ -333,6 +333,20 @@ class ProcessWhatsAppWebhookJob implements ShouldQueue
 
         $clientId = $conversation->client_id;
 
+        // Skip auto-reply if we sent messages to this client in the last 24h (e.g. campaign)
+        $hasRecentOutgoing = Message::where('conversation_id', $conversation->id)
+            ->where('direction', 'out')
+            ->where('sender_name', '!=', 'Auto Reply')
+            ->where('created_at', '>=', now()->subHours(24))
+            ->exists();
+
+        if ($hasRecentOutgoing) {
+            Log::debug('[WhatsApp Webhook] Auto-reply skipped — recent outgoing message exists', [
+                'conversation_id' => $conversation->id,
+            ]);
+            return;
+        }
+
         // Check outside business hours
         $isOutsideHours = !$this->isWithinBusinessHours();
 
