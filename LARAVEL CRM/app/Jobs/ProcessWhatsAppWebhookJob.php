@@ -234,7 +234,7 @@ class ProcessWhatsAppWebhookJob implements ShouldQueue
     {
         return \DB::transaction(function () use ($client, $fromPhone) {
             if ($client) {
-                // 1. Try existing open conversation first
+                // 1. Any open whatsapp conversation for this client
                 $conv = Conversation::where('source', 'whatsapp')
                     ->where('status', 'open')
                     ->where('client_id', $client->id)
@@ -243,12 +243,18 @@ class ProcessWhatsAppWebhookJob implements ShouldQueue
                     ->first();
 
                 if ($conv) {
+                    // Close any OTHER duplicate open conversations for this client
+                    Conversation::where('source', 'whatsapp')
+                        ->where('status', 'open')
+                        ->where('client_id', $client->id)
+                        ->where('id', '!=', $conv->id)
+                        ->update(['status' => 'resolved']);
+
                     return $conv;
                 }
 
-                // 2. Reopen most recent resolved/pending conversation instead of creating new one
+                // 2. Any non-open conversation → reopen it
                 $conv = Conversation::where('source', 'whatsapp')
-                    ->whereIn('status', ['resolved', 'pending'])
                     ->where('client_id', $client->id)
                     ->lockForUpdate()
                     ->latest('last_message_at')
@@ -264,7 +270,7 @@ class ProcessWhatsAppWebhookJob implements ShouldQueue
                 }
             }
 
-            // 3. Create new conversation
+            // 3. Create new conversation (truly first time)
             $conv = Conversation::create([
                 'client_id'    => $client?->id,
                 'status'       => 'open',
@@ -312,11 +318,16 @@ class ProcessWhatsAppWebhookJob implements ShouldQueue
             return;
         }
 
-        // Cooldown: don't send auto-reply more than once per hour per conversation
-        $alreadySent = $conversation->messages()
+        // Cooldown: don't send auto-reply more than once per hour per client (across all their conversations)
+        $clientId    = $conversation->client_id;
+        $alreadySent = Message::where('direction', 'out')
             ->where('sender_name', 'Auto Reply')
-            ->where('direction', 'out')
             ->where('sent_at', '>=', now()->subHour())
+            ->when($clientId, fn($q) => $q->whereHas(
+                'conversation',
+                fn($cq) => $cq->where('client_id', $clientId)
+            ))
+            ->when(!$clientId, fn($q) => $q->where('conversation_id', $conversation->id))
             ->exists();
 
         if ($alreadySent) {
