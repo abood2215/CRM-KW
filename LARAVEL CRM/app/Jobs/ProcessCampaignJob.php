@@ -220,18 +220,6 @@ class ProcessCampaignJob implements ShouldQueue
     ): array {
         $phone = $this->normalizePhone($recipient->phone);
         if ($campaign->template_name) {
-            // Always use local body_text if available — avoids Meta returning stale approved content
-            $localTemplate = \App\Models\WhatsappTemplate::where('name', $campaign->template_name)->first();
-
-            if ($localTemplate) {
-                $text = $localTemplate->body_text;
-                $vars = $recipient->variables ?? $campaign->template_variables ?? [];
-                foreach (array_values($vars) as $i => $val) {
-                    $text = str_replace('{{' . ($i + 1) . '}}', (string) $val, $text);
-                }
-                return $whatsapp->sendMessage($phone, $text, $phoneNumberId);
-            }
-
             return $whatsapp->sendTemplate(
                 $phone,
                 $campaign->template_name,
