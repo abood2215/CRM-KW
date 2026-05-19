@@ -383,7 +383,7 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ open, onClose
                           className="h-10 px-3 bg-amber-500 text-white rounded-lg text-xs font-bold hover:bg-amber-600 disabled:opacity-50 whitespace-nowrap">
                           {imageUploading ? '...' : 'رفع صورة'}
                         </button>
-                        <input ref={templateImageRef} type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleImageFile(f); }} />
+                        <input ref={templateImageRef} type="file" accept="image/*" className="hidden" onChange={handleImageFile} />
                       </div>
                       {form.image_path && (
                         <img src={form.image_path} alt="معاينة" className="mt-2 max-h-24 rounded-lg object-contain border border-amber-200" />
