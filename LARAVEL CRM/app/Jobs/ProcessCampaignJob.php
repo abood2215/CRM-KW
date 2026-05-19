@@ -3,8 +3,12 @@
 namespace App\Jobs;
 
 use App\Events\CampaignProgressEvent;
+use App\Events\NewMessageEvent;
 use App\Models\Campaign;
 use App\Models\CampaignRecipient;
+use App\Models\Conversation;
+use App\Models\CrmClient;
+use App\Models\Message;
 use App\Models\WhatsappNumber;
 use App\Services\CampaignService;
 use App\Services\NotificationService;
@@ -14,6 +18,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class ProcessCampaignJob implements ShouldQueue
@@ -112,6 +117,9 @@ class ProcessCampaignJob implements ShouldQueue
             $campaign->increment('sent_count');
             $number->incrementSent();
 
+            // Create/find client & conversation so replies attach to the same thread
+            $this->ensureConversationExists($campaign, $recipient, $waMessageId);
+
             Log::info("[Campaign #{$campaign->id}] أُرسلت لـ {$recipient->phone}", ['wamid' => $waMessageId]);
 
         } catch (\Exception $e) {
@@ -129,6 +137,68 @@ class ProcessCampaignJob implements ShouldQueue
         // Re-dispatch for the next recipient after the configured delay
         $delay = $service->calculateDelay($campaign);
         self::dispatch($this->campaignId)->delay(now()->addSeconds($delay));
+    }
+
+    private function ensureConversationExists(Campaign $campaign, CampaignRecipient $recipient, ?string $waMessageId): void
+    {
+        try {
+            $phone = $this->normalizePhone($recipient->phone);
+
+            DB::transaction(function () use ($campaign, $recipient, $phone, $waMessageId) {
+                // Find or create CrmClient by phone
+                $client = CrmClient::where('phone', $phone)->first();
+                if (!$client) {
+                    $client = CrmClient::create([
+                        'phone'   => $phone,
+                        'name'    => $recipient->name ?: $phone,
+                        'source'  => 'whatsapp',
+                        'status'  => 'new',
+                        'user_id' => $campaign->user_id,
+                    ]);
+                }
+
+                // Find existing open conversation or create one
+                $conversation = Conversation::where('client_id', $client->id)
+                    ->where('source', 'whatsapp')
+                    ->where('status', 'open')
+                    ->lockForUpdate()
+                    ->latest('last_message_at')
+                    ->first();
+
+                $messageText = $campaign->message_text ?: "حملة: {$campaign->name}";
+
+                if (!$conversation) {
+                    $conversation = Conversation::create([
+                        'client_id'       => $client->id,
+                        'source'          => 'whatsapp',
+                        'status'          => 'open',
+                        'last_message'    => $messageText,
+                        'last_message_at' => now(),
+                        'unread_count'    => 0,
+                    ]);
+                } else {
+                    $conversation->update([
+                        'last_message'    => $messageText,
+                        'last_message_at' => now(),
+                    ]);
+                }
+
+                // Record the sent campaign message in the conversation
+                Message::create([
+                    'conversation_id'     => $conversation->id,
+                    'whatsapp_message_id' => $waMessageId,
+                    'content'             => $messageText,
+                    'type'                => 'text',
+                    'direction'           => 'out',
+                    'is_private'          => false,
+                    'sender_name'         => $campaign->name,
+                    'status'              => $waMessageId ? 'sent' : null,
+                    'sent_at'             => now(),
+                ]);
+            });
+        } catch (\Exception $e) {
+            Log::error("[Campaign #{$campaign->id}] فشل إنشاء المحادثة لـ {$recipient->phone}: {$e->getMessage()}");
+        }
     }
 
     private function normalizePhone(string $phone): string
