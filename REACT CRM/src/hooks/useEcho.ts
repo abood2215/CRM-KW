@@ -17,6 +17,7 @@ export function useEcho() {
     const echoInstance = new Echo({
       broadcaster: 'pusher',
       key: import.meta.env.VITE_PUSHER_APP_KEY || 'app-key',
+      cluster: 'mt1',
       wsHost: import.meta.env.VITE_PUSHER_HOST || 'localhost',
       wsPort: forceTLS ? 443 : (import.meta.env.VITE_PUSHER_PORT || 8080),
       wssPort: 443,
