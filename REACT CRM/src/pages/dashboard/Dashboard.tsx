@@ -37,7 +37,7 @@ const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const [addClientOpen, setAddClientOpen] = useState(false);
 
-  const { data: stats, isLoading } = useQuery<DashboardStats>({
+  const { data: stats, isLoading, isError, refetch } = useQuery<DashboardStats>({
     queryKey: ['dashboard-stats'],
     queryFn: async () => {
       const { data } = await api.get('/stats/dashboard');
@@ -50,6 +50,20 @@ const Dashboard: React.FC = () => {
       <div className="flex flex-col items-center justify-center min-h-[60vh]">
         <Loader2 className="animate-spin text-indigo-600 h-10 w-10 mb-4" />
         <span className="text-slate-500 font-medium">جاري جلب الإحصائيات...</span>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+        <span className="text-slate-500 font-medium">تعذّر جلب الإحصائيات</span>
+        <button
+          onClick={() => refetch()}
+          className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-all"
+        >
+          إعادة المحاولة
+        </button>
       </div>
     );
   }

@@ -437,7 +437,12 @@ const MessagesPage: React.FC = () => {
   const handleNewConv = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPhone.trim()) return toast.error('رقم الهاتف مطلوب');
-    const fullPhone = selectedCountry.dial + newPhone.trim().replace(/^0+/, '');
+    // Strip leading zeros, then strip country code if user already typed it
+    let localNumber = newPhone.trim().replace(/^0+/, '');
+    if (localNumber.startsWith(selectedCountry.dial)) {
+      localNumber = localNumber.slice(selectedCountry.dial.length);
+    }
+    const fullPhone = selectedCountry.dial + localNumber;
     if (newMsgMode === 'template') {
       if (!newTemplate) return toast.error('اختر قالباً');
       newConvMutation.mutate({

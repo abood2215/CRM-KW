@@ -62,7 +62,10 @@ php artisan queue:restart
 
 # شغّل queue worker عبر supervisor لو متوفر، وإلا شغّله مباشرة
 if command -v supervisorctl &> /dev/null; then
-    supervisorctl restart crm-worker:* 2>/dev/null || supervisorctl restart all 2>/dev/null || true
+    # جرّب الأسماء المعروفة وأوقف عند أول نجاح
+    supervisorctl restart laravel-worker:* 2>/dev/null || \
+    supervisorctl restart crm-worker:* 2>/dev/null || \
+    supervisorctl restart all 2>/dev/null || true
     echo -e "${GREEN}  ✓ Supervisor أعاد تشغيل الـ worker${NC}"
 else
     # تشغيل مباشر في الخلفية (fallback)

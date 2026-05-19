@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { useAuthStore } from '../store/useAuthStore';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api',
@@ -7,12 +8,12 @@ const api = axios.create({
     'Accept': 'application/json',
   },
   withCredentials: false,
-  timeout: 30000, // 30s timeout to prevent hanging requests
+  timeout: 30000,
 });
 
-// Attach Bearer token to every request
+// Attach Bearer token to every request — read directly from Zustand store (always up-to-date)
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('crm_token');
+  const token = useAuthStore.getState().token;
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -31,10 +32,8 @@ api.interceptors.response.use(
       !window.location.pathname.includes('/login')
     ) {
       isRedirectingToLogin = true;
-      localStorage.removeItem('crm_token');
-      localStorage.removeItem('crm_user');
+      useAuthStore.getState().logout();
 
-      // Small delay so pending toasts can display
       setTimeout(() => {
         window.location.href = '/login';
         isRedirectingToLogin = false;

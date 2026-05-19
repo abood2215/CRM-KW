@@ -232,6 +232,10 @@ class ConversationController extends Controller
         if (!$conversation->chatwoot_conv_id && $conversation->source === 'whatsapp') {
             $clientPhone = $conversation->client?->phone ?? null;
 
+            if (!$clientPhone && !$request->boolean('is_private', false)) {
+                return response()->json(['message' => 'لا يوجد رقم هاتف مرتبط بهذه المحادثة.'], 422);
+            }
+
             if ($clientPhone) {
                 $whatsappNumber = WhatsappNumber::whereNotNull('phone_number_id')
                     ->where('status', 'connected')
