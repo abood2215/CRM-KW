@@ -252,7 +252,7 @@ const MessagesPage: React.FC = () => {
       const { data } = await api.get('/conversations', { params: { status: filter } });
       return data.conversations;
     },
-    refetchInterval: 30_000,
+    refetchInterval: 4_000,
   });
 
   // Fetch counts for all statuses to show correct tab badges
@@ -272,7 +272,7 @@ const MessagesPage: React.FC = () => {
       setTabCounts(counts);
       return counts;
     },
-    refetchInterval: 60_000,
+    refetchInterval: 10_000,
   });
 
   const { data: messages = [], isLoading: loadingMsgs } = useQuery<Message[]>({
@@ -282,6 +282,7 @@ const MessagesPage: React.FC = () => {
       return data.messages;
     },
     enabled: !!selectedId,
+    refetchInterval: 4_000,
   });
 
   const { data: approvedTemplates = [], isLoading: loadingTemplates, refetch: refetchTemplates } = useQuery<WhatsappTemplate[]>({
