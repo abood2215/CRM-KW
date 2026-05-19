@@ -247,22 +247,33 @@ class ProcessCampaignJob implements ShouldQueue
 
     private function buildTemplateComponents(Campaign $campaign, CampaignRecipient $recipient): array
     {
-        $vars = $recipient->variables ?? $campaign->template_variables ?? [];
+        $components = [];
 
-        if (empty($vars)) {
-            return [];
+        // Add image header if template has one and campaign has an image
+        $localTemplate = \App\Models\WhatsappTemplate::where('name', $campaign->template_name)->first();
+        $imageUrl = $campaign->image_path;
+
+        if ($localTemplate && $localTemplate->header_type === 'image' && $imageUrl) {
+            $components[] = [
+                'type'       => 'header',
+                'parameters' => [['type' => 'image', 'image' => ['link' => $imageUrl]]],
+            ];
         }
 
-        // Replace {{name}} with recipient's actual name
-        $resolved = array_map(
-            fn($v) => is_string($v) ? str_replace('{{name}}', $recipient->name ?? $recipient->phone, $v) : $v,
-            $vars
-        );
+        // Add body variables
+        $vars = $recipient->variables ?? $campaign->template_variables ?? [];
+        if (!empty($vars)) {
+            $resolved = array_map(
+                fn($v) => is_string($v) ? str_replace('{{name}}', $recipient->name ?? $recipient->phone, $v) : $v,
+                $vars
+            );
+            $components[] = [
+                'type'       => 'body',
+                'parameters' => array_map(fn($v) => ['type' => 'text', 'text' => (string) $v], $resolved),
+            ];
+        }
 
-        return [[
-            'type'       => 'body',
-            'parameters' => array_map(fn($v) => ['type' => 'text', 'text' => (string) $v], $resolved),
-        ]];
+        return $components;
     }
 
     private function pauseWithNotification(Campaign $campaign, string $title, string $body): void
