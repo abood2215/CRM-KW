@@ -251,7 +251,7 @@ class ProcessCampaignJob implements ShouldQueue
 
         // Add image header if template has one and campaign has an image
         $localTemplate = \App\Models\WhatsappTemplate::where('name', $campaign->template_name)->first();
-        $imageUrl = $campaign->image_path;
+        $imageUrl = $campaign->image_path ?: ($localTemplate?->header_content ?? null);
 
         if ($localTemplate && $localTemplate->header_type === 'image' && $imageUrl) {
             $components[] = [

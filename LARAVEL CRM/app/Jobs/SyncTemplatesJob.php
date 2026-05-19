@@ -56,7 +56,10 @@ class SyncTemplatesJob implements ShouldQueue
                         switch ($component['type']) {
                             case 'HEADER':
                                 $headerType    = strtolower($component['format'] ?? 'text');
-                                $headerContent = $component['text'] ?? null;
+                                $headerContent = $component['text']
+                                    ?? $component['example']['header_handle'][0]
+                                    ?? $component['example']['header_url'][0]
+                                    ?? null;
                                 break;
                             case 'BODY':
                                 $bodyText = $component['text'] ?? '';
