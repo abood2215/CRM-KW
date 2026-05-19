@@ -188,6 +188,8 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ open, onClose
       payload.template_name     = selectedTemplate.name;
       payload.template_language = selectedTemplate.language;
       payload.message_text      = selectedTemplate.body_text;
+      if (selectedTemplate.header_type === 'image' && form.image_path)
+        payload.image_path = form.image_path;
     } else if (msgMode === 'image') {
       payload.image_path   = form.image_path;
       payload.message_text = form.message_text; // caption (optional)
@@ -362,6 +364,29 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ open, onClose
                   {selectedTemplate && (
                     <div className="mt-2 p-3 bg-slate-50 rounded-xl text-xs text-slate-600 leading-relaxed border border-slate-200">
                       {selectedTemplate.body_text}
+                    </div>
+                  )}
+                  {selectedTemplate?.header_type === 'image' && (
+                    <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                      <p className="text-xs font-bold text-amber-700 mb-2">هذا القالب يتطلب صورة في الـ Header</p>
+                      <div className="flex gap-2">
+                        <input
+                          type="url"
+                          value={form.image_path}
+                          onChange={e => setForm(f => ({ ...f, image_path: e.target.value }))}
+                          className="flex-1 h-10 px-3 bg-white border border-amber-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 ltr"
+                          placeholder="https://example.com/image.jpg"
+                        />
+                        <button type="button" onClick={() => imageRef.current?.click()}
+                          disabled={imageUploading}
+                          className="h-10 px-3 bg-amber-500 text-white rounded-lg text-xs font-bold hover:bg-amber-600 disabled:opacity-50 whitespace-nowrap">
+                          {imageUploading ? '...' : 'رفع صورة'}
+                        </button>
+                        <input ref={imageRef} type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleImageFile(f); }} />
+                      </div>
+                      {form.image_path && (
+                        <img src={form.image_path} alt="معاينة" className="mt-2 max-h-24 rounded-lg object-contain border border-amber-200" />
+                      )}
                     </div>
                   )}
                 </div>
