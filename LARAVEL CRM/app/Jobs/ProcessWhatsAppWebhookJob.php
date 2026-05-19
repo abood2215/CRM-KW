@@ -19,6 +19,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -81,8 +82,15 @@ class ProcessWhatsAppWebhookJob implements ShouldQueue
             'phone_number_id'=> $phoneNumberId,
         ]);
 
-        // Prevent duplicate processing
+        // Prevent duplicate processing — use cache lock so concurrent jobs don't both pass the check
+        $msgLock = Cache::lock('wamsg-' . $waMessageId, 30);
+        if (!$msgLock->get()) {
+            Log::debug('[WhatsApp Webhook] Already being processed (lock), skipping', ['wamid' => $waMessageId]);
+            return;
+        }
+
         if (Message::where('whatsapp_message_id', $waMessageId)->exists()) {
+            $msgLock->release();
             Log::debug('[WhatsApp Webhook] Duplicate message, skipping', ['wamid' => $waMessageId]);
             return;
         }
@@ -130,6 +138,9 @@ class ProcessWhatsAppWebhookJob implements ShouldQueue
             'status'             => 'received',
             'sent_at'            => now(),
         ]);
+
+        // Release the per-message lock now that we've saved it
+        $msgLock->release();
 
         $conversation->update([
             'last_message'    => $content,
@@ -231,6 +242,19 @@ class ProcessWhatsAppWebhookJob implements ShouldQueue
     }
 
     protected function resolveConversation(?CrmClient $client, string $fromPhone, ?string $phoneNumberId): Conversation
+    {
+        $lockKey = 'conv-resolve-' . ($client?->id ?? md5($fromPhone));
+        $lock    = Cache::lock($lockKey, 15);
+        $lock->block(10);
+
+        try {
+            return $this->resolveConversationLocked($client, $fromPhone);
+        } finally {
+            $lock->release();
+        }
+    }
+
+    private function resolveConversationLocked(?CrmClient $client, string $fromPhone): Conversation
     {
         return \DB::transaction(function () use ($client, $fromPhone) {
             if ($client) {
