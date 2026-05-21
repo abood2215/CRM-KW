@@ -361,36 +361,76 @@ const SettingsPage: React.FC = () => {
 
           {/* Business Hours */}
           {activeTab === 'hours' && (
-            <div className="p-5 lg:p-8 space-y-5 lg:space-y-8">
+            <div className="p-5 lg:p-8 space-y-5 lg:space-y-6">
               <div className="flex items-center justify-between">
-                <h3 className="text-base lg:text-xl font-black text-slate-800">توقيتات العمل</h3>
-                <div className="px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-xl text-xs font-black">
+                <div>
+                  <h3 className="text-base lg:text-xl font-black text-slate-800">توقيتات العمل</h3>
+                  <p className="text-xs text-slate-400 mt-1 font-medium">الردود التلقائية تعمل خارج هذه الأوقات.</p>
+                </div>
+                <div className="px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-xl text-xs font-black border border-indigo-100">
                   Asia/Kuwait
                 </div>
               </div>
-              <div className="space-y-3">
+
+              {/* Column headers */}
+              <div className="hidden sm:grid grid-cols-[1fr_auto] gap-4 px-4">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">اليوم</span>
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">من — إلى</span>
+              </div>
+
+              <div className="space-y-2">
                 {loadingHours ? (
                   <div className="flex justify-center py-10">
                     <Loader2 className="animate-spin text-indigo-600" size={28} />
                   </div>
                 ) : localHours.map((day, idx) => (
-                  <div key={day.id} className="p-4 rounded-2xl border border-slate-100 bg-slate-50/30 flex items-center justify-between gap-4 flex-wrap hover:bg-white transition-all">
-                    <div className="flex items-center gap-3">
+                  <div
+                    key={day.id}
+                    className={cn(
+                      'px-4 py-3 rounded-2xl border flex items-center justify-between gap-3 transition-all',
+                      day.is_active
+                        ? 'border-emerald-200 bg-emerald-50/30 hover:bg-emerald-50/60'
+                        : 'border-slate-100 bg-slate-50/30 hover:bg-white opacity-60'
+                    )}
+                  >
+                    {/* Day + Toggle */}
+                    <div className="flex items-center gap-3 min-w-[120px]">
                       <Toggle
                         checked={day.is_active}
                         onChange={v => setLocalHours(h => h.map((d, i) => i === idx ? { ...d, is_active: v } : d))}
                         color="bg-emerald-500"
                       />
-                      <span className="text-sm font-black text-slate-700 w-16">{daysLabel[day.day_of_week]}</span>
+                      <span className={cn(
+                        'text-sm font-black w-14 flex-shrink-0',
+                        day.is_active ? 'text-slate-800' : 'text-slate-400'
+                      )}>
+                        {daysLabel[day.day_of_week]}
+                      </span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <input type="time" value={day.start_time}
-                        onChange={e => setLocalHours(h => h.map((d, i) => i === idx ? { ...d, start_time: e.target.value } : d))}
-                        className="px-3 py-1.5 border border-slate-100 rounded-xl text-xs font-bold text-slate-600 bg-white focus:outline-none focus:border-indigo-500" />
-                      <span className="text-slate-300 text-sm">←</span>
-                      <input type="time" value={day.end_time}
-                        onChange={e => setLocalHours(h => h.map((d, i) => i === idx ? { ...d, end_time: e.target.value } : d))}
-                        className="px-3 py-1.5 border border-slate-100 rounded-xl text-xs font-bold text-slate-600 bg-white focus:outline-none focus:border-indigo-500" />
+
+                    {/* Times */}
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <div className="flex flex-col items-center">
+                        <span className="text-[9px] font-black text-slate-400 mb-1">من</span>
+                        <input
+                          type="time"
+                          value={day.start_time}
+                          disabled={!day.is_active}
+                          onChange={e => setLocalHours(h => h.map((d, i) => i === idx ? { ...d, start_time: e.target.value } : d))}
+                          className="px-3 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 bg-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                        />
+                      </div>
+                      <span className="text-slate-300 text-base mt-4">—</span>
+                      <div className="flex flex-col items-center">
+                        <span className="text-[9px] font-black text-slate-400 mb-1">إلى</span>
+                        <input
+                          type="time"
+                          value={day.end_time}
+                          disabled={!day.is_active}
+                          onChange={e => setLocalHours(h => h.map((d, i) => i === idx ? { ...d, end_time: e.target.value } : d))}
+                          className="px-3 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 bg-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                        />
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -400,37 +440,84 @@ const SettingsPage: React.FC = () => {
 
           {/* Auto Replies */}
           {activeTab === 'replies' && (
-            <div className="p-5 lg:p-8 space-y-5 lg:space-y-6">
-              <h3 className="text-base lg:text-xl font-black text-slate-800">الردود التلقائية</h3>
-              <div className="grid grid-cols-1 gap-4 lg:gap-6">
-                {loadingReplies ? (
-                  <div className="flex justify-center py-10">
-                    <Loader2 className="animate-spin text-indigo-600" size={28} />
-                  </div>
-                ) : localReplies.map((reply, idx) => (
-                  <div key={reply.id} className="p-5 lg:p-6 rounded-2xl border border-slate-100 bg-slate-50/30 space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-indigo-600 shadow-sm">
-                          <FileText size={17} />
-                        </div>
-                        <span className="text-sm font-black text-slate-800">
-                          {reply.trigger === 'outside_hours' ? 'رد خارج أوقات العمل' : 'ترحيب العملاء الجدد'}
-                        </span>
-                      </div>
-                      <Toggle
-                        checked={reply.is_active}
-                        onChange={v => setLocalReplies(r => r.map((rep, i) => i === idx ? { ...rep, is_active: v } : rep))}
-                      />
-                    </div>
-                    <textarea
-                      className="w-full h-28 lg:h-32 px-4 py-3 bg-white border border-slate-100 rounded-2xl text-sm font-medium focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 resize-none"
-                      value={reply.message}
-                      onChange={e => setLocalReplies(r => r.map((rep, i) => i === idx ? { ...rep, message: e.target.value } : rep))}
-                    />
-                  </div>
-                ))}
+            <div className="p-5 lg:p-8 space-y-5">
+              <div>
+                <h3 className="text-base lg:text-xl font-black text-slate-800">الردود التلقائية</h3>
+                <p className="text-xs text-slate-400 mt-1 font-medium">تُرسل تلقائياً عبر واتساب عند تحقق الشرط.</p>
               </div>
+
+              {loadingReplies ? (
+                <div className="flex justify-center py-16">
+                  <Loader2 className="animate-spin text-indigo-600" size={28} />
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {localReplies.map((reply, idx) => {
+                    const isOutside = reply.trigger === 'outside_hours';
+                    return (
+                      <div
+                        key={reply.id}
+                        className={cn(
+                          'rounded-2xl border transition-all',
+                          reply.is_active
+                            ? 'border-indigo-200 bg-indigo-50/40'
+                            : 'border-slate-100 bg-slate-50/30'
+                        )}
+                      >
+                        {/* Card Header */}
+                        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100/70">
+                          <div className="flex items-center gap-3">
+                            <div className={cn(
+                              'w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0',
+                              reply.is_active ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'bg-white border border-slate-100 text-slate-400'
+                            )}>
+                              {isOutside ? <Clock size={17} /> : <MessageSquare size={17} />}
+                            </div>
+                            <div>
+                              <p className="text-sm font-black text-slate-800">
+                                {isOutside ? 'رد خارج أوقات العمل' : 'ترحيب العملاء الجدد'}
+                              </p>
+                              <p className="text-[11px] text-slate-400 mt-0.5">
+                                {isOutside
+                                  ? 'يُرسل عند تلقي رسالة خارج ساعات العمل'
+                                  : 'يُرسل عند أول تواصل من عميل جديد'}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3 flex-shrink-0">
+                            <span className={cn(
+                              'text-[10px] font-black px-2.5 py-1 rounded-lg',
+                              reply.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-400'
+                            )}>
+                              {reply.is_active ? 'مفعّل' : 'معطّل'}
+                            </span>
+                            <Toggle
+                              checked={reply.is_active}
+                              onChange={v => setLocalReplies(r => r.map((rep, i) => i === idx ? { ...rep, is_active: v } : rep))}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Textarea */}
+                        <div className="p-5">
+                          <label className="block text-xs font-black text-slate-500 mb-2">نص الرسالة</label>
+                          <textarea
+                            rows={4}
+                            className={cn(
+                              'w-full px-4 py-3 bg-white border rounded-xl text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 resize-none transition-all',
+                              reply.is_active ? 'border-indigo-200' : 'border-slate-200 text-slate-400'
+                            )}
+                            placeholder="اكتب نص الرد التلقائي هنا..."
+                            value={reply.message}
+                            onChange={e => setLocalReplies(r => r.map((rep, i) => i === idx ? { ...rep, message: e.target.value } : rep))}
+                          />
+                          <p className="text-[10px] text-slate-400 mt-1.5 text-left ltr">{reply.message.length} حرف</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 
