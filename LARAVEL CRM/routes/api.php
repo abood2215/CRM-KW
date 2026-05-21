@@ -103,6 +103,7 @@ Route::middleware(['auth:sanctum', 'update.last.seen', 'log.activity'])->group(f
     Route::put('/contacts/{id}/opt-out', [ContactController::class, 'optOut']);
     Route::middleware('role:admin,manager')->group(function () {
         Route::get('/contacts/export/csv', [ContactController::class, 'exportCsv']);
+        Route::delete('/contacts', [ContactController::class, 'destroyAll']);
     });
 
     // --- Contact Lists ---

@@ -23,6 +23,7 @@ const ContactsPage: React.FC = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showListModal, setShowListModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
   const [page, setPage] = useState(1);
 
   const debouncedSearch = useDebounce(search, 400);
@@ -93,6 +94,18 @@ const ContactsPage: React.FC = () => {
     },
   });
 
+  // حذف جميع جهات الاتصال
+  const deleteAllMutation = useMutation({
+    mutationFn: () => api.delete('/contacts'),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      queryClient.invalidateQueries({ queryKey: ['contact-lists'] });
+      setShowDeleteAllModal(false);
+      toast.success(`تم حذف ${res.data.deleted} جهة اتصال.`);
+    },
+    onError: () => toast.error('فشل الحذف.'),
+  });
+
   // تصدير CSV
   const handleExport = async () => {
     try {
@@ -141,6 +154,17 @@ const ContactsPage: React.FC = () => {
             <Download size={16} />
             تصدير CSV
           </button>
+
+          {/* مسح الكل — للمدير فقط */}
+          {(contactsData?.meta?.total ?? 0) > 0 && (
+            <button
+              onClick={() => setShowDeleteAllModal(true)}
+              className="h-10 px-4 border border-rose-200 rounded-xl text-rose-600 font-bold text-sm flex items-center gap-2 hover:bg-rose-50 transition-all"
+            >
+              <Trash2 size={16} />
+              مسح الكل
+            </button>
+          )}
 
           {/* إضافة */}
           <button
@@ -377,6 +401,39 @@ const ContactsPage: React.FC = () => {
             setShowImportModal(false);
           }}
         />
+      )}
+
+      {/* مودال تأكيد مسح الكل */}
+      {showDeleteAllModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-8 text-center">
+            <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Trash2 size={28} className="text-rose-600" />
+            </div>
+            <h2 className="text-xl font-black text-slate-800 mb-2">مسح جميع جهات الاتصال؟</h2>
+            <p className="text-slate-500 text-sm font-medium mb-1">
+              سيتم حذف <span className="font-black text-rose-600">{contactsData?.meta?.total?.toLocaleString() ?? ''}</span> جهة اتصال بشكل نهائي.
+            </p>
+            <p className="text-slate-400 text-xs mb-8">هذا الإجراء لا يمكن التراجع عنه.</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeleteAllModal(false)}
+                disabled={deleteAllMutation.isPending}
+                className="flex-1 h-11 border border-slate-200 rounded-xl font-bold text-slate-600 hover:bg-slate-50 text-sm transition-all"
+              >
+                إلغاء
+              </button>
+              <button
+                onClick={() => deleteAllMutation.mutate()}
+                disabled={deleteAllMutation.isPending}
+                className="flex-1 h-11 bg-rose-600 text-white rounded-xl font-bold hover:bg-rose-700 text-sm transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+              >
+                {deleteAllMutation.isPending && <Loader2 size={16} className="animate-spin" />}
+                مسح الكل
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

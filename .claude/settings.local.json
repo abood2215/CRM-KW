@@ -41,7 +41,11 @@
       "Bash(composer require:*)",
       "Bash(Get-ChildItem *)",
       "Bash(powershell *)",
-      "Bash(Select-Object -First 20)"
+      "Bash(Select-Object -First 20)",
+      "Read(//c/Users/abd-allah/Desktop/**)",
+      "Bash(grep -E \"\\\\.\\(blade\\\\.php|php|js\\)$\")",
+      "Bash(ssh root@crm.motmaina-center.com \"tail -100 /var/www/crm-kw/laravel-storage/logs/laravel.log 2>/dev/null | grep -i 'auto-reply\\\\|Auto Reply\\\\|webhook\\\\|incoming' | tail -40\")",
+      "Bash(./node_modules/.bin/tsc --noEmit)"
     ]
   }
 }

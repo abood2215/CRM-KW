@@ -217,6 +217,15 @@ class ContactController extends Controller
         ]);
     }
 
+    // حذف جميع جهات الاتصال
+    public function destroyAll(): JsonResponse
+    {
+        $count = Contact::count();
+        Contact::truncate();
+
+        return response()->json(['message' => "تم حذف {$count} جهة اتصال.", 'deleted' => $count]);
+    }
+
     // تصدير جهات الاتصال إلى CSV
     public function exportCsv(Request $request)
     {
