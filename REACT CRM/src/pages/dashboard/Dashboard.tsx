@@ -115,22 +115,22 @@ const Dashboard: React.FC = () => {
     },
   ];
 
-  const chartData = [
-    { name: 'الأحد', clients: 4 },
-    { name: 'الاثنين', clients: 7 },
-    { name: 'الثلاثاء', clients: 5 },
-    { name: 'الأربعاء', clients: 9 },
-    { name: 'الخميس', clients: 12 },
-    { name: 'الجمعة', clients: 15 },
-    { name: 'السبت', clients: 8 },
-  ];
+  const chartData = (stats?.clients_growth ?? []).map((d: any) => ({ name: d.name, clients: d.count }));
 
-  const sourceData = [
-    { name: 'واتساب', value: 400, color: '#10b981' },
-    { name: 'جروب', value: 300, color: '#f59e0b' },
-    { name: 'إعلانات', value: 300, color: '#6366f1' },
-    { name: 'توصية', value: 200, color: '#ec4899' },
-  ];
+  const sourceColors: Record<string, string> = {
+    'واتساب': '#10b981', 'whatsapp': '#10b981',
+    'جروب': '#f59e0b', 'group': '#f59e0b',
+    'إعلانات': '#6366f1', 'ads': '#6366f1',
+    'توصية': '#ec4899', 'referral': '#ec4899',
+    'مباشر': '#3b82f6', 'direct': '#3b82f6',
+  };
+  const palette = ['#10b981','#f59e0b','#6366f1','#ec4899','#3b82f6','#8b5cf6','#f97316'];
+  const sourceData = Object.entries(stats?.clients_by_source ?? {}).map(([name, value], i) => ({
+    name,
+    value: value as number,
+    color: sourceColors[name] ?? palette[i % palette.length],
+  }));
+  const sourceTotal = sourceData.reduce((s, d) => s + d.value, 0);
 
   return (
     <>
@@ -276,7 +276,7 @@ const Dashboard: React.FC = () => {
                     <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }} />
                     <span className="text-xs lg:text-sm font-bold text-gray-600">{item.name}</span>
                   </div>
-                  <span className="text-xs font-black text-gray-400">{Math.round((item.value / 1200) * 100)}%</span>
+                  <span className="text-xs font-black text-gray-400">{sourceTotal > 0 ? Math.round((item.value / sourceTotal) * 100) : 0}%</span>
                 </div>
               ))}
             </div>
@@ -333,12 +333,12 @@ const Dashboard: React.FC = () => {
               <div className="space-y-4 lg:space-y-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-2xl lg:text-3xl font-black mb-1">0</p>
+                    <p className="text-2xl lg:text-3xl font-black mb-1">{stats?.active_campaigns ?? 0}</p>
                     <p className="text-xs font-bold text-indigo-100 uppercase tracking-widest">حملات نشطة</p>
                   </div>
                   <div className="h-12 w-px bg-white/20" />
                   <div>
-                    <p className="text-2xl lg:text-3xl font-black mb-1">0%</p>
+                    <p className="text-2xl lg:text-3xl font-black mb-1">{stats?.reply_rate ?? 0}%</p>
                     <p className="text-xs font-bold text-indigo-100 uppercase tracking-widest">معدل الردود</p>
                   </div>
                 </div>
@@ -346,12 +346,12 @@ const Dashboard: React.FC = () => {
                 <div className="bg-white/10 p-4 rounded-2xl border border-white/10">
                   <div className="flex items-center justify-between mb-2">
                     <p className="text-sm font-bold">اكتمال المهام الأسبوعية</p>
-                    <span className="text-xs font-black">75%</span>
+                    <span className="text-xs font-black">{stats?.task_completion ?? 0}%</span>
                   </div>
                   <div className="h-2 w-full bg-indigo-900/30 rounded-full overflow-hidden">
                     <motion.div
                       initial={{ width: 0 }}
-                      animate={{ width: '75%' }}
+                      animate={{ width: `${stats?.task_completion ?? 0}%` }}
                       className="h-full bg-white rounded-full shadow-[0_0_10px_white]"
                     />
                   </div>

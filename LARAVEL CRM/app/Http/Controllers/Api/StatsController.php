@@ -7,6 +7,7 @@ use App\Models\Campaign;
 use App\Models\Conversation;
 use App\Models\CrmClient;
 use App\Models\CrmTask;
+use App\Models\Message;
 use App\Models\User;
 use App\Models\WhatsappNumber;
 use Illuminate\Http\JsonResponse;
@@ -55,17 +56,87 @@ class StatsController extends Controller
                 'created_at' => $c->created_at->toISOString(),
             ]);
 
+        // نمو العملاء آخر 7 أيام
+        $days = collect(range(6, 0))->map(fn($i) => now()->subDays($i)->format('Y-m-d'));
+        $clientsGrowth = CrmClient::select(DB::raw('DATE(created_at) as date'), DB::raw('count(*) as count'))
+            ->where('created_at', '>=', now()->subDays(6)->startOfDay())
+            ->groupBy('date')
+            ->pluck('count', 'date');
+        $clientsGrowthData = $days->map(fn($d) => [
+            'date'  => $d,
+            'name'  => \Carbon\Carbon::parse($d)->locale('ar')->isoFormat('ddd'),
+            'count' => (int)($clientsGrowth[$d] ?? 0),
+        ])->values();
+
+        // رسائل آخر 7 أيام (وارد / صادر)
+        $msgRaw = Message::select(
+                DB::raw('DATE(created_at) as date'),
+                'direction',
+                DB::raw('count(*) as count')
+            )
+            ->where('created_at', '>=', now()->subDays(6)->startOfDay())
+            ->groupBy('date', 'direction')
+            ->get();
+        $messagesData = $days->map(function ($d) use ($msgRaw) {
+            $inRow  = $msgRaw->first(fn($r) => $r->date === $d && $r->direction === 'incoming');
+            $outRow = $msgRaw->first(fn($r) => $r->date === $d && $r->direction === 'outgoing');
+            return [
+                'date'     => $d,
+                'name'     => \Carbon\Carbon::parse($d)->locale('ar')->isoFormat('ddd'),
+                'incoming' => (int)($inRow->count ?? 0),
+                'outgoing' => (int)($outRow->count ?? 0),
+            ];
+        })->values();
+
+        // حملات نشطة ومعدل الردود
+        $activeCampaigns   = Campaign::where('status', 'running')->count();
+        $totalSent         = Campaign::sum('sent_count');
+        $totalReplies      = Campaign::sum('reply_count');
+        $replyRate         = $totalSent > 0 ? round(($totalReplies / $totalSent) * 100) : 0;
+
+        // اكتمال المهام الأسبوعية
+        $totalTasksWeek    = CrmTask::whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])->count();
+        $doneTasksWeek     = CrmTask::whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])->where('status', 'done')->count();
+        $taskCompletion    = $totalTasksWeek > 0 ? round(($doneTasksWeek / $totalTasksWeek) * 100) : 0;
+
+        // معدل الحجوزات
+        $bookedClients     = CrmClient::where('status', 'booked')->count();
+        $bookingRate       = $totalClients > 0 ? round(($bookedClients / $totalClients) * 100) : 0;
+
+        // أفضل مصدر
+        $topSource         = $clientsBySource->sortDesc()->keys()->first() ?? '—';
+
+        // معدل سرعة الرد (متوسط الوقت بين أول رسالة واردة وأول رد صادر في نفس المحادثة — بالدقائق)
+        $avgResponseTime = DB::table('messages as m1')
+            ->join('messages as m2', function ($j) {
+                $j->on('m1.conversation_id', '=', 'm2.conversation_id')
+                  ->where('m1.direction', '=', 'incoming')
+                  ->where('m2.direction', '=', 'outgoing')
+                  ->whereColumn('m2.created_at', '>', 'm1.created_at');
+            })
+            ->select(DB::raw('AVG(TIMESTAMPDIFF(MINUTE, m1.created_at, m2.created_at)) as avg_minutes'))
+            ->where('m1.created_at', '>=', now()->subDays(7))
+            ->value('avg_minutes');
+
         return response()->json([
-            'total_clients' => $totalClients,
-            'new_clients_today' => $newClientsToday,
-            'new_clients_this_week' => $newClientsThisWeek,
-            'pending_tasks' => $pendingTasks,
-            'overdue_tasks' => $overdueTasks,
-            'open_conversations' => $openConversations,
-            'unread_messages' => $unreadMessages,
-            'clients_by_status' => $clientsByStatus,
-            'clients_by_source' => $clientsBySource,
-            'recent_clients' => $recentClients,
+            'total_clients'        => $totalClients,
+            'new_clients_today'    => $newClientsToday,
+            'new_clients_this_week'=> $newClientsThisWeek,
+            'pending_tasks'        => $pendingTasks,
+            'overdue_tasks'        => $overdueTasks,
+            'open_conversations'   => $openConversations,
+            'unread_messages'      => $unreadMessages,
+            'clients_by_status'    => $clientsByStatus,
+            'clients_by_source'    => $clientsBySource,
+            'recent_clients'       => $recentClients,
+            'clients_growth'       => $clientsGrowthData,
+            'messages_by_day'      => $messagesData,
+            'active_campaigns'     => $activeCampaigns,
+            'reply_rate'           => $replyRate,
+            'task_completion'      => $taskCompletion,
+            'booking_rate'         => $bookingRate,
+            'top_source'           => $topSource,
+            'avg_response_minutes' => $avgResponseTime ? (int) round($avgResponseTime) : null,
         ]);
     }
 

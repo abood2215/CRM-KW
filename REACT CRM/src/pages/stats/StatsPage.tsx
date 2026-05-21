@@ -46,29 +46,34 @@ const StatsPage: React.FC = () => {
     },
   });
 
-  const performanceData = [
-    { name: 'الأحد', incoming: 45, outgoing: 120 },
-    { name: 'الاثنين', incoming: 52, outgoing: 145 },
-    { name: 'الثلاثاء', incoming: 48, outgoing: 130 },
-    { name: 'الأربعاء', incoming: 61, outgoing: 180 },
-    { name: 'الخميس', incoming: 55, outgoing: 160 },
-    { name: 'الجمعة', incoming: 30, outgoing: 80 },
-    { name: 'السبت', incoming: 25, outgoing: 60 },
-  ];
+  const { data: agentsData } = useQuery({
+    queryKey: ['stats-agents'],
+    queryFn: async () => {
+      const { data } = await api.get('/stats/agents');
+      return data.agents ?? [];
+    },
+  });
 
-  const agentData = [
-    { name: 'أحمد', deals: 45, value: 45000 },
-    { name: 'سارة', deals: 52, value: 52000 },
-    { name: 'خالد', deals: 38, value: 38000 },
-    { name: 'ليلى', deals: 41, value: 41000 },
-  ];
+  const performanceData = stats?.messages_by_day ?? [];
 
-  const sourceData = [
-    { name: 'مباشر', value: 400, color: '#6366f1' },
-    { name: 'واتساب', value: 300, color: '#10b981' },
-    { name: 'إنستقرام', value: 200, color: '#ec4899' },
-    { name: 'إحالة', value: 100, color: '#f59e0b' },
-  ];
+  const agentData = (agentsData ?? []).map((a: any) => ({
+    name: a.name,
+    deals: a.clients_count,
+  }));
+
+  const sourceColors: Record<string, string> = {
+    'واتساب': '#10b981', 'whatsapp': '#10b981',
+    'جروب': '#f59e0b', 'group': '#f59e0b',
+    'إعلانات': '#6366f1', 'ads': '#6366f1',
+    'توصية': '#ec4899', 'referral': '#ec4899',
+    'مباشر': '#3b82f6', 'direct': '#3b82f6',
+  };
+  const palette = ['#10b981','#f59e0b','#6366f1','#ec4899','#3b82f6','#8b5cf6'];
+  const sourceData = Object.entries(stats?.clients_by_source ?? {}).map(([name, value], i) => ({
+    name,
+    value: value as number,
+    color: sourceColors[name] ?? palette[i % palette.length],
+  }));
 
   if (isLoading) {
     return (
@@ -117,10 +122,10 @@ const StatsPage: React.FC = () => {
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-6">
         {[
-          { label: 'إجمالي المبيعات', value: '45,230 ريال', icon: <TrendingUp size={18} />, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-          { label: 'سرعة الرد', value: '12 دقيقة', icon: <Clock size={18} />, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-          { label: 'أفضل مصدر', value: 'واتساب', icon: <Target size={18} />, color: 'text-amber-600', bg: 'bg-amber-50' },
-          { label: 'معدل الحجوزات', value: '24%', icon: <PhoneCall size={18} />, color: 'text-rose-600', bg: 'bg-rose-50' },
+          { label: 'إجمالي العملاء', value: stats?.total_clients ?? '—', icon: <Users size={18} />, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+          { label: 'سرعة الرد', value: stats?.avg_response_minutes != null ? `${stats.avg_response_minutes} دقيقة` : '—', icon: <Clock size={18} />, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+          { label: 'أفضل مصدر', value: stats?.top_source ?? '—', icon: <Target size={18} />, color: 'text-amber-600', bg: 'bg-amber-50' },
+          { label: 'معدل الحجوزات', value: `${stats?.booking_rate ?? 0}%`, icon: <PhoneCall size={18} />, color: 'text-rose-600', bg: 'bg-rose-50' },
         ].map((kpi, idx) => (
           <div key={idx} className="bg-white p-4 lg:p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col items-center text-center group hover:shadow-xl transition-all hover:-translate-y-1">
             <div className={cn("w-10 h-10 lg:w-12 lg:h-12 rounded-xl lg:rounded-2xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform", kpi.bg, kpi.color)}>
