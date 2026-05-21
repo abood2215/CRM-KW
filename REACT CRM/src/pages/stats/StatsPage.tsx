@@ -30,7 +30,7 @@ import { format } from 'date-fns';
 import { ar } from 'date-fns/locale';
 
 const StatsPage: React.FC = () => {
-  const [dateRange, setDateRange] = useState('last_7_days');
+  const [dateRange, setDateRange] = useState('week');
 
   const { data: stats, isLoading } = useQuery({
     queryKey: ['full-stats', dateRange],

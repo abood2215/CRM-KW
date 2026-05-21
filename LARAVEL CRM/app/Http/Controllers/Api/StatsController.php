@@ -16,11 +16,20 @@ use Illuminate\Support\Facades\DB;
 
 class StatsController extends Controller
 {
-    public function dashboard(): JsonResponse
+    public function dashboard(Request $request): JsonResponse
     {
+        $range = $request->get('range', 'week');
+        $days  = match ($range) {
+            'month' => 30,
+            'year'  => 365,
+            default => 7,  // week
+        };
+
         $totalClients = CrmClient::count();
         $newClientsToday = CrmClient::whereDate('created_at', today())->count();
-        $newClientsThisWeek = CrmClient::whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])->count();
+
+        // عدد العملاء الجدد في النطاق الزمني المحدد
+        $newClientsInRange = CrmClient::where('created_at', '>=', now()->subDays($days)->startOfDay())->count();
 
         $pendingTasks = CrmTask::where('status', 'pending')->count();
         $overdueTasks = CrmTask::where('status', 'pending')
@@ -56,37 +65,89 @@ class StatsController extends Controller
                 'created_at' => $c->created_at->toISOString(),
             ]);
 
-        // نمو العملاء آخر 7 أيام
-        $days = collect(range(6, 0))->map(fn($i) => now()->subDays($i)->format('Y-m-d'));
-        $clientsGrowth = CrmClient::select(DB::raw('DATE(created_at) as date'), DB::raw('count(*) as count'))
-            ->where('created_at', '>=', now()->subDays(6)->startOfDay())
-            ->groupBy('date')
-            ->pluck('count', 'date');
-        $clientsGrowthData = $days->map(fn($d) => [
-            'date'  => $d,
-            'name'  => \Carbon\Carbon::parse($d)->locale('ar')->isoFormat('ddd'),
-            'count' => (int)($clientsGrowth[$d] ?? 0),
-        ])->values();
+        if ($range === 'year') {
+            // تجميع بالأسبوع (52 نقطة بدلاً من 365)
+            $weeksBack = 51; // 52 أسبوع (0..51)
+            $weeks = collect(range($weeksBack, 0))->map(function ($i) {
+                $weekStart = now()->startOfWeek()->subWeeks($i);
+                return $weekStart->format('Y-m-d');
+            });
 
-        // رسائل آخر 7 أيام (وارد / صادر)
-        $msgRaw = Message::select(
-                DB::raw('DATE(created_at) as date'),
-                'direction',
-                DB::raw('count(*) as count')
-            )
-            ->where('created_at', '>=', now()->subDays(6)->startOfDay())
-            ->groupBy('date', 'direction')
-            ->get();
-        $messagesData = $days->map(function ($d) use ($msgRaw) {
-            $inRow  = $msgRaw->first(fn($r) => $r->date === $d && $r->direction === 'in');
-            $outRow = $msgRaw->first(fn($r) => $r->date === $d && $r->direction === 'out');
-            return [
-                'date'     => $d,
-                'name'     => \Carbon\Carbon::parse($d)->locale('ar')->isoFormat('ddd'),
-                'incoming' => (int)($inRow->count ?? 0),
-                'outgoing' => (int)($outRow->count ?? 0),
-            ];
-        })->values();
+            $clientsGrowthRaw = CrmClient::select(
+                    DB::raw("DATE_FORMAT(created_at, '%Y-%u') as week_key"),
+                    DB::raw('count(*) as count')
+                )
+                ->where('created_at', '>=', now()->subDays($days)->startOfDay())
+                ->groupBy('week_key')
+                ->pluck('count', 'week_key');
+
+            $clientsGrowthData = $weeks->map(function ($weekStart) use ($clientsGrowthRaw) {
+                $weekKey = \Carbon\Carbon::parse($weekStart)->format('Y-W');
+                // DATE_FORMAT uses %Y-%u so reformat to match
+                $dbKey = \Carbon\Carbon::parse($weekStart)->format('Y') . '-' . \Carbon\Carbon::parse($weekStart)->format('W');
+                return [
+                    'date'  => $weekStart,
+                    'name'  => \Carbon\Carbon::parse($weekStart)->locale('ar')->isoFormat('D MMM'),
+                    'count' => (int)($clientsGrowthRaw[$dbKey] ?? 0),
+                ];
+            })->values();
+
+            $msgRaw = Message::select(
+                    DB::raw("DATE_FORMAT(created_at, '%Y-%u') as week_key"),
+                    'direction',
+                    DB::raw('count(*) as count')
+                )
+                ->where('created_at', '>=', now()->subDays($days)->startOfDay())
+                ->groupBy('week_key', 'direction')
+                ->get();
+
+            $messagesData = $weeks->map(function ($weekStart) use ($msgRaw) {
+                $dbKey = \Carbon\Carbon::parse($weekStart)->format('Y') . '-' . \Carbon\Carbon::parse($weekStart)->format('W');
+                $inRow  = $msgRaw->first(fn($r) => $r->week_key === $dbKey && $r->direction === 'in');
+                $outRow = $msgRaw->first(fn($r) => $r->week_key === $dbKey && $r->direction === 'out');
+                return [
+                    'date'     => $weekStart,
+                    'name'     => \Carbon\Carbon::parse($weekStart)->locale('ar')->isoFormat('D MMM'),
+                    'incoming' => (int)($inRow->count ?? 0),
+                    'outgoing' => (int)($outRow->count ?? 0),
+                ];
+            })->values();
+        } else {
+            // تجميع يومي (week=7, month=30)
+            $daysBack = $days - 1;
+            $daysList = collect(range($daysBack, 0))->map(fn($i) => now()->subDays($i)->format('Y-m-d'));
+
+            $clientsGrowth = CrmClient::select(DB::raw('DATE(created_at) as date'), DB::raw('count(*) as count'))
+                ->where('created_at', '>=', now()->subDays($daysBack)->startOfDay())
+                ->groupBy('date')
+                ->pluck('count', 'date');
+
+            $clientsGrowthData = $daysList->map(fn($d) => [
+                'date'  => $d,
+                'name'  => \Carbon\Carbon::parse($d)->locale('ar')->isoFormat('ddd'),
+                'count' => (int)($clientsGrowth[$d] ?? 0),
+            ])->values();
+
+            $msgRaw = Message::select(
+                    DB::raw('DATE(created_at) as date'),
+                    'direction',
+                    DB::raw('count(*) as count')
+                )
+                ->where('created_at', '>=', now()->subDays($daysBack)->startOfDay())
+                ->groupBy('date', 'direction')
+                ->get();
+
+            $messagesData = $daysList->map(function ($d) use ($msgRaw) {
+                $inRow  = $msgRaw->first(fn($r) => $r->date === $d && $r->direction === 'in');
+                $outRow = $msgRaw->first(fn($r) => $r->date === $d && $r->direction === 'out');
+                return [
+                    'date'     => $d,
+                    'name'     => \Carbon\Carbon::parse($d)->locale('ar')->isoFormat('ddd'),
+                    'incoming' => (int)($inRow->count ?? 0),
+                    'outgoing' => (int)($outRow->count ?? 0),
+                ];
+            })->values();
+        }
 
         // حملات نشطة ومعدل الردود
         $activeCampaigns   = Campaign::where('status', 'running')->count();
@@ -110,8 +171,8 @@ class StatsController extends Controller
         $avgResponseTime = DB::table('messages as m1')
             ->join('messages as m2', function ($j) {
                 $j->on('m1.conversation_id', '=', 'm2.conversation_id')
-                  ->where('m1.direction', '=', 'incoming')
-                  ->where('m2.direction', '=', 'outgoing')
+                  ->where('m1.direction', '=', 'in')
+                  ->where('m2.direction', '=', 'out')
                   ->whereColumn('m2.created_at', '>', 'm1.created_at');
             })
             ->select(DB::raw('AVG(TIMESTAMPDIFF(MINUTE, m1.created_at, m2.created_at)) as avg_minutes'))
@@ -119,9 +180,10 @@ class StatsController extends Controller
             ->value('avg_minutes');
 
         return response()->json([
+            'range'                => $range,
             'total_clients'        => $totalClients,
             'new_clients_today'    => $newClientsToday,
-            'new_clients_this_week'=> $newClientsThisWeek,
+            'new_clients_in_range' => $newClientsInRange,
             'pending_tasks'        => $pendingTasks,
             'overdue_tasks'        => $overdueTasks,
             'open_conversations'   => $openConversations,

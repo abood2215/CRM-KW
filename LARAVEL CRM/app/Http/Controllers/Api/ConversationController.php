@@ -159,6 +159,14 @@ class ConversationController extends Controller
             $query->where('source', $request->source);
         }
 
+        if ($request->has('search') && $request->search) {
+            $search = $request->search;
+            $query->whereHas('client', function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('phone', 'like', "%{$search}%");
+            });
+        }
+
         $conversations = $query->orderBy('last_message_at', 'desc')
             ->paginate($request->per_page ?? 20);
 

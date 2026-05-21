@@ -13,10 +13,12 @@ import { format } from 'date-fns';
 import { ar } from 'date-fns/locale';
 import toast from 'react-hot-toast';
 import AddClientModal from '../../components/AddClientModal';
+import { useAuthStore } from '../../store/useAuthStore';
 
 const ClientsList: React.FC = () => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const { user } = useAuthStore();
   const [page, setPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [addOpen, setAddOpen] = useState(false);
@@ -89,14 +91,16 @@ const ClientsList: React.FC = () => {
           <p className="text-slate-500 mt-1 font-medium text-sm">إدارة بيانات العملاء في مكان واحد.</p>
         </div>
         <div className="flex items-center gap-2 lg:gap-3">
-          <button
-            onClick={handleExport}
-            className="h-10 lg:h-11 px-4 lg:px-5 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl shadow-sm hover:bg-slate-50 transition-all flex items-center gap-2 text-sm"
-          >
-            <Download size={16} />
-            <span className="hidden sm:inline">تصدير CSV</span>
-            <span className="sm:hidden">تصدير</span>
-          </button>
+          {user?.role !== 'agent' && (
+            <button
+              onClick={handleExport}
+              className="h-10 lg:h-11 px-4 lg:px-5 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl shadow-sm hover:bg-slate-50 transition-all flex items-center gap-2 text-sm"
+            >
+              <Download size={16} />
+              <span className="hidden sm:inline">تصدير CSV</span>
+              <span className="sm:hidden">تصدير</span>
+            </button>
+          )}
           <button
             onClick={() => setAddOpen(true)}
             className="h-10 lg:h-11 px-4 lg:px-5 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-all flex items-center gap-2 text-sm"
@@ -189,13 +193,15 @@ const ClientsList: React.FC = () => {
                         >
                           <Eye size={16} />
                         </button>
-                        <button
-                          className="p-2 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
-                          onClick={() => handleDelete(client)}
-                          disabled={deleteMutation.isPending}
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                        {user?.role !== 'agent' && (
+                          <button
+                            className="p-2 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
+                            onClick={() => handleDelete(client)}
+                            disabled={deleteMutation.isPending}
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

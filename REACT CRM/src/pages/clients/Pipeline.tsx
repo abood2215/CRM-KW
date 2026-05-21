@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import api from '../../api/axios';
@@ -24,6 +25,7 @@ const STAGES = [
 
 const Pipeline: React.FC = () => {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [addOpen, setAddOpen] = useState(false);
   const [addStatus, setAddStatus] = useState('new');
@@ -187,7 +189,10 @@ const Pipeline: React.FC = () => {
                 <h4 className="text-sm font-black text-slate-800">{client.name}</h4>
                 <p className="text-[10px] font-bold text-slate-400 mt-0.5 uppercase tracking-wider">{client.source}</p>
               </div>
-              <button className="p-1 text-slate-400 hover:text-indigo-600 rounded-lg">
+              <button
+                className="p-1 text-slate-400 hover:text-indigo-600 rounded-lg"
+                onClick={() => navigate(`/clients/${client.id}`)}
+              >
                 <MoreVertical size={15} />
               </button>
             </div>
@@ -262,7 +267,10 @@ const Pipeline: React.FC = () => {
                                   <h4 className="text-sm font-black text-slate-800 truncate">{client.name}</h4>
                                   <p className="text-[10px] font-bold text-slate-400 mt-0.5 uppercase tracking-wider">{client.source}</p>
                                 </div>
-                                <button className="p-1 hover:bg-slate-50 rounded-lg text-slate-400 hover:text-indigo-600 transition-colors flex-shrink-0">
+                                <button
+                                  className="p-1 hover:bg-slate-50 rounded-lg text-slate-400 hover:text-indigo-600 transition-colors flex-shrink-0"
+                                  onClick={() => navigate(`/clients/${client.id}`)}
+                                >
                                   <MoreVertical size={14} />
                                 </button>
                               </div>

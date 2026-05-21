@@ -162,6 +162,16 @@ const COUNTRIES = [
   { name: 'نيوزيلندا',    code: 'NZ', dial: '64'  },
 ];
 
+// ─── emoji list ───────────────────────────────────────────────────────────────
+const COMMON_EMOJIS = [
+  '😊','😀','😂','😍','🥰','😘','😢','😭','😅','😆',
+  '❤️','💕','💙','💚','💛','🧡','🖤','💜','🤍','💯',
+  '👍','👎','👋','🤝','🙏','💪','👏','🫂','✌️','🤞',
+  '🎉','🎊','🎈','🌟','⭐','✨','🔥','💡','✅','❌',
+  '📞','📱','💬','📧','🔔','⏰','📅','📌','🔑','💰',
+  '🏥','💊','🩺','🧘','🌸','🌺','🌻','🍀','🌈','☀️',
+];
+
 // ─── helpers ──────────────────────────────────────────────────────────────────
 const PALETTE = ['#6366f1','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#f97316','#ec4899'];
 const avatarBg = (name = '') => PALETTE[(name.charCodeAt(0) || 0) % PALETTE.length];
@@ -229,11 +239,16 @@ const MessagesPage: React.FC = () => {
   const [newTemplateVars, setNewTemplateVars] = useState<string[]>([]);
   // Track whether we're on desktop (≥1024px) — bypasses Tailwind JIT issue
   const [isDesktop, setIsDesktop]       = useState(window.innerWidth >= 1024);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [uploadingAttachment, setUploadingAttachment] = useState(false);
+  const [convPage, setConvPage]         = useState(1);
 
-  const scrollRef      = useRef<HTMLDivElement>(null);
-  const inputRef       = useRef<HTMLTextAreaElement>(null);
-  const selectedIdRef  = useRef<number | null>(null);
-  const filterRef      = useRef(filter);
+  const scrollRef           = useRef<HTMLDivElement>(null);
+  const inputRef            = useRef<HTMLTextAreaElement>(null);
+  const selectedIdRef       = useRef<number | null>(null);
+  const filterRef           = useRef(filter);
+  const emojiPickerRef      = useRef<HTMLDivElement>(null);
+  const attachmentInputRef  = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const onResize = () => setIsDesktop(window.innerWidth >= 1024);
@@ -245,15 +260,32 @@ const MessagesPage: React.FC = () => {
   useEffect(() => { selectedIdRef.current = selectedId; }, [selectedId]);
   useEffect(() => { filterRef.current = filter; }, [filter]);
 
+  // Close emoji picker on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(e.target as Node)) {
+        setShowEmojiPicker(false);
+      }
+    };
+    if (showEmojiPicker) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showEmojiPicker]);
+
+  // Reset page when search or filter changes
+  useEffect(() => { setConvPage(1); }, [search, filter]);
+
   // ── queries ──────────────────────────────────────────────────────────────
-  const { data: conversations = [], isLoading: loadingConvs } = useQuery<Conversation[]>({
-    queryKey: ['conversations', filter],
+  const { data: convsData, isLoading: loadingConvs } = useQuery<{ conversations: Conversation[]; meta: any }>({
+    queryKey: ['conversations', filter, search, convPage],
     queryFn: async () => {
-      const { data } = await api.get('/conversations', { params: { status: filter } });
-      return data.conversations;
+      const { data } = await api.get('/conversations', {
+        params: { status: filter, search: search || undefined, page: convPage, per_page: 20 },
+      });
+      return data;
     },
     staleTime: 30_000,
   });
+  const conversations = convsData?.conversations ?? [];
 
   // Fetch counts for all statuses to show correct tab badges
   useQuery({
@@ -337,7 +369,7 @@ const MessagesPage: React.FC = () => {
   });
 
   const sendMutation = useMutation({
-    mutationFn: (p: { content: string; is_private: boolean }) =>
+    mutationFn: (p: { content: string; is_private: boolean; type?: string }) =>
       api.post(`/conversations/${selectedId}/messages`, p),
     onMutate: async (vars) => {
       // Clear input instantly
@@ -413,7 +445,7 @@ const MessagesPage: React.FC = () => {
           api.get(`/conversations/${curId}`).catch(() => {});
         }
       }
-      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      queryClient.invalidateQueries({ queryKey: ['conversations', filterRef.current] });
       queryClient.invalidateQueries({ queryKey: ['conversations-counts'] });
     });
 
@@ -432,27 +464,8 @@ const MessagesPage: React.FC = () => {
       last_message_at: string; unread_count: number;
     }) => {
       const curFilter = filterRef.current;
-      queryClient.setQueryData<Conversation[]>(['conversations', curFilter], (old = []) => {
-        const updated = old.map(c =>
-          c.id === e.id
-            ? {
-                ...c,
-                last_message: e.last_message,
-                last_message_at: e.last_message_at,
-                // Keep unread_count at 0 if this conversation is currently open
-                unread_count: c.id === selectedIdRef.current ? 0 : e.unread_count,
-                status: e.status as Conversation['status'],
-              }
-            : c
-        );
-        // Re-sort by last_message_at descending
-        return [...updated].sort((a, b) => {
-          if (!a.last_message_at && !b.last_message_at) return 0;
-          if (!a.last_message_at) return 1;
-          if (!b.last_message_at) return -1;
-          return new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime();
-        });
-      });
+      // Invalidate all pages/searches for the current filter so lists refresh
+      queryClient.invalidateQueries({ queryKey: ['conversations', curFilter] });
       if (e.status !== curFilter) {
         queryClient.invalidateQueries({ queryKey: ['conversations-counts'] });
       }
@@ -527,10 +540,10 @@ const MessagesPage: React.FC = () => {
     prevMsgCountRef.current = 0;
     setSelectedId(id);
     setMobileShowChat(true);
-    // Reset unread count immediately in cache
-    queryClient.setQueryData<Conversation[]>(
-      ['conversations', filter],
-      (old = []) => old.map(c => c.id === id ? { ...c, unread_count: 0 } : c)
+    // Reset unread count immediately in all cached pages for this filter
+    queryClient.setQueriesData<{ conversations: Conversation[]; meta: any }>(
+      { queryKey: ['conversations', filter] },
+      (old) => old ? { ...old, conversations: old.conversations.map(c => c.id === id ? { ...c, unread_count: 0 } : c) } : old
     );
     // Persist reset to DB via show() endpoint
     api.get(`/conversations/${id}`).catch(() => {});
@@ -539,6 +552,29 @@ const MessagesPage: React.FC = () => {
     e?.preventDefault();
     if (!message.trim() || !selectedId || sendMutation.isPending) return;
     sendMutation.mutate({ content: message, is_private: isPrivate });
+  };
+
+  const handleAttachment = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !selectedId) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('فقط الصور مدعومة حالياً');
+      return;
+    }
+    setUploadingAttachment(true);
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      const { data } = await api.post('/campaigns/upload-image', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      sendMutation.mutate({ content: data.url, is_private: false, type: 'image' });
+    } catch {
+      toast.error('فشل رفع الصورة');
+    } finally {
+      setUploadingAttachment(false);
+      if (attachmentInputRef.current) attachmentInputRef.current.value = '';
+    }
   };
 
   // Reset selected conversation when filter changes and it no longer exists in list
@@ -553,8 +589,8 @@ const MessagesPage: React.FC = () => {
   const selectedConv = conversations.find(c => c.id === selectedId);
 
   const filtered = useMemo(() =>
+    !search ? conversations :
     conversations.filter(c =>
-      !search ||
       c.client?.name?.toLowerCase().includes(search.toLowerCase()) ||
       c.client?.phone?.includes(search) ||
       c.last_message?.toLowerCase().includes(search.toLowerCase())
@@ -1069,6 +1105,14 @@ const MessagesPage: React.FC = () => {
               </button>
             );
           })}
+          {convsData?.meta && convsData.meta.current_page < convsData.meta.last_page && (
+            <button
+              onClick={() => setConvPage(p => p + 1)}
+              className="w-full py-3 text-xs font-bold text-indigo-600 hover:bg-indigo-50 transition-colors border-t border-slate-100"
+            >
+              تحميل المزيد
+            </button>
+          )}
         </div>
       </div>
 
@@ -1217,15 +1261,38 @@ const MessagesPage: React.FC = () => {
             </div>
 
             {/* Input */}
+            <input ref={attachmentInputRef} type="file" accept="image/*" onChange={handleAttachment} className="hidden" />
             <div
               className={cn('flex-shrink-0 flex items-end gap-2 px-3 py-2 border-t border-slate-100', isPrivate ? 'bg-amber-50' : 'bg-white')}
             >
-              <div className="flex items-center gap-0.5 flex-shrink-0 pb-1">
-                <button type="button" className="w-9 h-9 flex items-center justify-center rounded-full text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors">
+              <div className="relative flex items-center gap-0.5 flex-shrink-0 pb-1">
+                {/* Emoji picker popup */}
+                {showEmojiPicker && (
+                  <div ref={emojiPickerRef} className="absolute bottom-14 right-0 z-50 bg-white rounded-2xl border border-slate-200 shadow-2xl p-3 w-72">
+                    <div className="grid grid-cols-10 gap-1">
+                      {COMMON_EMOJIS.map(emoji => (
+                        <button key={emoji} type="button"
+                          onClick={() => { setMessage(p => p + emoji); setShowEmojiPicker(false); inputRef.current?.focus(); }}
+                          className="w-7 h-7 flex items-center justify-center text-lg hover:bg-slate-100 rounded-lg transition-colors"
+                        >{emoji}</button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setShowEmojiPicker(v => !v)}
+                  className="w-9 h-9 flex items-center justify-center rounded-full text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                >
                   <Smile size={20} />
                 </button>
-                <button type="button" className="w-9 h-9 flex items-center justify-center rounded-full text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors">
-                  <Paperclip size={20} />
+                <button
+                  type="button"
+                  onClick={() => attachmentInputRef.current?.click()}
+                  disabled={uploadingAttachment}
+                  className="w-9 h-9 flex items-center justify-center rounded-full text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors disabled:opacity-50"
+                >
+                  {uploadingAttachment ? <Loader2 size={18} className="animate-spin" /> : <Paperclip size={20} />}
                 </button>
                 <button
                   type="button"
@@ -1286,6 +1353,7 @@ const MessagesPage: React.FC = () => {
                     </motion.button>
                   ) : (
                     <motion.button key="mic" type="button"
+                      onClick={() => toast('ميزة التسجيل الصوتي قادمة قريباً 🎙️', { icon: '🎙️' })}
                       initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
                       exit={{ scale: 0.5, opacity: 0 }} transition={{ duration: 0.1 }}
                       className="w-11 h-11 bg-indigo-600 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-indigo-700 active:scale-95 transition-all">
