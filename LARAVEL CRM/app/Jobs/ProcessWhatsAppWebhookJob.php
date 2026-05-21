@@ -350,29 +350,11 @@ class ProcessWhatsAppWebhookJob implements ShouldQueue
 
         $clientId = $conversation->client_id;
 
-        // Skip auto-reply if an agent or campaign sent to this client in the last 12h
-        // (prevents auto-replies after outbound campaigns or active agent conversations)
-        $recentOutgoing = Message::where('conversation_id', $conversation->id)
-            ->where('direction', 'out')
-            ->where('sender_name', '!=', 'Auto Reply')
-            ->where('created_at', '>=', now()->subHours(12))
-            ->orderByDesc('created_at')
-            ->first();
-
-        if ($recentOutgoing) {
-            Log::info('[WhatsApp Webhook] Auto-reply skipped — recent outgoing message exists', [
-                'conversation_id' => $conversation->id,
-                'last_outgoing_at' => $recentOutgoing->created_at,
-                'sender'           => $recentOutgoing->sender_name,
-            ]);
-            return;
-        }
-
-        // Check outside business hours
+        // Check outside business hours — always fires regardless of prior outgoing messages
         $isOutsideHours = !$this->isWithinBusinessHours();
 
         Log::debug('[WhatsApp Webhook] Auto-reply check', [
-            'conversation_id' => $conversation->id,
+            'conversation_id'  => $conversation->id,
             'is_outside_hours' => $isOutsideHours,
             'time_now'         => now()->format('Y-m-d H:i:s'),
         ]);
@@ -387,26 +369,39 @@ class ProcessWhatsAppWebhookJob implements ShouldQueue
             }
         }
 
-        // Check first message — must be the very first auto-reply this client has EVER received
+        // Check first message — skip if we had any outgoing conversation in the last 24h
+        // (avoids sending welcome messages to clients we already reached out to)
         if (!$autoReply) {
-            $alreadyReceivedAutoReply = $clientId
-                ? Message::where('direction', 'out')
-                    ->where('sender_name', 'Auto Reply')
-                    ->whereHas('conversation', fn($q) => $q->where('client_id', $clientId))
-                    ->exists()
-                : Message::where('direction', 'out')
-                    ->where('sender_name', 'Auto Reply')
-                    ->where('conversation_id', $conversation->id)
-                    ->exists();
+            $recentOutgoing = Message::where('conversation_id', $conversation->id)
+                ->where('direction', 'out')
+                ->where('sender_name', '!=', 'Auto Reply')
+                ->where('created_at', '>=', now()->subHours(24))
+                ->exists();
 
-            if ($alreadyReceivedAutoReply) {
-                Log::debug('[WhatsApp Webhook] Auto-reply skipped — client already received first_message reply', [
-                    'client_id' => $clientId,
+            if ($recentOutgoing) {
+                Log::debug('[WhatsApp Webhook] first_message skipped — recent outgoing exists', [
+                    'conversation_id' => $conversation->id,
                 ]);
-            } elseif (!$isOutsideHours) {
-                $autoReply = AutoReply::where('trigger', 'first_message')
-                    ->where('is_active', true)
-                    ->first();
+            } else {
+                $alreadyReceivedAutoReply = $clientId
+                    ? Message::where('direction', 'out')
+                        ->where('sender_name', 'Auto Reply')
+                        ->whereHas('conversation', fn($q) => $q->where('client_id', $clientId))
+                        ->exists()
+                    : Message::where('direction', 'out')
+                        ->where('sender_name', 'Auto Reply')
+                        ->where('conversation_id', $conversation->id)
+                        ->exists();
+
+                if ($alreadyReceivedAutoReply) {
+                    Log::debug('[WhatsApp Webhook] first_message skipped — already received before', [
+                        'client_id' => $clientId,
+                    ]);
+                } elseif (!$isOutsideHours) {
+                    $autoReply = AutoReply::where('trigger', 'first_message')
+                        ->where('is_active', true)
+                        ->first();
+                }
             }
         }
 
