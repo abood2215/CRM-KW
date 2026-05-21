@@ -208,6 +208,9 @@ class ProcessWhatsAppWebhookJob implements ShouldQueue
 
         // Detect block/spam reports from Meta error codes
         if ($status === 'failed') {
+            // زيادة عداد الفشل في الحملة
+            $recipient->campaign?->increment('failed_count');
+
             $errorCode = $statusData['errors'][0]['code'] ?? null;
 
             // Error 131026 = message undeliverable (user blocked business)
