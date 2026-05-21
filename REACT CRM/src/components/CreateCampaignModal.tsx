@@ -2,7 +2,7 @@ import React, { useRef, useState, useCallback } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../api/axios';
 import { WhatsappTemplate } from '../types';
-import { X, Loader2, Plus, Trash2, Search, Check, Upload, LayoutTemplate, MessageSquare, ChevronDown, Image } from 'lucide-react';
+import { X, Loader2, Plus, Trash2, Search, Check, Upload, LayoutTemplate, MessageSquare, ChevronDown, Image, List } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -29,9 +29,10 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ open, onClose
 
   const [recipients, setRecipients]         = useState<Recipient[]>([{ phone: '', name: '' }]);
   const [jsonText, setJsonText]             = useState('');
-  const [inputMode, setInputMode]           = useState<'manual' | 'json' | 'contacts' | 'csv'>('manual');
+  const [inputMode, setInputMode]           = useState<'manual' | 'json' | 'contacts' | 'csv' | 'list'>('manual');
   const [contactSearch, setContactSearch]   = useState('');
   const [selectedContactIds, setSelectedContactIds] = useState<number[]>([]);
+  const [selectedListId, setSelectedListId] = useState<number | null>(null);
 
   const { data: approvedTemplates = [] } = useQuery<WhatsappTemplate[]>({
     queryKey: ['templates-approved'],
@@ -49,6 +50,15 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ open, onClose
       return data.contacts?.data ?? data.contacts ?? [];
     },
     enabled: open && inputMode === 'contacts',
+  });
+
+  const { data: contactLists = [] } = useQuery<any[]>({
+    queryKey: ['contact-lists'],
+    queryFn: async () => {
+      const { data } = await api.get('/contact-lists');
+      return data.contact_lists ?? [];
+    },
+    enabled: open && inputMode === 'list',
   });
 
   const filteredContacts = contacts.filter(c =>
@@ -77,6 +87,7 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ open, onClose
     setRecipients([{ phone: '', name: '' }]);
     setJsonText('');
     setSelectedContactIds([]);
+    setSelectedListId(null);
     setContactSearch('');
     setInputMode('manual');
     setMsgMode('text');
@@ -133,6 +144,10 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ open, onClose
 
   const recipientCount = (() => {
     if (inputMode === 'contacts') return selectedContactIds.length;
+    if (inputMode === 'list') {
+      const list = contactLists.find((l: any) => l.id === selectedListId);
+      return list?.count ?? 0;
+    }
     return recipients.filter(r => r.phone.trim()).length;
   })();
 
@@ -168,22 +183,26 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ open, onClose
       return toast.error('رابط الصورة مطلوب');
 
     let finalRecipients: Recipient[] = [];
-    if (inputMode === 'contacts') {
+    const payload: any = {
+      name:          form.name,
+      delay_seconds: Number(form.delay_seconds) || 5,
+      scheduled_at:  form.scheduled_at || undefined,
+    };
+
+    if (inputMode === 'list') {
+      if (!selectedListId) return toast.error('اختر قائمة واحدة على الأقل');
+      payload.contact_list_id = selectedListId;
+    } else if (inputMode === 'contacts') {
       if (!selectedContactIds.length) return toast.error('اختر جهة اتصال واحدة على الأقل');
       finalRecipients = contacts
         .filter(c => selectedContactIds.includes(c.id))
         .map(c => ({ phone: c.phone, name: c.name || '' }));
+      payload.recipients = finalRecipients;
     } else {
       finalRecipients = recipients.filter(r => r.phone.trim());
       if (!finalRecipients.length) return toast.error('أضف مستلماً واحداً على الأقل');
+      payload.recipients = finalRecipients;
     }
-
-    const payload: any = {
-      name:           form.name,
-      delay_seconds:  Number(form.delay_seconds) || 5,
-      scheduled_at:   form.scheduled_at || undefined,
-      recipients:     finalRecipients,
-    };
 
     if (msgMode === 'template' && selectedTemplate) {
       payload.template_name     = selectedTemplate.name;
@@ -202,10 +221,11 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ open, onClose
   };
 
   const recipientModes = [
+    { id: 'list',     label: 'قائمة' },
+    { id: 'contacts', label: 'جهات الاتصال' },
     { id: 'manual',   label: 'يدوي' },
     { id: 'json',     label: 'JSON' },
     { id: 'csv',      label: 'CSV' },
-    { id: 'contacts', label: 'جهات الاتصال' },
   ];
 
   return (
@@ -470,6 +490,40 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ open, onClose
                       className="w-full h-10 bg-slate-100 text-slate-600 font-bold rounded-xl text-sm hover:bg-slate-200 transition-all">
                       تحليل JSON ({recipients.filter(r => r.phone).length} رقم حالياً)
                     </button>
+                  </div>
+                )}
+
+                {inputMode === 'list' && (
+                  <div className="space-y-3">
+                    {contactLists.length === 0 ? (
+                      <div className="text-center py-8 border-2 border-dashed border-slate-200 rounded-xl">
+                        <List size={28} className="text-slate-300 mx-auto mb-2" />
+                        <p className="text-sm text-slate-500 font-bold">لا توجد قوائم</p>
+                        <p className="text-xs text-slate-400 mt-1">أنشئ قوائم من صفحة جهات الاتصال أولاً</p>
+                      </div>
+                    ) : (
+                      <div className="grid gap-2 max-h-48 overflow-y-auto">
+                        {contactLists.map((l: any) => (
+                          <button
+                            key={l.id}
+                            type="button"
+                            onClick={() => setSelectedListId(l.id)}
+                            className={`flex items-center justify-between px-4 py-3 rounded-xl border text-sm transition-all ${selectedListId === l.id ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-slate-200 hover:border-indigo-300 hover:bg-slate-50'}`}
+                          >
+                            <div className="flex items-center gap-3 text-right">
+                              <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${selectedListId === l.id ? 'bg-indigo-100' : 'bg-slate-100'}`}>
+                                <List size={16} className={selectedListId === l.id ? 'text-indigo-600' : 'text-slate-400'} />
+                              </div>
+                              <div>
+                                <p className="font-bold">{l.name}</p>
+                                <p className="text-xs text-slate-400">{l.count ?? 0} جهة اتصال</p>
+                              </div>
+                            </div>
+                            {selectedListId === l.id && <Check size={16} className="text-indigo-600 flex-shrink-0" />}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
 

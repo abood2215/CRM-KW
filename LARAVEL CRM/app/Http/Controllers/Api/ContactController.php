@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Contact;
+use App\Models\ContactList;
+use App\Models\ContactListItem;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -139,26 +141,24 @@ class ContactController extends Controller
     public function importCsv(Request $request): JsonResponse
     {
         $request->validate([
-            'file' => 'required|file|mimes:csv,txt|max:5120',
+            'file'            => 'required|file|mimes:csv,txt|max:5120',
+            'contact_list_id' => 'nullable|integer|exists:contact_lists,id',
         ]);
 
-        $file = $request->file('file');
+        $file   = $request->file('file');
         $handle = fopen($file->getPathname(), 'r');
 
-        $imported = 0;
-        $skipped  = 0;
-        $errors   = [];
-        $isFirst  = true;
-        $userId   = $request->user()->id;
+        $imported    = 0;
+        $skipped     = 0;
+        $errors      = [];
+        $isFirst     = true;
+        $userId      = $request->user()->id;
+        $listId      = $request->input('contact_list_id');
+        $importedIds = [];
 
         while (($row = fgetcsv($handle)) !== false) {
-            // تجاهل السطر الأول (العناوين)
-            if ($isFirst) {
-                $isFirst = false;
-                continue;
-            }
+            if ($isFirst) { $isFirst = false; continue; }
 
-            // دعم عمود واحد (الهاتف فقط) أو عمودين (الاسم + الهاتف)
             $hasOnlyPhone = empty($row[1]);
             if ($hasOnlyPhone) {
                 if (empty($row[0])) { $skipped++; continue; }
@@ -170,14 +170,16 @@ class ContactController extends Controller
                 $name  = trim($row[0]);
             }
 
-            // تجنب التكرار
-            if (Contact::where('phone', $phone)->exists()) {
+            $existing = Contact::where('phone', $phone)->first();
+            if ($existing) {
+                // إذا كان في قائمة، نضيفه للقائمة حتى لو موجود مسبقاً
+                if ($listId) $importedIds[] = $existing->id;
                 $skipped++;
                 continue;
             }
 
             try {
-                Contact::create([
+                $contact = Contact::create([
                     'user_id' => $userId,
                     'name'    => $name,
                     'phone'   => $phone,
@@ -185,6 +187,7 @@ class ContactController extends Controller
                     'tags'    => !empty($row[3]) ? array_map('trim', explode(',', $row[3])) : null,
                     'source'  => $row[4] ?? null,
                 ]);
+                $importedIds[] = $contact->id;
                 $imported++;
             } catch (\Exception $e) {
                 $errors[] = "سطر {$phone}: " . $e->getMessage();
@@ -193,6 +196,18 @@ class ContactController extends Controller
         }
 
         fclose($handle);
+
+        // إضافة الجهات للقائمة المحددة
+        if ($listId && count($importedIds)) {
+            $list = ContactList::find($listId);
+            if ($list) {
+                $rows = array_map(fn($id) => ['contact_list_id' => $listId, 'contact_id' => $id], $importedIds);
+                foreach (array_chunk($rows, 500) as $chunk) {
+                    ContactListItem::insertOrIgnore($chunk);
+                }
+                $list->syncCount();
+            }
+        }
 
         return response()->json([
             'message'  => "تم استيراد {$imported} جهة اتصال.",

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../api/axios';
 import { useDebounce } from '../../hooks/useDebounce';
@@ -6,7 +6,7 @@ import { Contact, ContactList } from '../../types';
 import {
   Users, Plus, Search, Upload, Download, Trash2,
   Phone, Mail, Tag, List, CheckCircle, XCircle,
-  Loader2, Filter, MoreVertical, ShieldOff, ShieldCheck, ShieldAlert
+  Loader2, Filter, MoreVertical, ShieldOff, ShieldCheck, ShieldAlert, X, FolderPlus
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import toast from 'react-hot-toast';
@@ -22,8 +22,8 @@ const ContactsPage: React.FC = () => {
   const [optInFilter, setOptInFilter] = useState<'' | 'true' | 'false'>('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showListModal, setShowListModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [page, setPage] = useState(1);
-  const [importFile, setImportFile] = useState<File | null>(null);
 
   const debouncedSearch = useDebounce(search, 400);
 
@@ -93,23 +93,6 @@ const ContactsPage: React.FC = () => {
     },
   });
 
-  // استيراد CSV
-  const importMutation = useMutation({
-    mutationFn: (file: File) => {
-      const form = new FormData();
-      form.append('file', file);
-      return api.post('/contacts/import/csv', form, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-    },
-    onSuccess: (res) => {
-      queryClient.invalidateQueries({ queryKey: ['contacts'] });
-      toast.success(`تم استيراد ${res.data.imported} جهة اتصال.`);
-      setImportFile(null);
-    },
-    onError: () => toast.error('فشل الاستيراد.'),
-  });
-
   // تصدير CSV
   const handleExport = async () => {
     try {
@@ -142,22 +125,13 @@ const ContactsPage: React.FC = () => {
         </div>
         <div className="flex items-center gap-3 flex-wrap">
           {/* استيراد */}
-          <label className="h-10 px-4 border border-slate-200 rounded-xl text-slate-600 font-bold text-sm flex items-center gap-2 cursor-pointer hover:bg-slate-50 transition-all">
+          <button
+            onClick={() => setShowImportModal(true)}
+            className="h-10 px-4 border border-slate-200 rounded-xl text-slate-600 font-bold text-sm flex items-center gap-2 cursor-pointer hover:bg-slate-50 transition-all"
+          >
             <Upload size={16} />
             استيراد CSV
-            <input
-              type="file"
-              accept=".csv"
-              className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) {
-                  setImportFile(file);
-                  importMutation.mutate(file);
-                }
-              }}
-            />
-          </label>
+          </button>
 
           {/* تصدير */}
           <button
@@ -388,6 +362,19 @@ const ContactsPage: React.FC = () => {
           onSuccess={() => {
             queryClient.invalidateQueries({ queryKey: ['contacts'] });
             setShowAddModal(false);
+          }}
+        />
+      )}
+
+      {/* مودال استيراد CSV */}
+      {showImportModal && (
+        <ImportCSVModal
+          lists={lists}
+          onClose={() => setShowImportModal(false)}
+          onSuccess={() => {
+            queryClient.invalidateQueries({ queryKey: ['contacts'] });
+            queryClient.invalidateQueries({ queryKey: ['contact-lists'] });
+            setShowImportModal(false);
           }}
         />
       )}
@@ -636,6 +623,144 @@ const CreateListModal: React.FC<{ onClose: () => void; onSuccess: () => void }> 
             <button type="submit" disabled={loading} className="flex-1 h-11 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all text-sm disabled:opacity-60 flex items-center justify-center gap-2">
               {loading && <Loader2 size={16} className="animate-spin" />}
               إنشاء
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+// ==============================
+// مودال استيراد CSV مع اختيار القائمة
+// ==============================
+const ImportCSVModal: React.FC<{
+  lists: ContactList[];
+  onClose: () => void;
+  onSuccess: () => void;
+}> = ({ lists, onClose, onSuccess }) => {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [selectedListId, setSelectedListId] = useState<string>('');
+  const [showNewList, setShowNewList] = useState(false);
+  const [newListName, setNewListName] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!file) return toast.error('اختر ملف CSV أولاً');
+    setLoading(true);
+    try {
+      let listId = selectedListId;
+
+      // إنشاء قائمة جديدة إذا طلب المستخدم
+      if (showNewList && newListName.trim()) {
+        const { data } = await api.post('/contact-lists', { name: newListName.trim() });
+        listId = String(data.contact_list?.id ?? data.id ?? '');
+      }
+
+      const form = new FormData();
+      form.append('file', file);
+      if (listId) form.append('contact_list_id', listId);
+
+      const { data } = await api.post('/contacts/import/csv', form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
+      toast.success(`تم استيراد ${data.imported} جهة اتصال${listId ? ' وإضافتها للقائمة' : ''}.`);
+      onSuccess();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'فشل الاستيراد.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-black text-slate-800">استيراد CSV</h2>
+          <button onClick={onClose} className="p-2 rounded-xl text-slate-400 hover:bg-slate-100 transition-all">
+            <X size={18} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-5">
+          {/* اختيار الملف */}
+          <div>
+            <label className="block text-sm font-bold text-slate-700 mb-2">ملف CSV *</label>
+            <div
+              onClick={() => fileRef.current?.click()}
+              className={`flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-2xl p-6 cursor-pointer transition-all ${file ? 'border-indigo-400 bg-indigo-50' : 'border-slate-200 hover:border-indigo-300 hover:bg-slate-50'}`}
+            >
+              <input ref={fileRef} type="file" accept=".csv,.txt" className="hidden" onChange={e => setFile(e.target.files?.[0] ?? null)} />
+              <Upload size={24} className={file ? 'text-indigo-500' : 'text-slate-400'} />
+              {file ? (
+                <p className="text-sm font-bold text-indigo-700">{file.name}</p>
+              ) : (
+                <>
+                  <p className="text-sm font-bold text-slate-600">اضغط لاختيار الملف</p>
+                  <p className="text-xs text-slate-400">العمود الأول: اسم | العمود الثاني: هاتف</p>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* اختيار القائمة */}
+          <div>
+            <label className="block text-sm font-bold text-slate-700 mb-2">إضافة إلى قائمة (اختياري)</label>
+            {!showNewList ? (
+              <div className="flex gap-2">
+                <select
+                  value={selectedListId}
+                  onChange={e => setSelectedListId(e.target.value)}
+                  className="flex-1 h-11 px-4 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                >
+                  <option value="">— بدون قائمة —</option>
+                  {lists.map(l => (
+                    <option key={l.id} value={String(l.id)}>{l.name} ({l.count ?? 0})</option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => { setShowNewList(true); setSelectedListId(''); }}
+                  title="قائمة جديدة"
+                  className="h-11 px-3 border border-slate-200 rounded-xl text-slate-500 hover:border-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all"
+                >
+                  <FolderPlus size={17} />
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  <input
+                    autoFocus
+                    value={newListName}
+                    onChange={e => setNewListName(e.target.value)}
+                    placeholder="اسم القائمة الجديدة..."
+                    className="flex-1 h-11 px-4 border border-indigo-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => { setShowNewList(false); setNewListName(''); }}
+                    className="h-11 px-3 border border-slate-200 rounded-xl text-slate-400 hover:bg-slate-50 transition-all"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+                <p className="text-xs text-indigo-600 font-medium">سيتم إنشاء القائمة تلقائياً عند الاستيراد</p>
+              </div>
+            )}
+          </div>
+
+          <div className="flex gap-3 pt-1">
+            <button type="button" onClick={onClose} className="flex-1 h-11 border border-slate-200 rounded-xl font-bold text-slate-600 hover:bg-slate-50 text-sm">
+              إلغاء
+            </button>
+            <button type="submit" disabled={loading || !file} className="flex-1 h-11 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 text-sm disabled:opacity-60 flex items-center justify-center gap-2">
+              {loading && <Loader2 size={16} className="animate-spin" />}
+              استيراد
             </button>
           </div>
         </form>
