@@ -21,12 +21,20 @@ class SettingsController extends Controller
 
     public function updateBusinessHours(Request $request): JsonResponse
     {
+        // Normalize times: strip seconds so DB values like "09:00:00" become "09:00"
+        $normalizedHours = array_map(function ($h) {
+            $h['start_time'] = substr($h['start_time'] ?? '', 0, 5);
+            $h['end_time']   = substr($h['end_time']   ?? '', 0, 5);
+            return $h;
+        }, $request->input('hours', []));
+        $request->merge(['hours' => $normalizedHours]);
+
         $request->validate([
-            'hours' => 'required|array',
-            'hours.*.day_of_week' => 'required|integer|between:0,6',
-            'hours.*.start_time' => 'required|date_format:H:i',
-            'hours.*.end_time' => 'required|date_format:H:i|after:hours.*.start_time',
-            'hours.*.is_active' => 'required|boolean',
+            'hours'                => 'required|array',
+            'hours.*.day_of_week'  => 'required|integer|between:0,6',
+            'hours.*.start_time'   => 'required|date_format:H:i',
+            'hours.*.end_time'     => 'required|date_format:H:i',
+            'hours.*.is_active'    => 'required|boolean',
         ]);
 
         foreach ($request->hours as $hour) {
