@@ -4,11 +4,9 @@ import api from '../../api/axios';
 import { useDebounce } from '../../hooks/useDebounce';
 import { FileRecord } from '../../types';
 import {
-  Upload,
   Download,
   Trash2,
   Search,
-  Filter,
   Loader2,
   File,
   Image,
@@ -16,8 +14,6 @@ import {
   Database,
   HardDrive,
   Plus,
-  MoreVertical,
-  Eye,
   AlertCircle
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
@@ -138,8 +134,13 @@ const DrivePage: React.FC = () => {
 
   const files = filesData?.files || [];
   const storageUsed = filesData?.storage_used || 0;
-  const totalSize = 1099511627776; // 1TB in bytes
-  const usagePercent = (storageUsed / totalSize) * 100;
+
+  const formatStorageSize = (bytes: number): string => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KB`;
+    if (bytes < 1073741824) return `${(bytes / 1048576).toFixed(1)} MB`;
+    return `${(bytes / 1073741824).toFixed(2)} GB`;
+  };
 
   const categories = [
     { value: 'all' as const, label: 'جميع الملفات' },
@@ -189,21 +190,11 @@ const DrivePage: React.FC = () => {
 
         {/* Storage Usage */}
         <div className="bg-white rounded-2xl p-6 mb-8 shadow-sm border border-slate-200">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-slate-900">مساحة التخزين</h2>
-            <span className="text-sm text-slate-600">
-              {Math.round((storageUsed / 1048576) * 10) / 10} MB من 1 TB
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-slate-900">مساحة التخزين المستخدمة</h2>
+            <span className="text-sm font-semibold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">
+              {formatStorageSize(storageUsed)}
             </span>
-          </div>
-          <div className="w-full bg-slate-200 rounded-full h-3 overflow-hidden">
-            <div
-              className={cn(
-                'h-full transition-all rounded-full',
-                usagePercent < 50 ? 'bg-green-500' :
-                usagePercent < 80 ? 'bg-yellow-500' : 'bg-red-500'
-              )}
-              style={{ width: `${Math.min(usagePercent, 100)}%` }}
-            />
           </div>
         </div>
 

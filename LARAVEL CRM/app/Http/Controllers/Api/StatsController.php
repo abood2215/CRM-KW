@@ -78,8 +78,8 @@ class StatsController extends Controller
             ->groupBy('date', 'direction')
             ->get();
         $messagesData = $days->map(function ($d) use ($msgRaw) {
-            $inRow  = $msgRaw->first(fn($r) => $r->date === $d && $r->direction === 'incoming');
-            $outRow = $msgRaw->first(fn($r) => $r->date === $d && $r->direction === 'outgoing');
+            $inRow  = $msgRaw->first(fn($r) => $r->date === $d && $r->direction === 'in');
+            $outRow = $msgRaw->first(fn($r) => $r->date === $d && $r->direction === 'out');
             return [
                 'date'     => $d,
                 'name'     => \Carbon\Carbon::parse($d)->locale('ar')->isoFormat('ddd'),

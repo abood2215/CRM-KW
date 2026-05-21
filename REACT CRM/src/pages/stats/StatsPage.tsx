@@ -2,15 +2,9 @@ import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../api/axios';
 import { 
-  BarChart3, 
-  TrendingUp, 
-  Users, 
-  MessageSquare, 
-  Download, 
-  Calendar, 
-  Filter, 
-  ChevronDown,
-  ArrowUpRight,
+  BarChart3,
+  Users,
+  MessageSquare,
   Loader2,
   PhoneCall,
   Target,
@@ -112,10 +106,6 @@ const StatsPage: React.FC = () => {
               </button>
             ))}
           </div>
-          <button className="h-10 px-4 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl shadow-sm hover:bg-slate-50 flex items-center gap-2 text-sm">
-            <Download size={16} />
-            <span className="hidden sm:inline">تحميل PDF</span>
-          </button>
         </div>
       </div>
 

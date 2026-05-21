@@ -65,6 +65,7 @@ Route::middleware(['auth:sanctum', 'update.last.seen', 'log.activity'])->group(f
     Route::get('/clients', [ClientController::class, 'index']);
     Route::post('/clients', [ClientController::class, 'store']);
     Route::get('/clients/pipeline', [ClientController::class, 'pipeline']);
+    Route::get('/clients/pipeline/{status}', [ClientController::class, 'pipelineStage']);
     Route::get('/clients/{id}', [ClientController::class, 'show']);
     Route::get('/clients/{id}/timeline', [ClientController::class, 'timeline']);
     Route::put('/clients/{id}', [ClientController::class, 'update']);

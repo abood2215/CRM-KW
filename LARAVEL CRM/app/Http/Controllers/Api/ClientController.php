@@ -38,6 +38,7 @@ class ClientController extends Controller
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('phone', 'like', "%{$search}%")
                   ->orWhere('service', 'like', "%{$search}%")
                   ->orWhere('notes', 'like', "%{$search}%");
             });
@@ -264,23 +265,57 @@ class ClientController extends Controller
         ]);
     }
 
-    public function pipeline(): JsonResponse
+    public function pipeline(Request $request): JsonResponse
     {
         $statuses = ['new', 'contacted', 'interested', 'booked', 'active', 'following'];
+        $limit    = min((int) ($request->per_page ?? 50), 200);
 
-        // Single query — group in PHP instead of N separate queries
-        $all = CrmClient::with('user')
-            ->whereIn('status', $statuses)
-            ->orderBy('created_at', 'desc')
-            ->get()
-            ->groupBy('status');
+        // Counts in one query
+        $counts = CrmClient::whereIn('status', $statuses)
+            ->selectRaw('status, count(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status');
 
+        // Load first page per status (N queries, but small and indexed)
         $pipeline = array_map(fn ($status) => [
-            'status'  => $status,
-            'count'   => $all->get($status, collect())->count(),
-            'clients' => ClientResource::collection($all->get($status, collect())),
+            'status'   => $status,
+            'count'    => (int) ($counts[$status] ?? 0),
+            'has_more' => ($counts[$status] ?? 0) > $limit,
+            'clients'  => ClientResource::collection(
+                CrmClient::with('user')
+                    ->where('status', $status)
+                    ->orderBy('created_at', 'desc')
+                    ->limit($limit)
+                    ->get()
+            ),
         ], $statuses);
 
         return response()->json(['pipeline' => array_values($pipeline)]);
+    }
+
+    public function pipelineStage(Request $request, string $status): JsonResponse
+    {
+        $validStatuses = ['new', 'contacted', 'interested', 'booked', 'active', 'following'];
+        if (!in_array($status, $validStatuses)) {
+            return response()->json(['message' => 'حالة غير صالحة'], 422);
+        }
+
+        $limit  = min((int) ($request->per_page ?? 50), 200);
+        $offset = (int) ($request->offset ?? 0);
+
+        $total   = CrmClient::where('status', $status)->count();
+        $clients = CrmClient::with('user')
+            ->where('status', $status)
+            ->orderBy('created_at', 'desc')
+            ->offset($offset)
+            ->limit($limit)
+            ->get();
+
+        return response()->json([
+            'status'   => $status,
+            'count'    => $total,
+            'has_more' => ($offset + $limit) < $total,
+            'clients'  => ClientResource::collection($clients),
+        ]);
     }
 }

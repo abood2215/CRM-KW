@@ -4,12 +4,14 @@ import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea
 import api from '../../api/axios';
 import { Client } from '../../types';
 import {
-  Users, Plus, Search, MoreVertical, DollarSign, Loader2, PhoneCall, CalendarDays
+  Users, Plus, Search, MoreVertical, DollarSign, Loader2, PhoneCall, CalendarDays, ChevronDown
 } from 'lucide-react';
 import AddClientModal from '../../components/AddClientModal';
 import { cn } from '../../utils/cn';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
+
+type PipelineStage = { status: string; count: number; has_more: boolean; clients: Client[] };
 
 const STAGES = [
   { id: 'new', title: 'جديد', color: 'bg-indigo-50 border-indigo-200 text-indigo-700' },
@@ -26,8 +28,9 @@ const Pipeline: React.FC = () => {
   const [addOpen, setAddOpen] = useState(false);
   const [addStatus, setAddStatus] = useState('new');
   const [mobileActiveStage, setMobileActiveStage] = useState('new');
+  const [loadingMore, setLoadingMore] = useState<Record<string, boolean>>({});
 
-  const { data: clients = [], isLoading } = useQuery<Client[]>({
+  const { data: pipeline = [], isLoading } = useQuery<PipelineStage[]>({
     queryKey: ['clients-pipeline'],
     queryFn: async () => {
       const { data } = await api.get('/clients/pipeline');
@@ -55,14 +58,35 @@ const Pipeline: React.FC = () => {
     updateStatusMutation.mutate({ id: clientId, status: newStatus });
   };
 
+  const handleLoadMore = async (stageId: string) => {
+    setLoadingMore(prev => ({ ...prev, [stageId]: true }));
+    try {
+      const stage = pipeline.find(s => s.status === stageId);
+      const offset = stage?.clients.length ?? 0;
+      const { data } = await api.get(`/clients/pipeline/${stageId}`, { params: { offset } });
+      queryClient.setQueryData<PipelineStage[]>(['clients-pipeline'], (old = []) =>
+        old.map(s => s.status === stageId
+          ? { ...s, clients: [...s.clients, ...data.clients], has_more: data.has_more }
+          : s
+        )
+      );
+    } catch {
+      toast.error('فشل تحميل المزيد');
+    } finally {
+      setLoadingMore(prev => ({ ...prev, [stageId]: false }));
+    }
+  };
+
   const getClientsInStage = (stageId: string) => {
-    const stage = (clients as any[]).find(s => s.status === stageId);
+    const stage = pipeline.find(s => s.status === stageId);
     if (!stage) return [];
-    return (stage.clients as Client[]).filter(c => (
+    return stage.clients.filter(c =>
       c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       c.phone.includes(searchTerm)
-    ));
+    );
   };
+
+  const getStageData = (stageId: string) => pipeline.find(s => s.status === stageId);
 
   if (isLoading) {
     return (
@@ -109,7 +133,7 @@ const Pipeline: React.FC = () => {
       <div className="lg:hidden mb-4 overflow-x-auto scrollbar-hide">
         <div className="flex gap-2 min-w-max px-1">
           {STAGES.map((stage) => {
-            const count = getClientsInStage(stage.id).length;
+            const count = getStageData(stage.id)?.count ?? getClientsInStage(stage.id).length;
             return (
               <button
                 key={stage.id}
@@ -195,7 +219,7 @@ const Pipeline: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-black uppercase tracking-widest">{stage.title}</span>
                   <span className="bg-white/60 text-[10px] font-bold px-2 py-0.5 rounded-full min-w-5 text-center">
-                    {getClientsInStage(stage.id).length}
+                    {getStageData(stage.id)?.count ?? getClientsInStage(stage.id).length}
                   </span>
                 </div>
                 <button
@@ -281,6 +305,18 @@ const Pipeline: React.FC = () => {
                       ))}
                     </AnimatePresence>
                     {provided.placeholder}
+                    {!searchTerm && getStageData(stage.id)?.has_more && (
+                      <button
+                        onClick={() => handleLoadMore(stage.id)}
+                        disabled={loadingMore[stage.id]}
+                        className="w-full mt-2 py-2.5 rounded-xl border border-dashed border-slate-200 text-xs font-bold text-slate-400 hover:border-indigo-300 hover:text-indigo-600 hover:bg-indigo-50/30 transition-all flex items-center justify-center gap-1.5 disabled:opacity-60"
+                      >
+                        {loadingMore[stage.id]
+                          ? <Loader2 size={12} className="animate-spin" />
+                          : <ChevronDown size={12} />}
+                        تحميل المزيد
+                      </button>
+                    )}
                   </div>
                 )}
               </Droppable>

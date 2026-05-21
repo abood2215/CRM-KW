@@ -34,6 +34,18 @@ const TasksPage: React.FC = () => {
     },
   });
 
+  const { data: allTasks = [] } = useQuery<Task[]>({
+    queryKey: ['tasks', 'all'],
+    queryFn: async () => {
+      const { data } = await api.get('/tasks', { params: { status: 'all' } });
+      return data.tasks;
+    },
+  });
+
+  const completedCount = allTasks.filter(t => t.status === 'completed').length;
+  const totalCount = allTasks.length;
+  const efficiency = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
   const deleteTaskMutation = useMutation({
     mutationFn: (id: number) => api.delete(`/tasks/${id}`),
     onSuccess: () => {
@@ -133,9 +145,11 @@ const TasksPage: React.FC = () => {
             <div className="bg-emerald-600 p-6 rounded-2xl shadow-xl text-white relative overflow-hidden">
               <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-12 translate-x-12 blur-2xl" />
               <div className="relative z-10">
-                <h4 className="text-3xl font-black mb-1">92%</h4>
+                <h4 className="text-3xl font-black mb-1">{efficiency}%</h4>
                 <p className="text-xs font-bold text-emerald-100 uppercase tracking-widest mb-3">كفاءة الأداء</p>
-                <p className="text-[10px] font-medium opacity-80 leading-relaxed">أداء الفريق في إغلاق المهام خلال الوقت المحدد.</p>
+                <p className="text-[10px] font-medium opacity-80 leading-relaxed">
+                  {completedCount} من أصل {totalCount} مهمة مكتملة.
+                </p>
               </div>
             </div>
           </div>

@@ -252,8 +252,7 @@ const MessagesPage: React.FC = () => {
       const { data } = await api.get('/conversations', { params: { status: filter } });
       return data.conversations;
     },
-    refetchInterval: 2_000,
-    refetchIntervalInBackground: true,
+    staleTime: 30_000,
   });
 
   // Fetch counts for all statuses to show correct tab badges
@@ -283,8 +282,7 @@ const MessagesPage: React.FC = () => {
       return data.messages;
     },
     enabled: !!selectedId,
-    refetchInterval: 2_000,
-    refetchIntervalInBackground: true,
+    staleTime: 30_000,
   });
 
   const { data: approvedTemplates = [], isLoading: loadingTemplates, refetch: refetchTemplates } = useQuery<WhatsappTemplate[]>({
@@ -410,6 +408,10 @@ const MessagesPage: React.FC = () => {
       if (e.message.conversation_id === curId) {
         queryClient.setQueryData<Message[]>(['messages', curId],
           (old = []) => [...old, e.message]);
+        // Mark as read on the server since the user is actively viewing this conversation
+        if (e.message.direction === 'in') {
+          api.get(`/conversations/${curId}`).catch(() => {});
+        }
       }
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
       queryClient.invalidateQueries({ queryKey: ['conversations-counts'] });
@@ -433,7 +435,14 @@ const MessagesPage: React.FC = () => {
       queryClient.setQueryData<Conversation[]>(['conversations', curFilter], (old = []) => {
         const updated = old.map(c =>
           c.id === e.id
-            ? { ...c, last_message: e.last_message, last_message_at: e.last_message_at, unread_count: e.unread_count, status: e.status as Conversation['status'] }
+            ? {
+                ...c,
+                last_message: e.last_message,
+                last_message_at: e.last_message_at,
+                // Keep unread_count at 0 if this conversation is currently open
+                unread_count: c.id === selectedIdRef.current ? 0 : e.unread_count,
+                status: e.status as Conversation['status'],
+              }
             : c
         );
         // Re-sort by last_message_at descending
