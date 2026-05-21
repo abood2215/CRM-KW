@@ -195,6 +195,8 @@ class ProcessWhatsAppWebhookJob implements ShouldQueue
             return;
         }
 
+        $previousStatus = $recipient->status; // احفظ الحالة قبل التحديث
+
         $recipientStatus = match ($status) {
             'delivered' => 'delivered',
             'read'      => 'read',
@@ -208,8 +210,20 @@ class ProcessWhatsAppWebhookJob implements ShouldQueue
 
         // Detect block/spam reports from Meta error codes
         if ($status === 'failed') {
-            // زيادة عداد الفشل في الحملة
-            $recipient->campaign?->increment('failed_count');
+            $campaign = $recipient->campaign;
+
+            // إذا كانت الرسالة سُجِّلت كـ "مُرسلة" سابقاً، نصحح العدادات
+            $wasPreviouslySent = in_array($previousStatus, ['sent', 'delivered', 'read']);
+            if ($wasPreviouslySent && $campaign) {
+                $campaign->increment('failed_count');
+                // نقص من sent_count مع ضمان عدم النزول تحت صفر
+                $campaign->decrement('sent_count', 1);
+                if ($campaign->sent_count < 0) {
+                    $campaign->update(['sent_count' => 0]);
+                }
+            } elseif ($campaign) {
+                $campaign->increment('failed_count');
+            }
 
             $errorCode = $statusData['errors'][0]['code'] ?? null;
 
@@ -218,7 +232,7 @@ class ProcessWhatsAppWebhookJob implements ShouldQueue
             $isBlock = in_array($errorCode, [131026, 131047, 368]);
 
             if ($isBlock) {
-                $recipient->campaign?->increment('block_count');
+                $campaign?->increment('block_count');
                 Log::warning('[WhatsApp Webhook] Block/spam detected', [
                     'phone'      => $recipient->phone,
                     'error_code' => $errorCode,
