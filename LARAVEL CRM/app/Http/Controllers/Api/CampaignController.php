@@ -118,9 +118,10 @@ class CampaignController extends Controller
             $response['skipped_message'] = "تم تخطي {$skipped} مستلم (محظور أو ألغى الاشتراك أو مكرر).";
         }
 
-        // Auto-dispatch if not a draft-only creation
+        // Mark as scheduled — the minute-based scheduler (console.php) will dispatch the job
+        // when scheduled_at arrives. Do NOT dispatch a delayed job here to avoid double-dispatch
+        // race conditions where two parallel chains process recipients simultaneously.
         if ($campaign->scheduled_at) {
-            ProcessCampaignJob::dispatch($campaign->id)->delay($campaign->scheduled_at);
             $campaign->update(['status' => 'scheduled']);
         }
 
@@ -224,12 +225,11 @@ class CampaignController extends Controller
         $scheduledAtChanged = array_key_exists('scheduled_at', $validated)
             && $validated['scheduled_at'] !== $campaign->scheduled_at?->toDateTimeString();
 
-        // إذا تغير وقت الجدولة، نعيد ضبط الحالة وندفع job جديد بالتأخير الصحيح
+        // إذا تغير وقت الجدولة، نعيد ضبط الحالة — الـ scheduler يتولى الإطلاق عند الوقت المحدد
         if ($scheduledAtChanged) {
             if (!empty($validated['scheduled_at'])) {
                 $validated['status'] = 'scheduled';
                 $campaign->update($validated);
-                ProcessCampaignJob::dispatch($campaign->id)->delay($campaign->fresh()->scheduled_at);
             } else {
                 // أُزيل وقت الجدولة → تحويل لـ draft
                 $validated['status'] = 'draft';

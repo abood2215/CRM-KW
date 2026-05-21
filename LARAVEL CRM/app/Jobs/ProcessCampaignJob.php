@@ -75,6 +75,10 @@ class ProcessCampaignJob implements ShouldQueue
         });
 
         if (!$recipient) {
+            // Only mark complete if nothing is still being processed by another job
+            if ($campaign->recipients()->where('status', 'processing')->exists()) {
+                return;
+            }
             $campaign->update(['status' => 'completed', 'completed_at' => now()]);
             event(new CampaignProgressEvent($campaign->fresh()));
             NotificationService::sendToAdmins(
