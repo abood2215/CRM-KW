@@ -221,7 +221,14 @@ class ContactController extends Controller
     public function destroyAll(): JsonResponse
     {
         $count = Contact::count();
+
+        \DB::statement('SET FOREIGN_KEY_CHECKS=0');
+        \DB::table('contact_list_items')->truncate();
         Contact::truncate();
+        \DB::statement('SET FOREIGN_KEY_CHECKS=1');
+
+        // تحديث عداد كل القوائم إلى صفر
+        \DB::table('contact_lists')->update(['count' => 0]);
 
         return response()->json(['message' => "تم حذف {$count} جهة اتصال.", 'deleted' => $count]);
     }
