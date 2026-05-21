@@ -60,7 +60,12 @@ class CampaignService
             throw new \Exception('الحملة ليست موقوفة.');
         }
 
-        $campaign->update(['status' => 'running']);
+        // إعادة processing وfailed إلى pending عند الاستئناف
+        $campaign->recipients()->whereIn('status', ['processing', 'failed'])->update([
+            'status'        => 'pending',
+            'error_message' => null,
+        ]);
+        $campaign->update(['status' => 'running', 'failed_count' => 0]);
 
         ProcessCampaignJob::dispatch($campaign->id);
 
@@ -77,16 +82,17 @@ class CampaignService
         return rand($base, $base + $jitter);
     }
 
-    // التحقق من معدل الفشل (يتوقف إذا تجاوز 10%)
+    // التحقق من معدل الفشل — لا يوقف حتى يُرسل 5 رسائل على الأقل
     public function checkFailRate(Campaign $campaign): bool
     {
         $total = $campaign->sent_count + $campaign->failed_count;
 
-        if ($total === 0) return false;
+        // لا نفحص حتى نصل لـ 5 رسائل على الأقل لتجنب الإيقاف المبكر
+        if ($total < 5) return false;
 
         $failRate = ($campaign->failed_count / $total) * 100;
 
-        return $failRate >= ($campaign->stop_on_fail_rate ?? 10);
+        return $failRate >= ($campaign->stop_on_fail_rate ?? 50);
     }
 
     // جلب إحصائيات الحملة التفصيلية

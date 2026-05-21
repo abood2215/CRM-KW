@@ -282,6 +282,8 @@ class ProcessCampaignJob implements ShouldQueue
 
     private function pauseWithNotification(Campaign $campaign, string $title, string $body): void
     {
+        // إرجاع processing إلى pending حتى لا تضيع عند الاستئناف
+        $campaign->recipients()->where('status', 'processing')->update(['status' => 'pending']);
         $campaign->update(['status' => 'paused']);
         NotificationService::sendToAdmins(
             'campaign_paused',
