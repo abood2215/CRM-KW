@@ -370,7 +370,13 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ open, onClose
                           <p className="text-center text-slate-400 text-sm py-6">لا توجد قوالب معتمدة</p>
                         ) : approvedTemplates.map(t => (
                           <button key={t.id} type="button"
-                            onClick={() => { setSelectedTemplate(t); setShowTemplateDrop(false); }}
+                            onClick={() => {
+                      setSelectedTemplate(t);
+                      setShowTemplateDrop(false);
+                      if (t.header_type === 'image' && t.header_content) {
+                        setForm(f => ({ ...f, image_path: t.header_content! }));
+                      }
+                    }}
                             className="w-full flex items-start justify-between gap-2 px-4 py-3 hover:bg-indigo-50 text-right border-b border-slate-50 last:border-0 transition-colors">
                             <div>
                               <p className="text-sm font-bold text-slate-800">{t.name}</p>
@@ -389,7 +395,12 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ open, onClose
                   )}
                   {selectedTemplate?.header_type === 'image' && (
                     <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-xl">
-                      <p className="text-xs font-bold text-amber-700 mb-2">هذا القالب يتطلب صورة في الـ Header</p>
+                      <p className="text-xs font-bold text-amber-700 mb-2">
+                        صورة الـ Header
+                        {selectedTemplate.header_content && form.image_path === selectedTemplate.header_content && (
+                          <span className="mr-2 text-emerald-600 font-bold">✓ تم تحميلها تلقائياً</span>
+                        )}
+                      </p>
                       <div className="flex gap-2">
                         <input
                           type="url"
