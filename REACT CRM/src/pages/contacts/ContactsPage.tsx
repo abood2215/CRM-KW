@@ -498,6 +498,7 @@ const BlacklistedTab: React.FC<{
 // ==============================
 const ContactListsTab: React.FC<{ lists: ContactList[]; queryClient: any }> = ({ lists, queryClient }) => {
   const [showCreate, setShowCreate] = useState(false);
+  const [viewList, setViewList] = useState<ContactList | null>(null);
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => api.delete(`/contact-lists/${id}`),
@@ -530,13 +531,18 @@ const ContactListsTab: React.FC<{ lists: ContactList[]; queryClient: any }> = ({
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {lists.map((list) => (
-            <div key={list.id} className="bg-slate-50/50 rounded-2xl border border-slate-100 p-6 hover:shadow-lg hover:-translate-y-1 transition-all group">
+            <div
+              key={list.id}
+              onClick={() => setViewList(list)}
+              className="bg-slate-50/50 rounded-2xl border border-slate-100 p-6 hover:shadow-lg hover:-translate-y-1 transition-all group cursor-pointer"
+            >
               <div className="flex items-start justify-between mb-4">
                 <div className="w-12 h-12 bg-indigo-100 rounded-2xl flex items-center justify-center">
                   <List size={22} className="text-indigo-600" />
                 </div>
                 <button
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation();
                     if (window.confirm('حذف هذه القائمة؟'))
                       deleteMutation.mutate(list.id);
                   }}
@@ -549,9 +555,12 @@ const ContactListsTab: React.FC<{ lists: ContactList[]; queryClient: any }> = ({
               {list.description && (
                 <p className="text-slate-400 text-sm mb-3 line-clamp-2">{list.description}</p>
               )}
-              <div className="flex items-center gap-2 text-sm text-slate-500 font-bold">
-                <Users size={14} />
-                <span>{list.count ?? 0} جهة اتصال</span>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-sm text-slate-500 font-bold">
+                  <Users size={14} />
+                  <span>{list.count ?? 0} جهة اتصال</span>
+                </div>
+                <span className="text-xs text-indigo-500 font-bold opacity-0 group-hover:opacity-100 transition-opacity">عرض ←</span>
               </div>
             </div>
           ))}
@@ -565,6 +574,13 @@ const ContactListsTab: React.FC<{ lists: ContactList[]; queryClient: any }> = ({
             queryClient.invalidateQueries({ queryKey: ['contact-lists'] });
             setShowCreate(false);
           }}
+        />
+      )}
+
+      {viewList && (
+        <ListContactsModal
+          list={viewList}
+          onClose={() => setViewList(null)}
         />
       )}
     </div>
@@ -626,6 +642,104 @@ const CreateListModal: React.FC<{ onClose: () => void; onSuccess: () => void }> 
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  );
+};
+
+// ==============================
+// مودال عرض جهات اتصال القائمة
+// ==============================
+const ListContactsModal: React.FC<{ list: ContactList; onClose: () => void }> = ({ list, onClose }) => {
+  const [search, setSearch] = useState('');
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['contact-list-contacts', list.id],
+    queryFn: async () => {
+      const { data } = await api.get(`/contact-lists/${list.id}`);
+      return (data.contact_list?.contacts ?? data.contacts ?? []) as Contact[];
+    },
+  });
+
+  const filtered = (data ?? []).filter((c: Contact) =>
+    !search || c.name?.includes(search) || c.phone?.includes(search)
+  );
+
+  return (
+    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg flex flex-col max-h-[85vh]">
+        {/* Header */}
+        <div className="flex items-center justify-between px-8 py-6 border-b border-slate-100 shrink-0">
+          <div>
+            <h2 className="text-xl font-black text-slate-800">{list.name}</h2>
+            <p className="text-sm text-slate-400 mt-0.5 font-medium">{list.count ?? 0} جهة اتصال</p>
+          </div>
+          <button onClick={onClose} className="p-2 rounded-xl text-slate-400 hover:bg-slate-100 transition-all">
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Search */}
+        <div className="px-8 py-4 border-b border-slate-50 shrink-0">
+          <div className="relative">
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
+            <input
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="بحث بالاسم أو الرقم..."
+              className="w-full h-10 pr-9 pl-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+            />
+          </div>
+        </div>
+
+        {/* Contacts */}
+        <div className="overflow-y-auto flex-1 px-4 py-2">
+          {isLoading ? (
+            <div className="flex justify-center py-16">
+              <Loader2 className="animate-spin text-indigo-600 h-7 w-7" />
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="text-center py-16">
+              <Users size={28} className="text-slate-200 mx-auto mb-3" />
+              <p className="text-slate-400 font-bold text-sm">لا توجد جهات اتصال</p>
+            </div>
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-100">
+                  <th className="text-right py-3 px-4 font-black text-slate-400 text-xs">الاسم</th>
+                  <th className="text-right py-3 px-4 font-black text-slate-400 text-xs">الهاتف</th>
+                  <th className="text-right py-3 px-4 font-black text-slate-400 text-xs hidden sm:table-cell">الحالة</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {filtered.map((c: Contact) => (
+                  <tr key={c.id} className="hover:bg-slate-50/50 transition-colors">
+                    <td className="py-3 px-4 font-bold text-slate-800">{c.name || '—'}</td>
+                    <td className="py-3 px-4 font-mono text-slate-600 flex items-center gap-1.5">
+                      <Phone size={12} className="text-slate-400" />
+                      {c.phone}
+                    </td>
+                    <td className="py-3 px-4 hidden sm:table-cell">
+                      {c.opt_in ? (
+                        <span className="px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-lg text-xs font-bold">مشترك</span>
+                      ) : (
+                        <span className="px-2 py-0.5 bg-slate-100 text-slate-400 rounded-lg text-xs font-bold">غير مشترك</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        <div className="px-8 py-4 border-t border-slate-100 shrink-0">
+          <button onClick={onClose} className="w-full h-10 border border-slate-200 rounded-xl font-bold text-slate-600 hover:bg-slate-50 text-sm transition-all">
+            إغلاق
+          </button>
+        </div>
       </div>
     </div>
   );
