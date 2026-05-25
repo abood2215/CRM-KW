@@ -18,7 +18,13 @@ class TemplateController extends Controller
         $query = WhatsappTemplate::with('whatsappNumber')->latest('last_synced_at');
 
         if ($request->status) {
-            $query->where('status', $request->status);
+            $status = $request->status;
+            // Meta قديم: APPROVED، Meta جديد: ACTIVE — نعاملهم نفس الشيء
+            if ($status === 'approved') {
+                $query->whereIn('status', ['approved', 'active']);
+            } else {
+                $query->where('status', $status);
+            }
         }
 
         if ($request->category) {

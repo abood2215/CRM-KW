@@ -89,7 +89,7 @@ class SyncTemplatesJob implements ShouldQueue
                         [
                             'language'        => $tpl['language'] ?? 'ar',
                             'category'        => strtolower($tpl['category'] ?? 'marketing'),
-                            'status'          => strtolower($tpl['status'] ?? 'pending'),
+                            'status'          => $this->normalizeStatus($tpl['status'] ?? 'pending'),
                             'header_type'     => $headerType,
                             'header_content'  => $headerContent,
                             'body_text'       => $bodyText,
@@ -107,6 +107,17 @@ class SyncTemplatesJob implements ShouldQueue
                 Log::error("SyncTemplatesJob فشل للرقم {$number->id}: " . $e->getMessage());
             }
         }
+    }
+
+    // Meta API قديم يرجع APPROVED، الجديد يرجع ACTIVE — نوحّدهم
+    private function normalizeStatus(string $status): string
+    {
+        $s = strtolower($status);
+        return match ($s) {
+            'active', 'approved' => 'approved',
+            'paused', 'disabled' => 'rejected',
+            default              => 'pending',
+        };
     }
 
     private function downloadAndStoreImage(string $url): ?string
