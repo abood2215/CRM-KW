@@ -97,14 +97,18 @@ class ProcessWhatsAppWebhookJob implements ShouldQueue
 
         // Resolve content
         $content = match ($messageType) {
-            'text'     => $msgData['text']['body']             ?? '',
-            'image'    => $msgData['image']['caption']         ?? '[صورة]',
-            'video'    => '[فيديو]',
-            'audio'    => '[رسالة صوتية]',
-            'document' => $msgData['document']['filename']     ?? '[مستند]',
-            'sticker'  => '[ستيكر]',
-            'location' => '[موقع]',
-            default    => '[رسالة غير مدعومة]',
+            'text'        => $msgData['text']['body']                                   ?? '',
+            'image'       => $msgData['image']['caption']                               ?? '[صورة]',
+            'video'       => '[فيديو]',
+            'audio'       => '[رسالة صوتية]',
+            'document'    => $msgData['document']['filename']                           ?? '[مستند]',
+            'sticker'     => '[ستيكر]',
+            'location'    => '[موقع]',
+            'button'      => $msgData['button']['text']                                 ?? '[زر]',
+            'interactive' => $msgData['interactive']['button_reply']['title']
+                          ?? $msgData['interactive']['list_reply']['title']
+                          ?? '[تفاعل]',
+            default       => '[رسالة غير مدعومة]',
         };
 
         $msgTypeNorm = in_array($messageType, ['text', 'image', 'file']) ? $messageType : 'text';
@@ -208,11 +212,7 @@ class ProcessWhatsAppWebhookJob implements ShouldQueue
             $recipient->update(['status' => $recipientStatus]);
         }
 
-        // أنشئ المحادثة فقط عند أول تأكيد توصيل — ليس عند الإرسال
-        if ($status === 'delivered' && !$recipient->conversation_created) {
-            $this->ensureCampaignConversation($recipient);
-            $recipient->update(['conversation_created' => true]);
-        }
+        // المحادثة تُنشأ فقط عند رد الشخص (handleIncomingMessage) لا عند التوصيل
 
         // Detect block/spam reports from Meta error codes
         if ($status === 'failed') {
