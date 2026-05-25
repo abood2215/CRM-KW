@@ -212,6 +212,19 @@ class ProcessWhatsAppWebhookJob implements ShouldQueue
         if ($status === 'failed') {
             $campaign = $recipient->campaign;
 
+            $errorCode    = $statusData['errors'][0]['code'] ?? null;
+            $errorTitle   = $statusData['errors'][0]['title'] ?? null;
+            $errorDetails = $statusData['errors'][0]['error_data']['details'] ?? null;
+
+            // حفظ رسالة الخطأ الحقيقية من Meta
+            $errorMessage = $errorCode
+                ? "[{$errorCode}] " . ($errorDetails ?: $errorTitle)
+                : $errorTitle;
+
+            if ($errorMessage) {
+                $recipient->update(['error_message' => $errorMessage]);
+            }
+
             // إذا كانت الرسالة سُجِّلت كـ "مُرسلة" سابقاً، نصحح العدادات
             $wasPreviouslySent = in_array($previousStatus, ['sent', 'delivered', 'read']);
             if ($wasPreviouslySent && $campaign) {
@@ -225,11 +238,10 @@ class ProcessWhatsAppWebhookJob implements ShouldQueue
                 $campaign->increment('failed_count');
             }
 
-            $errorCode = $statusData['errors'][0]['code'] ?? null;
-
             // Error 131026 = message undeliverable (user blocked business)
             // Error 131047 = re-engagement message (24h rule)
-            $isBlock = in_array($errorCode, [131026, 131047, 368]);
+            // Error 131049 = ecosystem quality throttle
+            $isBlock = in_array($errorCode, [131026, 131047, 131049, 368]);
 
             if ($isBlock) {
                 $campaign?->increment('block_count');
