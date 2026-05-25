@@ -130,6 +130,7 @@ class ProcessCampaignJob implements ShouldQueue
             $recipient->update([
                 'status'        => 'failed',
                 'error_message' => $e->getMessage(),
+                'sent_at'       => now(),
             ]);
             $campaign->increment('failed_count');
             Log::error("[Campaign #{$campaign->id}] فشل الإرسال لـ {$recipient->phone}: {$e->getMessage()}");

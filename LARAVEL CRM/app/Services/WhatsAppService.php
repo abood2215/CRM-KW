@@ -104,6 +104,19 @@ class WhatsAppService
     }
 
     /**
+     * أكواد أخطاء Meta غير قابلة للإعادة — لا فائدة من إعادة المحاولة
+     */
+    protected const NON_RETRYABLE_CODES = [
+        131026, // المستخدم حجب الرقم التجاري
+        131047, // رقم جديد خارج نافذة 24 ساعة — يلزم template
+        131000, // رقم غير صالح في WhatsApp
+        131001, // رقم هاتف غير صحيح
+        131005, // لا يمكن التحقق من جودة الرقم
+        132000, // اسم القالب غير موجود
+        132001, // القالب غير معتمد
+    ];
+
+    /**
      * Send payload to WhatsApp Cloud API with retry logic.
      */
     protected function send(array $payload, ?string $phoneNumberId = null, int $maxAttempts = 3): array
@@ -128,11 +141,26 @@ class WhatsAppService
                     return $result;
                 }
 
+                $errorBody    = $response->json() ?? [];
+                $errorCode    = $errorBody['error']['code'] ?? null;
+                $errorMessage = $errorBody['error']['message'] ?? $response->body();
+
                 Log::warning("[WhatsApp] Attempt {$attempt} failed", [
-                    'status' => $response->status(),
-                    'body'   => $response->body(),
+                    'status'     => $response->status(),
+                    'error_code' => $errorCode,
+                    'error_msg'  => $errorMessage,
                 ]);
 
+                // أخطاء غير قابلة للإعادة — نوقف فوراً ونرجع رسالة واضحة
+                if ($errorCode && in_array($errorCode, self::NON_RETRYABLE_CODES)) {
+                    $friendlyMessage = $this->friendlyError($errorCode, $errorMessage);
+                    Log::error("[WhatsApp] Non-retryable error [{$errorCode}]: {$friendlyMessage}");
+                    throw new \RuntimeException($friendlyMessage);
+                }
+
+            } catch (\RuntimeException $e) {
+                // أخطاء غير قابلة للإعادة نرميها مباشرة
+                throw $e;
             } catch (\Exception $e) {
                 Log::warning("[WhatsApp] Attempt {$attempt} exception", [
                     'error' => $e->getMessage(),
@@ -147,6 +175,20 @@ class WhatsAppService
 
         Log::error('[WhatsApp] All attempts failed', ['payload' => $payload, 'phone_id' => $phoneId]);
         throw new \RuntimeException("WhatsApp message failed after {$maxAttempts} attempts.");
+    }
+
+    private function friendlyError(int $code, string $fallback): string
+    {
+        return match ($code) {
+            131047 => "رقم جديد: لا يمكن إرسال رسالة نصية لرقم لم يتواصل معك من قبل — استخدم قالب Template (كود Meta: {$code})",
+            131026 => "الرقم حجب حسابك التجاري (كود Meta: {$code})",
+            131000 => "الرقم غير مسجل في WhatsApp (كود Meta: {$code})",
+            131001 => "رقم الهاتف غير صحيح (كود Meta: {$code})",
+            131005 => "لا يمكن التحقق من جودة الرقم (كود Meta: {$code})",
+            132000 => "اسم القالب غير موجود في حسابك (كود Meta: {$code})",
+            132001 => "القالب غير معتمد من Meta (كود Meta: {$code})",
+            default => $fallback,
+        };
     }
 
     /**
