@@ -90,16 +90,6 @@ class ProcessCampaignJob implements ShouldQueue
             return;
         }
 
-        if ($service->checkFailRate($campaign)) {
-            Log::warning("[Campaign #{$campaign->id}] معدل الفشل تجاوز {$campaign->stop_on_fail_rate}%");
-            $this->pauseWithNotification(
-                $campaign,
-                'معدل فشل مرتفع',
-                "الحملة \"{$campaign->name}\" موقوفة تلقائياً: معدل الفشل تجاوز {$campaign->stop_on_fail_rate}%."
-            );
-            return;
-        }
-
         // Mark running on first execution
         if ($campaign->status !== 'running') {
             $campaign->update(['status' => 'running', 'started_at' => $campaign->started_at ?? now()]);
