@@ -208,6 +208,12 @@ class ProcessWhatsAppWebhookJob implements ShouldQueue
             $recipient->update(['status' => $recipientStatus]);
         }
 
+        // أنشئ المحادثة فقط عند أول تأكيد توصيل — ليس عند الإرسال
+        if ($status === 'delivered' && !$recipient->conversation_created) {
+            $this->ensureCampaignConversation($recipient);
+            $recipient->update(['conversation_created' => true]);
+        }
+
         // Detect block/spam reports from Meta error codes
         if ($status === 'failed') {
             $campaign = $recipient->campaign;
@@ -251,6 +257,62 @@ class ProcessWhatsAppWebhookJob implements ShouldQueue
                     'campaign'   => $recipient->campaign_id,
                 ]);
             }
+        }
+    }
+
+    protected function ensureCampaignConversation(CampaignRecipient $recipient): void
+    {
+        try {
+            $campaign = $recipient->campaign;
+            $phone    = preg_replace('/\D/', '', $recipient->phone);
+
+            \DB::transaction(function () use ($campaign, $recipient, $phone) {
+                $client = CrmClient::where('phone', $phone)->first();
+                if (!$client) {
+                    $client = CrmClient::create([
+                        'phone'   => $phone,
+                        'name'    => $recipient->name ?: $phone,
+                        'source'  => 'whatsapp',
+                        'status'  => 'new',
+                        'user_id' => $campaign?->user_id,
+                    ]);
+                }
+
+                $conversation = Conversation::where('client_id', $client->id)
+                    ->where('source', 'whatsapp')
+                    ->where('status', 'open')
+                    ->latest('last_message_at')
+                    ->first();
+
+                $messageText = $campaign?->message_text ?: "حملة: {$campaign?->name}";
+
+                if (!$conversation) {
+                    $conversation = Conversation::create([
+                        'client_id'       => $client->id,
+                        'source'          => 'whatsapp',
+                        'status'          => 'open',
+                        'last_message'    => $messageText,
+                        'last_message_at' => now(),
+                        'unread_count'    => 0,
+                    ]);
+                }
+
+                Message::firstOrCreate(
+                    ['whatsapp_message_id' => $recipient->whatsapp_message_id],
+                    [
+                        'conversation_id' => $conversation->id,
+                        'content'         => $messageText,
+                        'type'            => 'text',
+                        'direction'       => 'out',
+                        'is_private'      => false,
+                        'sender_name'     => $campaign?->name,
+                        'status'          => 'delivered',
+                        'sent_at'         => $recipient->sent_at ?? now(),
+                    ]
+                );
+            });
+        } catch (\Exception $e) {
+            Log::error('[Webhook] فشل إنشاء محادثة الحملة: ' . $e->getMessage());
         }
     }
 

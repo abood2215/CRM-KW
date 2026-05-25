@@ -82,17 +82,20 @@ class CampaignService
         return rand($base, $base + $jitter);
     }
 
-    // التحقق من معدل الفشل — لا يوقف حتى يُرسل 5 رسائل على الأقل
+    // التحقق من معدل الفشل — 0 = معطّل تماماً
     public function checkFailRate(Campaign $campaign): bool
     {
+        // 0 أو null = لا توقف مهما كان معدل الفشل
+        if (!$campaign->stop_on_fail_rate) return false;
+
         $total = $campaign->sent_count + $campaign->failed_count;
 
-        // لا نفحص حتى نصل لـ 5 رسائل على الأقل لتجنب الإيقاف المبكر
-        if ($total < 5) return false;
+        // لا نفحص حتى نصل لـ 10 رسائل على الأقل لتجنب الإيقاف المبكر
+        if ($total < 10) return false;
 
         $failRate = ($campaign->failed_count / $total) * 100;
 
-        return $failRate >= ($campaign->stop_on_fail_rate ?? 50);
+        return $failRate >= $campaign->stop_on_fail_rate;
     }
 
     // جلب إحصائيات الحملة التفصيلية
