@@ -275,6 +275,45 @@ class WhatsAppService
     }
 
     /**
+     * تحميل ملف وسائط من WhatsApp وحفظه على السيرفر، إرجاع الرابط العام.
+     */
+    public function downloadMedia(string $mediaId): ?string
+    {
+        try {
+            // الخطوة 1: جلب رابط التحميل من Meta
+            $metaUrl  = "{$this->baseUrl}/{$this->apiVersion}/{$mediaId}";
+            $metaResp = Http::withToken($this->accessToken)->timeout(15)->get($metaUrl);
+
+            if (!$metaResp->successful()) {
+                Log::warning('[WhatsApp] downloadMedia: فشل جلب رابط الميديا', ['id' => $mediaId]);
+                return null;
+            }
+
+            $mediaUrl  = $metaResp->json('url');
+            $mimeType  = $metaResp->json('mime_type', 'image/jpeg');
+            $extension = explode('/', $mimeType)[1] ?? 'jpg';
+            $extension = str_replace(['jpeg', 'png', 'webp', 'gif'], ['jpg', 'png', 'webp', 'gif'], $extension);
+
+            // الخطوة 2: تحميل الملف
+            $fileResp = Http::withToken($this->accessToken)->timeout(30)->get($mediaUrl);
+
+            if (!$fileResp->successful()) {
+                Log::warning('[WhatsApp] downloadMedia: فشل تحميل الملف', ['url' => $mediaUrl]);
+                return null;
+            }
+
+            // الخطوة 3: حفظ في storage/public/whatsapp-media
+            $filename = 'whatsapp-media/' . $mediaId . '.' . $extension;
+            \Illuminate\Support\Facades\Storage::disk('public')->put($filename, $fileResp->body());
+
+            return \Illuminate\Support\Facades\Storage::disk('public')->url($filename);
+        } catch (\Exception $e) {
+            Log::error('[WhatsApp] downloadMedia exception: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
      * Normalize phone number (remove non-digits, convert local to international).
      */
     protected function formatPhone(string $phone): string

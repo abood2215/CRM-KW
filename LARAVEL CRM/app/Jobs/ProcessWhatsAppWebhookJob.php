@@ -97,14 +97,28 @@ class ProcessWhatsAppWebhookJob implements ShouldQueue
         }
 
         // Resolve content
+        $mediaId = match ($messageType) {
+            'image'    => $msgData['image']['id']    ?? null,
+            'video'    => $msgData['video']['id']    ?? null,
+            'audio'    => $msgData['audio']['id']    ?? null,
+            'document' => $msgData['document']['id'] ?? null,
+            'sticker'  => $msgData['sticker']['id']  ?? null,
+            default    => null,
+        };
+
+        $mediaUrl = null;
+        if ($mediaId) {
+            $mediaUrl = $whatsapp->downloadMedia($mediaId);
+        }
+
         $content = match ($messageType) {
             'text'        => $msgData['text']['body']                                   ?? '',
-            'image'       => $msgData['image']['caption']                               ?? '[صورة]',
-            'video'       => '[فيديو]',
-            'audio'       => '[رسالة صوتية]',
-            'document'    => $msgData['document']['filename']                           ?? '[مستند]',
-            'sticker'     => '[ستيكر]',
-            'location'    => '[موقع]',
+            'image'       => $mediaUrl ?? $msgData['image']['caption']                  ?? '[صورة]',
+            'video'       => $mediaUrl                                                  ?? '[فيديو]',
+            'audio'       => $mediaUrl                                                  ?? '[رسالة صوتية]',
+            'document'    => $mediaUrl ?? $msgData['document']['filename']              ?? '[مستند]',
+            'sticker'     => $mediaUrl                                                  ?? '[ستيكر]',
+            'location'    => '[موقع: ' . ($msgData['location']['latitude'] ?? '') . ',' . ($msgData['location']['longitude'] ?? '') . ']',
             'button'      => $msgData['button']['text']                                 ?? '[زر]',
             'interactive' => $msgData['interactive']['button_reply']['title']
                           ?? $msgData['interactive']['list_reply']['title']
@@ -112,7 +126,13 @@ class ProcessWhatsAppWebhookJob implements ShouldQueue
             default       => '[رسالة غير مدعومة]',
         };
 
-        $msgTypeNorm = in_array($messageType, ['text', 'image', 'file']) ? $messageType : 'text';
+        $msgTypeNorm = match ($messageType) {
+            'image'    => 'image',
+            'video'    => 'video',
+            'audio'    => 'audio',
+            'document' => 'file',
+            default    => 'text',
+        };
 
         // Find or create client — lock on phone to prevent duplicate clients from concurrent jobs
         $clientLock = Cache::lock('crm-client-phone:' . md5($fromPhone), 15);

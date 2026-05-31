@@ -1242,9 +1242,21 @@ const MessagesPage: React.FC = () => {
                               {msg.sender_name}
                             </p>
                           )}
-                          <p className="text-sm leading-relaxed whitespace-pre-wrap break-words text-slate-800">
-                            {msg.content}
-                          </p>
+                          {msg.type === 'image' && msg.content && !msg.content.startsWith('[') ? (
+                            <a href={msg.content} target="_blank" rel="noopener noreferrer">
+                              <img
+                                src={msg.content}
+                                alt="صورة"
+                                className="rounded-lg max-w-full"
+                                style={{ maxHeight: 280, display: 'block' }}
+                                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                              />
+                            </a>
+                          ) : (
+                            <p className="text-sm leading-relaxed whitespace-pre-wrap break-words text-slate-800">
+                              {msg.content}
+                            </p>
+                          )}
                           <div className="flex items-center justify-end gap-1 mt-0.5">
                             <span className="text-slate-400" style={{ fontSize: 10 }}>
                               {fmtTime(msg.sent_at)}
