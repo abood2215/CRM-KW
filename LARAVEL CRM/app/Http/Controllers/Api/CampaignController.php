@@ -65,12 +65,19 @@ class CampaignController extends Controller
             $q->where('is_blacklisted', true)->orWhere('opt_out', true);
         })->pluck('phone')->flip();
 
+        // Normalize all input phones first (strip non-digits, prepend 965 for 8-digit Kuwait numbers)
+        $normalizePhone = function (string $p): string {
+            $d = preg_replace('/\D/', '', $p);
+            return strlen($d) === 8 ? '965' . $d : $d;
+        };
+
         // Phones that already received this same template successfully — skip to avoid resending
-        $inputPhones = array_filter(array_unique(array_column($recipientInput, 'phone')));
+        $inputPhones  = array_filter(array_unique(array_column($recipientInput, 'phone')));
+        $normalizedInputPhones = array_values(array_unique(array_map($normalizePhone, $inputPhones)));
         $templateName = $data['template_name'] ?? null;
         $sentWithSameTemplate = [];
-        if ($templateName && !empty($inputPhones)) {
-            $sentWithSameTemplate = CampaignRecipient::whereIn('phone', $inputPhones)
+        if ($templateName && !empty($normalizedInputPhones)) {
+            $sentWithSameTemplate = CampaignRecipient::whereIn('phone', $normalizedInputPhones)
                 ->whereIn('status', ['sent', 'delivered', 'read'])
                 ->whereHas('campaign', fn($q) => $q->where('template_name', $templateName))
                 ->pluck('phone')
@@ -83,8 +90,10 @@ class CampaignController extends Controller
         $seenPhones = [];
 
         foreach ($recipientInput as $r) {
-            $phone = $r['phone'] ?? null;
-            if (!$phone) continue;
+            $rawPhone = $r['phone'] ?? null;
+            if (!$rawPhone) continue;
+
+            $phone = $normalizePhone($rawPhone);
 
             // Skip duplicates within this import
             if (isset($seenPhones[$phone])) {
@@ -105,6 +114,7 @@ class CampaignController extends Controller
             }
 
             $seenPhones[$phone] = true;
+            $r['phone']         = $phone; // حفظ الرقم بصيغة موحدة
             $filtered[]         = $r;
         }
 
