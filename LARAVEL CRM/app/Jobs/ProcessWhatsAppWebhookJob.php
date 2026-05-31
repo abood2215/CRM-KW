@@ -164,6 +164,14 @@ class ProcessWhatsAppWebhookJob implements ShouldQueue
 
         Log::info('[WhatsApp Webhook] Message saved', ['message_id' => $message->id]);
 
+        // إذا كان الرقم محظوراً وبعث رسالة بنفسه، يُرفع عنه الحظر تلقائياً
+        $normalizedInbound = preg_replace('/\D/', '', $fromPhone);
+        $inboundContact = Contact::where('phone', $normalizedInbound)->first();
+        if ($inboundContact && $inboundContact->is_blacklisted) {
+            $inboundContact->update(['is_blacklisted' => false]);
+            Log::info('[WhatsApp Webhook] رُفع الحظر عن الرقم بعد تواصله معنا', ['phone' => $normalizedInbound]);
+        }
+
         // Check if this is a reply to a campaign and increment reply_count
         $this->handleCampaignReply($fromPhone);
 
