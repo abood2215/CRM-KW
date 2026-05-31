@@ -255,8 +255,15 @@ class CampaignController extends Controller
             $count++;
         }
 
+        // حذف سجلات الفاشلين من الحملة وتحديث العداد
+        $campaign->recipients()->where('status', 'failed')->delete();
+        $campaign->update([
+            'failed_count'      => 0,
+            'total_recipients'  => $campaign->recipients()->count(),
+        ]);
+
         return response()->json([
-            'message'  => "تم حظر {$count} رقم وحذفهم من قاعدة البيانات.",
+            'message'  => "تم حظر {$count} رقم وإزالتهم من الحملة.",
             'count'    => $count,
         ]);
     }
