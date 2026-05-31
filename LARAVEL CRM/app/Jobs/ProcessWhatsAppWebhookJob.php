@@ -208,8 +208,6 @@ class ProcessWhatsAppWebhookJob implements ShouldQueue
             return;
         }
 
-        $previousStatus = $recipient->status; // احفظ الحالة قبل التحديث
-
         $recipientStatus = match ($status) {
             'delivered' => 'delivered',
             'read'      => 'read',
@@ -217,7 +215,7 @@ class ProcessWhatsAppWebhookJob implements ShouldQueue
             default     => null,
         };
 
-        if ($recipientStatus) {
+        if ($recipientStatus && $recipientStatus !== 'failed') {
             $recipient->update(['status' => $recipientStatus]);
         }
 
@@ -231,50 +229,41 @@ class ProcessWhatsAppWebhookJob implements ShouldQueue
             $errorTitle   = $statusData['errors'][0]['title'] ?? null;
             $errorDetails = $statusData['errors'][0]['error_data']['details'] ?? null;
 
-            // حفظ رسالة الخطأ الحقيقية من Meta
-            $errorMessage = $errorCode
-                ? "[{$errorCode}] " . ($errorDetails ?: $errorTitle)
-                : $errorTitle;
+            Log::warning('[WhatsApp Webhook] فشل التوصيل', [
+                'phone'      => $recipient->phone,
+                'error_code' => $errorCode,
+                'campaign'   => $recipient->campaign_id,
+            ]);
 
-            if ($errorMessage) {
-                $recipient->update(['error_message' => $errorMessage]);
-            }
-
-            // إذا كانت الرسالة سُجِّلت كـ "مُرسلة" سابقاً، نصحح العدادات
-            $wasPreviouslySent = in_array($previousStatus, ['sent', 'delivered', 'read']);
+            // إذا كانت الرسالة سُجِّلت كـ "مُرسلة" سابقاً، نصحح sent_count
+            $wasPreviouslySent = in_array($recipient->status, ['sent', 'delivered', 'read']);
             if ($wasPreviouslySent && $campaign) {
-                $campaign->increment('failed_count');
-                // نقص من sent_count مع ضمان عدم النزول تحت صفر
                 $campaign->decrement('sent_count', 1);
                 if ($campaign->sent_count < 0) {
                     $campaign->update(['sent_count' => 0]);
                 }
-            } elseif ($campaign) {
-                $campaign->increment('failed_count');
             }
 
             // Error 131026 = message undeliverable (user blocked business)
             // Error 131047 = re-engagement message (24h rule)
             // Error 131049 = ecosystem quality throttle
             $isBlock = in_array($errorCode, [131026, 131047, 131049, 368]);
-
             if ($isBlock) {
                 $campaign?->increment('block_count');
-                Log::warning('[WhatsApp Webhook] Block/spam detected', [
-                    'phone'      => $recipient->phone,
-                    'error_code' => $errorCode,
-                    'campaign'   => $recipient->campaign_id,
-                ]);
             }
 
-            // إضافة الرقم لقائمة الحظر حتى لا يُستهدف في أي حملة مستقبلية
+            // حظر الرقم ومسحه من قاعدة البيانات
             $normalizedPhone = preg_replace('/\D/', '', $recipient->phone);
             Contact::updateOrCreate(
                 ['phone' => $normalizedPhone],
                 ['is_blacklisted' => true, 'name' => $recipient->name ?? $normalizedPhone]
             );
             CrmClient::where('phone', $normalizedPhone)->update(['phone' => null]);
-            Log::info('[WhatsApp Webhook] تم حظر رقم العميل بعد فشل التوصيل', ['phone' => $normalizedPhone]);
+
+            // حذف السجل نهائياً — لا يُعدّ ولا يظهر في الإحصائيات
+            $recipient->delete();
+            $campaign?->decrement('total_recipients');
+            Log::info('[WhatsApp Webhook] تم حظر وحذف الرقم الفاشل', ['phone' => $normalizedPhone]);
         }
     }
 

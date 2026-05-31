@@ -118,21 +118,19 @@ class ProcessCampaignJob implements ShouldQueue
             Log::info("[Campaign #{$campaign->id}] أُرسلت لـ {$recipient->phone}", ['wamid' => $waMessageId]);
 
         } catch (\Exception $e) {
-            $recipient->update([
-                'status'        => 'failed',
-                'error_message' => $e->getMessage(),
-                'sent_at'       => now(),
-            ]);
-            $campaign->increment('failed_count');
             Log::error("[Campaign #{$campaign->id}] فشل الإرسال لـ {$recipient->phone}: {$e->getMessage()}");
 
-            // إضافة الرقم لقائمة الحظر حتى لا يُستهدف في أي حملة مستقبلية
+            // حظر الرقم ومسحه من قاعدة البيانات
             $normalizedPhone = $this->normalizePhone($recipient->phone);
             Contact::updateOrCreate(
                 ['phone' => $normalizedPhone],
                 ['is_blacklisted' => true, 'name' => $recipient->name ?? $normalizedPhone]
             );
             CrmClient::where('phone', $normalizedPhone)->update(['phone' => null]);
+
+            // حذف السجل نهائياً — لا يُعدّ ولا يظهر في الإحصائيات
+            $recipient->delete();
+            $campaign->decrement('total_recipients');
         }
 
         // Broadcast live progress to frontend
