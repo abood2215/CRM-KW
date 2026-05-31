@@ -9,6 +9,7 @@ use App\Models\AutoReply;
 use App\Models\BusinessHour;
 use App\Models\Campaign;
 use App\Models\CampaignRecipient;
+use App\Models\Contact;
 use App\Models\Conversation;
 use App\Models\CrmClient;
 use App\Models\Message;
@@ -258,10 +259,14 @@ class ProcessWhatsAppWebhookJob implements ShouldQueue
                 ]);
             }
 
-            // حذف رقم الهاتف من العميل فور تأكيد الفشل من Meta
+            // إضافة الرقم لقائمة الحظر حتى لا يُستهدف في أي حملة مستقبلية
             $normalizedPhone = preg_replace('/\D/', '', $recipient->phone);
+            Contact::updateOrCreate(
+                ['phone' => $normalizedPhone],
+                ['is_blacklisted' => true, 'name' => $recipient->name ?? $normalizedPhone]
+            );
             CrmClient::where('phone', $normalizedPhone)->update(['phone' => null]);
-            Log::info('[WhatsApp Webhook] تم حذف رقم العميل بعد الفشل', ['phone' => $normalizedPhone]);
+            Log::info('[WhatsApp Webhook] تم حظر رقم العميل بعد فشل التوصيل', ['phone' => $normalizedPhone]);
         }
     }
 

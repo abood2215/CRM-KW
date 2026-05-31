@@ -6,6 +6,7 @@ use App\Events\CampaignProgressEvent;
 use App\Events\NewMessageEvent;
 use App\Models\Campaign;
 use App\Models\CampaignRecipient;
+use App\Models\Contact;
 use App\Models\Conversation;
 use App\Models\CrmClient;
 use App\Models\Message;
@@ -125,8 +126,12 @@ class ProcessCampaignJob implements ShouldQueue
             $campaign->increment('failed_count');
             Log::error("[Campaign #{$campaign->id}] فشل الإرسال لـ {$recipient->phone}: {$e->getMessage()}");
 
-            // حذف رقم الهاتف من العميل فور الفشل حتى لا يُستهدف في حملات مستقبلية
+            // إضافة الرقم لقائمة الحظر حتى لا يُستهدف في أي حملة مستقبلية
             $normalizedPhone = $this->normalizePhone($recipient->phone);
+            Contact::updateOrCreate(
+                ['phone' => $normalizedPhone],
+                ['is_blacklisted' => true, 'name' => $recipient->name ?? $normalizedPhone]
+            );
             CrmClient::where('phone', $normalizedPhone)->update(['phone' => null]);
         }
 

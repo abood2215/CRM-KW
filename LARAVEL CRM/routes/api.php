@@ -131,6 +131,7 @@ Route::middleware(['auth:sanctum', 'update.last.seen', 'log.activity'])->group(f
     Route::get('/campaigns/{id}/recipients', [CampaignController::class, 'recipients']);
     Route::get('/campaigns/{id}/analytics', [CampaignController::class, 'analytics']);
     Route::get('/campaigns/{id}/report', [CampaignController::class, 'report']);
+    Route::post('/campaigns/{id}/blacklist-failed', [CampaignController::class, 'blacklistFailed']);
     Route::delete('/campaigns/{id}', [CampaignController::class, 'destroy']);
     Route::post('/campaigns/upload-image', [CampaignController::class, 'uploadImage']);
 

@@ -65,11 +65,18 @@ class CampaignController extends Controller
             $q->where('is_blacklisted', true)->orWhere('opt_out', true);
         })->pluck('phone')->flip();
 
-        // Collect all input phones first to query existing ones in one shot
+        // Phones that already received this same template successfully — skip to avoid resending
         $inputPhones = array_filter(array_unique(array_column($recipientInput, 'phone')));
-        $alreadyUsedPhones = CampaignRecipient::whereIn('phone', $inputPhones)
-            ->pluck('phone')
-            ->flip();
+        $templateName = $data['template_name'] ?? null;
+        $sentWithSameTemplate = [];
+        if ($templateName && !empty($inputPhones)) {
+            $sentWithSameTemplate = CampaignRecipient::whereIn('phone', $inputPhones)
+                ->whereIn('status', ['sent', 'delivered', 'read'])
+                ->whereHas('campaign', fn($q) => $q->where('template_name', $templateName))
+                ->pluck('phone')
+                ->flip()
+                ->all();
+        }
 
         $filtered   = [];
         $skipped    = 0;
@@ -85,14 +92,14 @@ class CampaignController extends Controller
                 continue;
             }
 
-            // Skip blacklisted / opted-out
+            // Skip blacklisted / opted-out / previously failed
             if (isset($blockedPhones[$phone])) {
                 $skipped++;
                 continue;
             }
 
-            // Skip phones already used in any previous campaign
-            if (isset($alreadyUsedPhones[$phone])) {
+            // Skip phones that already received this same template
+            if (isset($sentWithSameTemplate[$phone])) {
                 $skipped++;
                 continue;
             }
@@ -209,6 +216,38 @@ class CampaignController extends Controller
 
         return response()->json([
             'message' => 'تم حذف الحملة.',
+        ]);
+    }
+
+    // حظر جميع الأرقام الفاشلة في حملة معينة دفعة واحدة
+    public function blacklistFailed(int $id): JsonResponse
+    {
+        $campaign = Campaign::findOrFail($id);
+
+        $failedRecipients = $campaign->recipients()
+            ->where('status', 'failed')
+            ->get(['phone', 'name']);
+
+        if ($failedRecipients->isEmpty()) {
+            return response()->json(['message' => 'لا توجد أرقام فاشلة في هذه الحملة.']);
+        }
+
+        $count = 0;
+        foreach ($failedRecipients as $recipient) {
+            $phone = preg_replace('/\D/', '', $recipient->phone);
+            if (!$phone) continue;
+
+            Contact::updateOrCreate(
+                ['phone' => $phone],
+                ['is_blacklisted' => true, 'name' => $recipient->name ?? $phone]
+            );
+            \App\Models\CrmClient::where('phone', $phone)->update(['phone' => null]);
+            $count++;
+        }
+
+        return response()->json([
+            'message'  => "تم حظر {$count} رقم وحذفهم من قاعدة البيانات.",
+            'count'    => $count,
         ]);
     }
 
