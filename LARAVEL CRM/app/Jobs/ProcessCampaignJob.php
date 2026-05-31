@@ -120,17 +120,28 @@ class ProcessCampaignJob implements ShouldQueue
         } catch (\Exception $e) {
             Log::error("[Campaign #{$campaign->id}] فشل الإرسال لـ {$recipient->phone}: {$e->getMessage()}");
 
-            // حظر الرقم ومسحه من قاعدة البيانات
-            $normalizedPhone = $this->normalizePhone($recipient->phone);
-            Contact::updateOrCreate(
-                ['phone' => $normalizedPhone],
-                ['is_blacklisted' => true, 'name' => $recipient->name ?? $normalizedPhone]
-            );
-            CrmClient::where('phone', $normalizedPhone)->update(['phone' => null]);
+            try {
+                // حظر الرقم ومسحه من قاعدة البيانات
+                $normalizedPhone = $this->normalizePhone($recipient->phone);
+                Contact::updateOrCreate(
+                    ['phone' => $normalizedPhone],
+                    ['is_blacklisted' => true, 'name' => $recipient->name ?? $normalizedPhone]
+                );
+                CrmClient::where('phone', $normalizedPhone)->update(['phone' => null]);
 
-            // حذف السجل نهائياً — لا يُعدّ ولا يظهر في الإحصائيات
-            $recipient->delete();
-            $campaign->decrement('total_recipients');
+                // حذف السجل نهائياً — لا يُعدّ ولا يظهر في الإحصائيات
+                $recipient->delete();
+                $campaign->decrement('total_recipients');
+            } catch (\Exception $cleanupEx) {
+                // إذا فشلت عملية الحذف/الحظر، نسجله كـ failed حتى يظهر ويُعالج يدوياً
+                Log::error("[Campaign #{$campaign->id}] فشل تنظيف الرقم {$recipient->phone}: {$cleanupEx->getMessage()}");
+                $recipient->update([
+                    'status'        => 'failed',
+                    'error_message' => $e->getMessage(),
+                    'sent_at'       => now(),
+                ]);
+                $campaign->increment('failed_count');
+            }
         }
 
         // Broadcast live progress to frontend

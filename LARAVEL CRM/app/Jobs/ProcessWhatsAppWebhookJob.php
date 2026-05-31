@@ -252,18 +252,25 @@ class ProcessWhatsAppWebhookJob implements ShouldQueue
                 $campaign?->increment('block_count');
             }
 
-            // حظر الرقم ومسحه من قاعدة البيانات
-            $normalizedPhone = preg_replace('/\D/', '', $recipient->phone);
-            Contact::updateOrCreate(
-                ['phone' => $normalizedPhone],
-                ['is_blacklisted' => true, 'name' => $recipient->name ?? $normalizedPhone]
-            );
-            CrmClient::where('phone', $normalizedPhone)->update(['phone' => null]);
+            try {
+                // حظر الرقم ومسحه من قاعدة البيانات
+                $normalizedPhone = preg_replace('/\D/', '', $recipient->phone);
+                Contact::updateOrCreate(
+                    ['phone' => $normalizedPhone],
+                    ['is_blacklisted' => true, 'name' => $recipient->name ?? $normalizedPhone]
+                );
+                CrmClient::where('phone', $normalizedPhone)->update(['phone' => null]);
 
-            // حذف السجل نهائياً — لا يُعدّ ولا يظهر في الإحصائيات
-            $recipient->delete();
-            $campaign?->decrement('total_recipients');
-            Log::info('[WhatsApp Webhook] تم حظر وحذف الرقم الفاشل', ['phone' => $normalizedPhone]);
+                // حذف السجل نهائياً — لا يُعدّ ولا يظهر في الإحصائيات
+                $recipient->delete();
+                $campaign?->decrement('total_recipients');
+                Log::info('[WhatsApp Webhook] تم حظر وحذف الرقم الفاشل', ['phone' => $normalizedPhone]);
+            } catch (\Exception $cleanupEx) {
+                // إذا فشلت عملية الحذف/الحظر، نسجله كـ failed حتى يظهر ويُعالج يدوياً
+                Log::error('[WhatsApp Webhook] فشل تنظيف الرقم: ' . $cleanupEx->getMessage(), ['phone' => $recipient->phone]);
+                $recipient->update(['status' => 'failed']);
+                $campaign?->increment('failed_count');
+            }
         }
     }
 
