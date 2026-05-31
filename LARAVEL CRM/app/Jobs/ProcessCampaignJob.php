@@ -124,6 +124,10 @@ class ProcessCampaignJob implements ShouldQueue
             ]);
             $campaign->increment('failed_count');
             Log::error("[Campaign #{$campaign->id}] فشل الإرسال لـ {$recipient->phone}: {$e->getMessage()}");
+
+            // حذف رقم الهاتف من العميل فور الفشل حتى لا يُستهدف في حملات مستقبلية
+            $normalizedPhone = $this->normalizePhone($recipient->phone);
+            CrmClient::where('phone', $normalizedPhone)->update(['phone' => null]);
         }
 
         // Broadcast live progress to frontend

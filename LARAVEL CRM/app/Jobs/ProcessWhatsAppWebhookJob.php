@@ -257,6 +257,11 @@ class ProcessWhatsAppWebhookJob implements ShouldQueue
                     'campaign'   => $recipient->campaign_id,
                 ]);
             }
+
+            // حذف رقم الهاتف من العميل فور تأكيد الفشل من Meta
+            $normalizedPhone = preg_replace('/\D/', '', $recipient->phone);
+            CrmClient::where('phone', $normalizedPhone)->update(['phone' => null]);
+            Log::info('[WhatsApp Webhook] تم حذف رقم العميل بعد الفشل', ['phone' => $normalizedPhone]);
         }
     }
 

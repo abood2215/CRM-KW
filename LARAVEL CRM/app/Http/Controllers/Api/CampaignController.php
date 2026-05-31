@@ -65,6 +65,12 @@ class CampaignController extends Controller
             $q->where('is_blacklisted', true)->orWhere('opt_out', true);
         })->pluck('phone')->flip();
 
+        // Collect all input phones first to query existing ones in one shot
+        $inputPhones = array_filter(array_unique(array_column($recipientInput, 'phone')));
+        $alreadyUsedPhones = CampaignRecipient::whereIn('phone', $inputPhones)
+            ->pluck('phone')
+            ->flip();
+
         $filtered   = [];
         $skipped    = 0;
         $seenPhones = [];
@@ -73,7 +79,7 @@ class CampaignController extends Controller
             $phone = $r['phone'] ?? null;
             if (!$phone) continue;
 
-            // Skip duplicates within this campaign
+            // Skip duplicates within this import
             if (isset($seenPhones[$phone])) {
                 $skipped++;
                 continue;
@@ -81,6 +87,12 @@ class CampaignController extends Controller
 
             // Skip blacklisted / opted-out
             if (isset($blockedPhones[$phone])) {
+                $skipped++;
+                continue;
+            }
+
+            // Skip phones already used in any previous campaign
+            if (isset($alreadyUsedPhones[$phone])) {
                 $skipped++;
                 continue;
             }
