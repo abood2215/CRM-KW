@@ -106,7 +106,7 @@ const ClientInfoCard = ({ client }) => {
         <div className="flex items-center gap-3 text-sm text-slate-600">
           <Calendar size={15} className="text-slate-400 flex-shrink-0" />
           <span className="font-medium">
-            أُضيف {format(parseISO(client.created_at), 'dd MMMM yyyy', { locale: ar })}
+            {client.created_at ? `أُضيف ${format(parseISO(client.created_at), 'dd MMMM yyyy', { locale: ar })}` : ''}
           </span>
         </div>
       </div>
@@ -240,7 +240,7 @@ const TimelineItem = ({ event, isLast }) => {
           </span>
           <span className="text-[11px] text-slate-400 flex items-center gap-1">
             <Clock size={10} />
-            {format(parseISO(event.date), 'dd MMM yyyy - hh:mm a', { locale: ar })}
+            {event.date ? format(parseISO(event.date), 'dd MMM yyyy - hh:mm a', { locale: ar }) : '—'}
           </span>
         </div>
         {renderContent()}

@@ -33,8 +33,8 @@ api.interceptors.response.use(
       useAuthStore.getState().logout();
 
       setTimeout(() => {
-        window.location.href = '/login';
         isRedirectingToLogin = false;
+        window.location.href = '/login';
       }, 200);
     }
 

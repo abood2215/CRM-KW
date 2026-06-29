@@ -49,10 +49,8 @@ const DrivePage = () => {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => {
-      setDeletingId(id);
-      return api.delete(`/drive/${id}`);
-    },
+    mutationFn: (id) => api.delete(`/drive/${id}`),
+    onMutate: (id) => { setDeletingId(id); },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['files'] });
       toast.success('تم حذف الملف.');

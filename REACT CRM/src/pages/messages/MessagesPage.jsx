@@ -10,6 +10,7 @@ import {
 import { cn } from '../../utils/cn';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useEcho } from '../../hooks/useEcho';
+import { useAudioNotification } from '../../hooks/useAudioNotification';
 import { format, isToday, isYesterday } from 'date-fns';
 import { ar } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -204,6 +205,7 @@ const MessagesPage = () => {
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
   const echo = useEcho();
+  const { playMessage, playConversation } = useAudioNotification();
 
   const [selectedId, setSelectedId]     = useState(null);
   const [message, setMessage]           = useState('');
@@ -352,17 +354,18 @@ const MessagesPage = () => {
   const sendMutation = useMutation({
     mutationFn: (p) => api.post(`/conversations/${selectedId}/messages`, p),
     onMutate: async (vars) => {
+      const conversationId = selectedId;
       setMessage('');
       if (inputRef.current) inputRef.current.style.height = '44px';
 
-      await queryClient.cancelQueries({ queryKey: ['messages', selectedId] });
-      const prev = queryClient.getQueryData(['messages', selectedId]);
+      await queryClient.cancelQueries({ queryKey: ['messages', conversationId] });
+      const prev = queryClient.getQueryData(['messages', conversationId]);
 
-      queryClient.setQueryData(['messages', selectedId], (old = []) => [
+      queryClient.setQueryData(['messages', conversationId], (old = []) => [
         ...old,
         {
           id: -Date.now(),
-          conversation_id: selectedId,
+          conversation_id: conversationId,
           content: vars.content,
           type: 'text',
           direction: 'out',
@@ -374,11 +377,11 @@ const MessagesPage = () => {
         },
       ]);
 
-      return { prev };
+      return { prev, conversationId };
     },
     onError: (_, __, ctx) => {
       if (ctx?.prev !== undefined)
-        queryClient.setQueryData(['messages', selectedId], ctx.prev);
+        queryClient.setQueryData(['messages', ctx.conversationId], ctx.prev);
       toast.error('فشل إرسال الرسالة');
     },
     onSuccess: () => {
@@ -411,8 +414,6 @@ const MessagesPage = () => {
       const curId = selectedIdRef.current;
       const isOwnOutgoing = e.message.direction === 'out' && e.message.sender_name === user?.name;
 
-      // أضف للمحادثة المفتوحة فقط إذا كانت رسالة واردة أو من شخص آخر
-      // (نتجنب التكرار مع الـ optimistic update للرسائل الصادرة من نفس المستخدم)
       if (!isOwnOutgoing && e.message.conversation_id === curId) {
         queryClient.setQueryData(['messages', curId], (old = []) => [...old, e.message]);
         if (e.message.direction === 'in') {
@@ -420,7 +421,10 @@ const MessagesPage = () => {
         }
       }
 
-      // دائماً حدّث قائمة المحادثات — هكذا تظهر محادثات الحملات الجديدة فوراً
+      if (e.message.direction === 'in') {
+        playMessage();
+      }
+
       queryClient.invalidateQueries({ queryKey: ['conversations', filterRef.current] });
       queryClient.invalidateQueries({ queryKey: ['conversations-counts'] });
     });
@@ -440,6 +444,9 @@ const MessagesPage = () => {
       if (e.status !== curFilter) {
         queryClient.invalidateQueries({ queryKey: ['conversations-counts'] });
       }
+      if (e.unread_count === 1) {
+        playConversation();
+      }
     });
 
     return () => {
@@ -447,7 +454,7 @@ const MessagesPage = () => {
       channel.stopListening('.MessageStatusUpdatedEvent');
       channel.stopListening('.ConversationUpdatedEvent');
     };
-  }, [echo, queryClient, user?.name]);
+  }, [echo, queryClient, user?.name, playMessage, playConversation]);
 
   const prevMsgCountRef = useRef(0);
   useEffect(() => {
@@ -544,11 +551,12 @@ const MessagesPage = () => {
   };
 
   useEffect(() => {
-    if (selectedId && conversations.length > 0 && !conversations.find(c => c.id === selectedId)) {
+    if (selectedId && !loadingConvs && convPage === 1 && conversations.length > 0 &&
+        !conversations.find(c => c.id === selectedId)) {
       setSelectedId(null);
       setMobileShowChat(false);
     }
-  }, [conversations, selectedId]);
+  }, [conversations, selectedId, loadingConvs, convPage]);
 
   const selectedConv = conversations.find(c => c.id === selectedId);
 

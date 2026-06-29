@@ -1,35 +1,10 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Volume2, VolumeX } from 'lucide-react';
-import { useEcho } from '../hooks/useEcho';
 import { useAudioNotification } from '../hooks/useAudioNotification';
 import { cn } from '../utils/cn';
 
 const AudioToggle = () => {
-  const { enabled, toggle, playMessage, playConversation } = useAudioNotification();
-  const echo = useEcho();
-
-  useEffect(() => {
-    if (!echo) return;
-
-    const channel = echo.channel('conversations');
-
-    channel.listen('.NewMessageEvent', (e) => {
-      if (e.direction === 'in') {
-        playMessage();
-      }
-    });
-
-    channel.listen('.ConversationUpdatedEvent', (e) => {
-      if (e.unread_count === 1) {
-        playConversation();
-      }
-    });
-
-    return () => {
-      channel.stopListening('.NewMessageEvent');
-      channel.stopListening('.ConversationUpdatedEvent');
-    };
-  }, [echo, playMessage, playConversation]);
+  const { enabled, toggle } = useAudioNotification();
 
   return (
     <button

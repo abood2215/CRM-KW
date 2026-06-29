@@ -60,6 +60,7 @@ const TasksPage = () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       toast.success('تم تحديث حالة المهمة');
     },
+    onError: () => toast.error('فشل تحديث حالة المهمة'),
   });
 
   const priorityColors = {

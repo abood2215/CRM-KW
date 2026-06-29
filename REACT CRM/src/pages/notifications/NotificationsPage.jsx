@@ -43,6 +43,7 @@ const NotificationsPage = () => {
     });
     return () => {
       channel.stopListening('.notification');
+      echo.leave(`user.${user.id}`);
     };
   }, [echo, user?.id, queryClient]);
 

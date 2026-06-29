@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../api/axios';
 import { X, Loader2 } from 'lucide-react';
@@ -28,6 +28,10 @@ const AddClientModal = ({ open, onClose, defaultStatus = 'new' }) => {
     service: '', budget: '', status: defaultStatus, notes: '',
   });
 
+  useEffect(() => {
+    if (open) setForm(f => ({ ...f, status: defaultStatus }));
+  }, [open, defaultStatus]);
+
   const mutation = useMutation({
     mutationFn: (data) =>
       api.post('/clients', { ...data, budget: data.budget ? Number(data.budget) : undefined }),
@@ -37,7 +41,7 @@ const AddClientModal = ({ open, onClose, defaultStatus = 'new' }) => {
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       toast.success('تم إضافة العميل بنجاح');
       onClose();
-      setForm({ name: '', phone: '', email: '', source: 'whatsapp', service: '', budget: '', status: 'new', notes: '' });
+      setForm({ name: '', phone: '', email: '', source: 'whatsapp', service: '', budget: '', status: defaultStatus, notes: '' });
     },
     onError: (e) => toast.error(e?.response?.data?.message || 'فشل إضافة العميل'),
   });

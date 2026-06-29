@@ -25,6 +25,7 @@ const CampaignsPage = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('all');
   const [createOpen, setCreateOpen] = useState(false);
+  const [startingId, setStartingId] = useState(null);
 
   const { data: campaigns = [], isLoading } = useQuery({
     queryKey: ['campaigns', activeTab],
@@ -51,9 +52,10 @@ const CampaignsPage = () => {
   });
 
   const startMutation = useMutation({
-    mutationFn: (id) => api.post(`/campaigns/${id}/start`),
+    mutationFn: (id) => { setStartingId(id); return api.post(`/campaigns/${id}/start`); },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['campaigns'] }); toast.success('تم بدء الحملة'); },
     onError: (e) => toast.error(e?.response?.data?.message || 'فشل بدء الحملة'),
+    onSettled: () => setStartingId(null),
   });
 
   const statusMap = {
@@ -205,10 +207,10 @@ const CampaignsPage = () => {
                       ) : campaign.status === 'draft' || campaign.status === 'scheduled' ? (
                         <button
                           onClick={() => startMutation.mutate(campaign.id)}
-                          disabled={startMutation.isPending}
+                          disabled={startingId === campaign.id}
                           className="w-9 h-9 bg-indigo-600 text-white rounded-xl flex items-center justify-center shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-all disabled:opacity-60"
                         >
-                          {startMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />}
+                          {startingId === campaign.id ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />}
                         </button>
                       ) : (
                         <button

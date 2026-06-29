@@ -123,7 +123,7 @@ const WhatsappPage = () => {
                 <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden">
                   <motion.div
                     initial={{ width: 0 }}
-                    animate={{ width: `${(number.sent_today / number.daily_limit) * 100}%` }}
+                    animate={{ width: `${number.daily_limit ? (number.sent_today / number.daily_limit) * 100 : 0}%` }}
                     className={cn(
                       'h-full rounded-full transition-all',
                       number.sent_today > number.daily_limit * 0.8 ? 'bg-rose-500' : 'bg-emerald-500'

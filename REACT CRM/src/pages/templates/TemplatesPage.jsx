@@ -406,7 +406,7 @@ const TemplateFormModal = ({ template, onClose, onSaved }) => {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-5">
+        <form id="template-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-5">
           <div>
             <label className="block text-xs font-black text-slate-600 mb-1.5">
               اسم القالب <span className="text-rose-500">*</span>
@@ -540,7 +540,8 @@ const TemplateFormModal = ({ template, onClose, onSaved }) => {
             إلغاء
           </button>
           <button
-            onClick={handleSubmit}
+            type="submit"
+            form="template-form"
             disabled={saveMutation.isPending}
             className="flex-1 h-11 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-all text-sm flex items-center justify-center gap-2 disabled:opacity-60"
           >

@@ -302,7 +302,7 @@ const Dashboard = () => {
                   <div className="text-right">
                     <p className="text-xs lg:text-sm font-bold text-slate-700">{client.status_label}</p>
                     <p className="text-[10px] font-medium text-slate-300 mt-0.5 uppercase leading-none">
-                      {format(new Date(client.created_at), 'HH:mm - dd MMM', { locale: ar })}
+                      {client.created_at ? format(new Date(client.created_at), 'HH:mm - dd MMM', { locale: ar }) : '—'}
                     </p>
                   </div>
                 </div>

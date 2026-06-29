@@ -24,7 +24,7 @@ const ContactsPage = () => {
 
   const debouncedSearch = useDebounce(search, 400);
 
-  useEffect(() => { setPage(1); }, [debouncedSearch]);
+  useEffect(() => { setPage(1); }, [debouncedSearch, activeTab]);
 
   const { data: contactsData, isLoading } = useQuery({
     queryKey: ['contacts', debouncedSearch, optInFilter, page],
