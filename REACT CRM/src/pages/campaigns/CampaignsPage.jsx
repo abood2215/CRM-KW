@@ -185,7 +185,7 @@ const CampaignsPage = () => {
                             {format(new Date(campaign.scheduled_at), 'dd MMM yyyy – HH:mm', { locale: ar })}
                           </span>
                         ) : (
-                          <span>{format(new Date(campaign.created_at), 'dd MMM yyyy', { locale: ar })}</span>
+                          <span>{campaign.created_at ? format(new Date(campaign.created_at), 'dd MMM yyyy', { locale: ar }) : '—'}</span>
                         )}
                       </div>
                       {campaign.status === 'running' ? (

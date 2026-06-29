@@ -139,7 +139,7 @@ const ClientInfoCard = ({ client }) => {
 };
 
 const TimelineItem = ({ event, isLast }) => {
-  const config = eventConfig[event.type];
+  const config = eventConfig[event.type] ?? eventConfig.activity;
 
   const renderContent = () => {
     switch (event.type) {

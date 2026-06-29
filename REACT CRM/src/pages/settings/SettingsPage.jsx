@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../api/axios';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -262,9 +263,9 @@ const SettingsPage = () => {
               صلاحيتك الحالية: <span className="font-black text-amber-900">موظف</span>
             </p>
           </div>
-          <a href="/" className="block h-11 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-all flex items-center justify-center">
+          <Link to="/" className="block h-11 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-all flex items-center justify-center">
             العودة إلى الرئيسية
-          </a>
+          </Link>
         </div>
       </div>
     );

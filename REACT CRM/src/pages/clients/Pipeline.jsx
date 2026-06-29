@@ -81,7 +81,7 @@ const Pipeline = () => {
     if (!stage) return [];
     return stage.clients.filter(c =>
       c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.phone.includes(searchTerm)
+      (c.phone ?? '').includes(searchTerm)
     );
   };
 

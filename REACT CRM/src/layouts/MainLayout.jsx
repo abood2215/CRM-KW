@@ -32,7 +32,6 @@ const MainLayout = ({ children }) => {
   const { user, logout } = useAuthStore();
   const { sidebarOpen, setSidebarOpen, unreadCount, setUnreadCount, incrementUnread } = useUIStore();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const [unreadMessages, setUnreadMessages] = useState(0);
   const navigate = useNavigate();
   const location = useLocation();
   const echo = useEcho();
@@ -44,24 +43,15 @@ const MainLayout = ({ children }) => {
   }, [setUnreadCount]);
 
   useEffect(() => {
-    const fetchUnread = () => {
-      api.get('/stats').then(({ data }) => {
-        setUnreadMessages(data.unread_messages ?? 0);
-      }).catch(() => {});
-    };
-    fetchUnread();
-    const interval = setInterval(fetchUnread, 10000);
-    return () => clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
     if (!echo || !user?.id) return;
-    const channel = echo.private(`user.${user.id}`);
+    const channelName = `user.${user.id}`;
+    const channel = echo.private(channelName);
     channel.listen('.notification', () => {
       incrementUnread();
     });
     return () => {
       channel.stopListening('.notification');
+      echo.leave(channelName);
     };
   }, [echo, user?.id, incrementUnread]);
 
@@ -73,7 +63,7 @@ const MainLayout = ({ children }) => {
     { title: 'لوحة التحكم', icon: <LayoutDashboard size={20} />, path: '/' },
     { title: 'لوحة المتابعة', icon: <Columns size={20} />, path: '/pipeline' },
     { title: 'سجل العملاء', icon: <Users size={20} />, path: '/clients' },
-    { title: 'صندوق الرسائل', icon: <MessageSquare size={20} />, path: '/messages', badge: unreadMessages },
+    { title: 'صندوق الرسائل', icon: <MessageSquare size={20} />, path: '/messages' },
     { title: 'إدارة المهام', icon: <CheckSquare size={20} />, path: '/tasks' },
     { title: 'جهات الاتصال', icon: <Contact size={20} />, path: '/contacts' },
     { title: 'الحملات الترويجية', icon: <Megaphone size={20} />, path: '/campaigns' },
@@ -91,7 +81,7 @@ const MainLayout = ({ children }) => {
   const bottomNavItems = [
     { title: 'الرئيسية', icon: <LayoutDashboard size={22} />, path: '/' },
     { title: 'العملاء', icon: <Users size={22} />, path: '/clients' },
-    { title: 'الرسائل', icon: <MessageSquare size={22} />, path: '/messages', badge: unreadMessages },
+    { title: 'الرسائل', icon: <MessageSquare size={22} />, path: '/messages' },
     { title: 'المهام', icon: <CheckSquare size={22} />, path: '/tasks' },
     { title: 'القائمة', icon: <Menu size={22} />, path: null, action: () => setMobileSidebarOpen(true) },
   ];

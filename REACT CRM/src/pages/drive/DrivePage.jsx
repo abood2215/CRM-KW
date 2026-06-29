@@ -26,6 +26,7 @@ const DrivePage = () => {
   const [category, setCategory] = useState('all');
   const [page, setPage] = useState(1);
   const [uploading, setUploading] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
 
   const debouncedSearch = useDebounce(search, 400);
 
@@ -48,12 +49,16 @@ const DrivePage = () => {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => api.delete(`/drive/${id}`),
+    mutationFn: (id) => {
+      setDeletingId(id);
+      return api.delete(`/drive/${id}`);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['files'] });
       toast.success('تم حذف الملف.');
     },
     onError: () => toast.error('فشل حذف الملف.'),
+    onSettled: () => setDeletingId(null),
   });
 
   const handleUpload = async (e) => {
@@ -269,11 +274,11 @@ const DrivePage = () => {
                           </button>
                           <button
                             onClick={() => deleteMutation.mutate(file.id)}
-                            disabled={deleteMutation.isPending}
+                            disabled={deletingId === file.id}
                             className="p-2 hover:bg-red-100 text-red-600 rounded-lg transition-colors disabled:opacity-50"
                             title="حذف"
                           >
-                            {deleteMutation.isPending
+                            {deletingId === file.id
                               ? <Loader2 size={18} className="animate-spin" />
                               : <Trash2 size={18} />}
                           </button>

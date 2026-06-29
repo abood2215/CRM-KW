@@ -199,7 +199,7 @@ const TasksPage = () => {
                     {task.due_date && (
                       <div className={cn(
                         "flex items-center gap-1.5 text-[11px] font-bold",
-                        !task.completed_at && isPast(new Date(task.due_date)) && !isToday(new Date(task.due_date))
+                        task.status !== 'completed' && isPast(new Date(task.due_date)) && !isToday(new Date(task.due_date))
                           ? "text-rose-600"
                           : "text-slate-500"
                       )}>

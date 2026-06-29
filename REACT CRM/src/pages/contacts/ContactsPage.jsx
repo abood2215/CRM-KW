@@ -34,7 +34,7 @@ const ContactsPage = () => {
       });
       return data;
     },
-    enabled: activeTab !== 'blacklisted',
+    enabled: activeTab === 'contacts',
   });
 
   const { data: blacklistedData, isLoading: loadingBlacklisted } = useQuery({
