@@ -112,8 +112,7 @@ class ProcessCampaignJob implements ShouldQueue
             $campaign->increment('sent_count');
             $number->incrementSent();
 
-            // المحادثة تُنشأ فقط عند تأكيد التوصيل عبر webhook (delivered)
-            // حتى لا تظهر محادثات في صندوق الرسائل للأرقام التي تفشل لاحقاً
+            $this->ensureConversationExists($campaign, $recipient, $waMessageId);
 
             Log::info("[Campaign #{$campaign->id}] أُرسلت لـ {$recipient->phone}", ['wamid' => $waMessageId]);
 
