@@ -21,18 +21,20 @@ class Contact extends Model
         'opt_out',
         'opt_out_date',
         'is_blacklisted',
+        'blacklisted_until',
         'notes',
     ];
 
     protected function casts(): array
     {
         return [
-            'tags'         => 'array',
-            'opt_in'       => 'boolean',
-            'opt_out'      => 'boolean',
-            'is_blacklisted' => 'boolean',
-            'opt_in_date'  => 'datetime',
-            'opt_out_date' => 'datetime',
+            'tags'             => 'array',
+            'opt_in'           => 'boolean',
+            'opt_out'          => 'boolean',
+            'is_blacklisted'   => 'boolean',
+            'opt_in_date'      => 'datetime',
+            'opt_out_date'     => 'datetime',
+            'blacklisted_until' => 'datetime',
         ];
     }
 

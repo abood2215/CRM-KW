@@ -150,16 +150,29 @@ class ProcessCampaignJob implements ShouldQueue
                     $campaign->increment('failed_count');
                 }
             } else {
-                // For any other error (including 131047 session-expiry, network errors, invalid template, etc.)
-                // record as failed WITHOUT blacklisting. The number remains available for future campaigns
-                // that use the correct message type (e.g. a template instead of plain text).
+                // Non-block error (131049 throttle, 130472 experiment, network error, etc.)
+                // Blacklist temporarily — auto-unblacklist after 48h via scheduler
+                try {
+                    $normalizedPhone = $this->normalizePhone($recipient->phone);
+                    Contact::updateOrCreate(
+                        ['phone' => $normalizedPhone],
+                        [
+                            'is_blacklisted'    => true,
+                            'blacklisted_until' => now()->addHours(48),
+                            'name'              => $recipient->name ?? $normalizedPhone,
+                        ]
+                    );
+                    Log::info("[Campaign #{$campaign->id}] حُظر مؤقتاً 48 ساعة: {$recipient->phone}");
+                } catch (\Exception $ex) {
+                    Log::warning("[Campaign #{$campaign->id}] فشل الحظر المؤقت: {$ex->getMessage()}");
+                }
+
                 $recipient->update([
                     'status'        => 'failed',
                     'error_message' => $errorMsg,
                     'sent_at'       => now(),
                 ]);
                 $campaign->increment('failed_count');
-                Log::info("[Campaign #{$campaign->id}] سُجِّل الفشل بدون حظر: {$recipient->phone}");
             }
         }
 

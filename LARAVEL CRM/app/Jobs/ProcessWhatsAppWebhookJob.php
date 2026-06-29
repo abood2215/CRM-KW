@@ -298,20 +298,34 @@ class ProcessWhatsAppWebhookJob implements ShouldQueue
                     $campaign?->increment('failed_count');
                 }
             } else {
-                // For session-expiry (131047) or other non-block errors: mark as failed without blacklisting.
-                // These numbers can be reached again via a proper template campaign.
+                // Non-block error: blacklist temporarily for 48h then auto-unblacklist
                 $errorLabel = $isSessionExpiry
                     ? 'انتهت نافذة 24 ساعة — استخدم قالب Template'
                     : ($errorTitle ?? 'فشل التوصيل');
+                try {
+                    $normalizedPhone = preg_replace('/\D/', '', $recipient->phone);
+                    if (strlen($normalizedPhone) === 8) {
+                        $normalizedPhone = '965' . $normalizedPhone;
+                    }
+                    \App\Models\Contact::updateOrCreate(
+                        ['phone' => $normalizedPhone],
+                        [
+                            'is_blacklisted'    => true,
+                            'blacklisted_until' => now()->addHours(48),
+                            'name'              => $recipient->name ?? $normalizedPhone,
+                        ]
+                    );
+                } catch (\Exception $ex) {
+                    Log::warning('[WhatsApp Webhook] فشل الحظر المؤقت: ' . $ex->getMessage());
+                }
                 $recipient->update([
                     'status'        => 'failed',
                     'error_message' => "[{$errorCode}] {$errorLabel}",
                 ]);
                 $campaign?->increment('failed_count');
-                Log::info('[WhatsApp Webhook] سُجِّل الفشل بدون حظر', [
+                Log::info('[WhatsApp Webhook] حُظر مؤقتاً 48 ساعة', [
                     'phone'      => $recipient->phone,
                     'error_code' => $errorCode,
-                    'reason'     => $errorLabel,
                 ]);
             }
         }
