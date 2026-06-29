@@ -158,7 +158,7 @@ class ProcessCampaignJob implements ShouldQueue
                         ['phone' => $normalizedPhone],
                         [
                             'is_blacklisted'    => true,
-                            'blacklisted_until' => now()->addHours(48),
+                            'blacklisted_until' => now()->addYear(),
                             'name'              => $recipient->name ?? $normalizedPhone,
                         ]
                     );
