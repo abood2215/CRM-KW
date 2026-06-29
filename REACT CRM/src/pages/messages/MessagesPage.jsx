@@ -267,7 +267,8 @@ const MessagesPage = () => {
       });
       return data;
     },
-    staleTime: 30_000,
+    staleTime: 15_000,
+    refetchInterval: 15_000,
   });
   const conversations = convsData?.conversations ?? [];
 
@@ -407,16 +408,19 @@ const MessagesPage = () => {
     const channel = echo.channel('conversations');
 
     channel.listen('.NewMessageEvent', (e) => {
-      const isOwnOutgoing = e.message.direction === 'out' && e.message.sender_name === user?.name;
-      if (isOwnOutgoing) return;
-
       const curId = selectedIdRef.current;
-      if (e.message.conversation_id === curId) {
+      const isOwnOutgoing = e.message.direction === 'out' && e.message.sender_name === user?.name;
+
+      // أضف للمحادثة المفتوحة فقط إذا كانت رسالة واردة أو من شخص آخر
+      // (نتجنب التكرار مع الـ optimistic update للرسائل الصادرة من نفس المستخدم)
+      if (!isOwnOutgoing && e.message.conversation_id === curId) {
         queryClient.setQueryData(['messages', curId], (old = []) => [...old, e.message]);
         if (e.message.direction === 'in') {
           api.get(`/conversations/${curId}`).catch(() => {});
         }
       }
+
+      // دائماً حدّث قائمة المحادثات — هكذا تظهر محادثات الحملات الجديدة فوراً
       queryClient.invalidateQueries({ queryKey: ['conversations', filterRef.current] });
       queryClient.invalidateQueries({ queryKey: ['conversations-counts'] });
     });
