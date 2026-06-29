@@ -118,29 +118,49 @@ class ProcessCampaignJob implements ShouldQueue
             Log::info("[Campaign #{$campaign->id}] أُرسلت لـ {$recipient->phone}", ['wamid' => $waMessageId]);
 
         } catch (\Exception $e) {
-            Log::error("[Campaign #{$campaign->id}] فشل الإرسال لـ {$recipient->phone}: {$e->getMessage()}");
+            $errorMsg = $e->getMessage();
+            Log::error("[Campaign #{$campaign->id}] فشل الإرسال لـ {$recipient->phone}: {$errorMsg}");
 
-            try {
-                // حظر الرقم ومسحه من قاعدة البيانات
-                $normalizedPhone = $this->normalizePhone($recipient->phone);
-                Contact::updateOrCreate(
-                    ['phone' => $normalizedPhone],
-                    ['is_blacklisted' => true, 'name' => $recipient->name ?? $normalizedPhone]
-                );
-                CrmClient::where('phone', $normalizedPhone)->update(['phone' => null]);
+            // Detect whether this is a true "blocked by user" error (Meta code 131026 / 368).
+            // Only those warrant a permanent blacklist.
+            // Error 131047 = "re-engagement outside 24h window" — the number is valid; the campaign
+            // simply used a plain-text message instead of a template. Do NOT blacklist for this.
+            $isTrueBlock = str_contains($errorMsg, '131026') || str_contains($errorMsg, 'حجب حسابك');
 
-                // حذف السجل نهائياً — لا يُعدّ ولا يظهر في الإحصائيات
-                $recipient->delete();
-                $campaign->decrement('total_recipients');
-            } catch (\Exception $cleanupEx) {
-                // إذا فشلت عملية الحذف/الحظر، نسجله كـ failed حتى يظهر ويُعالج يدوياً
-                Log::error("[Campaign #{$campaign->id}] فشل تنظيف الرقم {$recipient->phone}: {$cleanupEx->getMessage()}");
+            if ($isTrueBlock) {
+                try {
+                    // حظر الرقم ومسحه من قاعدة البيانات — فقط عند الحجب الفعلي
+                    $normalizedPhone = $this->normalizePhone($recipient->phone);
+                    Contact::updateOrCreate(
+                        ['phone' => $normalizedPhone],
+                        ['is_blacklisted' => true, 'name' => $recipient->name ?? $normalizedPhone]
+                    );
+                    CrmClient::where('phone', $normalizedPhone)->update(['phone' => null]);
+
+                    // حذف السجل نهائياً — لا يُعدّ ولا يظهر في الإحصائيات
+                    $recipient->delete();
+                    $campaign->decrement('total_recipients');
+                    Log::info("[Campaign #{$campaign->id}] تم حظر الرقم (حجب الحساب التجاري): {$recipient->phone}");
+                } catch (\Exception $cleanupEx) {
+                    Log::error("[Campaign #{$campaign->id}] فشل تنظيف الرقم {$recipient->phone}: {$cleanupEx->getMessage()}");
+                    $recipient->update([
+                        'status'        => 'failed',
+                        'error_message' => $errorMsg,
+                        'sent_at'       => now(),
+                    ]);
+                    $campaign->increment('failed_count');
+                }
+            } else {
+                // For any other error (including 131047 session-expiry, network errors, invalid template, etc.)
+                // record as failed WITHOUT blacklisting. The number remains available for future campaigns
+                // that use the correct message type (e.g. a template instead of plain text).
                 $recipient->update([
                     'status'        => 'failed',
-                    'error_message' => $e->getMessage(),
+                    'error_message' => $errorMsg,
                     'sent_at'       => now(),
                 ]);
                 $campaign->increment('failed_count');
+                Log::info("[Campaign #{$campaign->id}] سُجِّل الفشل بدون حظر: {$recipient->phone}");
             }
         }
 

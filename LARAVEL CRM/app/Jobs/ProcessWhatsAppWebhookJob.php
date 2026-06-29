@@ -264,32 +264,55 @@ class ProcessWhatsAppWebhookJob implements ShouldQueue
                 }
             }
 
-            // Error 131026 = message undeliverable (user blocked business)
-            // Error 131047 = re-engagement message (24h rule)
-            // Error 131049 = ecosystem quality throttle
-            $isBlock = in_array($errorCode, [131026, 131047, 131049, 368]);
-            if ($isBlock) {
+            // Error 131026 = user explicitly blocked the business — permanent blacklist
+            // Error 131047 = re-engagement outside 24h window — NOT a block, just a session expiry
+            //                This happens when a plain-text message is sent instead of a template.
+            //                Blacklisting for this code prevents future template campaigns from
+            //                ever reaching these numbers, which is incorrect behaviour.
+            // Error 131049 = ecosystem quality throttle (temporary, not a block)
+            // Error 368    = account-level temporary block
+            $isTrueBlock = in_array($errorCode, [131026, 368]);
+            $isSessionExpiry = ($errorCode === 131047); // 24h window expired — use a template next time
+
+            if ($isTrueBlock) {
                 $campaign?->increment('block_count');
             }
 
-            try {
-                // حظر الرقم ومسحه من قاعدة البيانات
-                $normalizedPhone = preg_replace('/\D/', '', $recipient->phone);
-                Contact::updateOrCreate(
-                    ['phone' => $normalizedPhone],
-                    ['is_blacklisted' => true, 'name' => $recipient->name ?? $normalizedPhone]
-                );
-                CrmClient::where('phone', $normalizedPhone)->update(['phone' => null]);
+            if ($isTrueBlock) {
+                // Only permanently blacklist numbers that have actually blocked the business
+                try {
+                    $normalizedPhone = preg_replace('/\D/', '', $recipient->phone);
+                    Contact::updateOrCreate(
+                        ['phone' => $normalizedPhone],
+                        ['is_blacklisted' => true, 'name' => $recipient->name ?? $normalizedPhone]
+                    );
+                    CrmClient::where('phone', $normalizedPhone)->update(['phone' => null]);
 
-                // حذف السجل نهائياً — لا يُعدّ ولا يظهر في الإحصائيات
-                $recipient->delete();
-                $campaign?->decrement('total_recipients');
-                Log::info('[WhatsApp Webhook] تم حظر وحذف الرقم الفاشل', ['phone' => $normalizedPhone]);
-            } catch (\Exception $cleanupEx) {
-                // إذا فشلت عملية الحذف/الحظر، نسجله كـ failed حتى يظهر ويُعالج يدوياً
-                Log::error('[WhatsApp Webhook] فشل تنظيف الرقم: ' . $cleanupEx->getMessage(), ['phone' => $recipient->phone]);
-                $recipient->update(['status' => 'failed']);
+                    // حذف السجل نهائياً — لا يُعدّ ولا يظهر في الإحصائيات
+                    $recipient->delete();
+                    $campaign?->decrement('total_recipients');
+                    Log::info('[WhatsApp Webhook] تم حظر وحذف الرقم (حجب الحساب التجاري)', ['phone' => $normalizedPhone]);
+                } catch (\Exception $cleanupEx) {
+                    Log::error('[WhatsApp Webhook] فشل تنظيف الرقم: ' . $cleanupEx->getMessage(), ['phone' => $recipient->phone]);
+                    $recipient->update(['status' => 'failed']);
+                    $campaign?->increment('failed_count');
+                }
+            } else {
+                // For session-expiry (131047) or other non-block errors: mark as failed without blacklisting.
+                // These numbers can be reached again via a proper template campaign.
+                $errorLabel = $isSessionExpiry
+                    ? 'انتهت نافذة 24 ساعة — استخدم قالب Template'
+                    : ($errorTitle ?? 'فشل التوصيل');
+                $recipient->update([
+                    'status'        => 'failed',
+                    'error_message' => "[{$errorCode}] {$errorLabel}",
+                ]);
                 $campaign?->increment('failed_count');
+                Log::info('[WhatsApp Webhook] سُجِّل الفشل بدون حظر', [
+                    'phone'      => $recipient->phone,
+                    'error_code' => $errorCode,
+                    'reason'     => $errorLabel,
+                ]);
             }
         }
     }

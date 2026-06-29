@@ -60,10 +60,19 @@ class CampaignController extends Controller
             return response()->json(['message' => 'لا يوجد مستلمون للحملة.'], 422);
         }
 
-        // Filter out blacklisted / opted-out contacts
+        // Filter out blacklisted / opted-out contacts.
+        // Normalize stored phone numbers the same way we normalize input phones so that
+        // "56551234" stored in contacts matches "96556551234" coming from the import (and vice versa).
+        $normalizePhoneStatic = function (string $p): string {
+            $d = preg_replace('/\D/', '', $p);
+            return strlen($d) === 8 ? '965' . $d : $d;
+        };
         $blockedPhones = Contact::where(function ($q) {
             $q->where('is_blacklisted', true)->orWhere('opt_out', true);
-        })->pluck('phone')->flip();
+        })->pluck('phone')
+          ->map($normalizePhoneStatic)
+          ->flip()
+          ->all();
 
         // Normalize all input phones first (strip non-digits, prepend 965 for 8-digit Kuwait numbers)
         $normalizePhone = function (string $p): string {
@@ -244,8 +253,9 @@ class CampaignController extends Controller
 
         $count = 0;
         foreach ($failedRecipients as $recipient) {
-            $phone = preg_replace('/\D/', '', $recipient->phone);
-            if (!$phone) continue;
+            $digits = preg_replace('/\D/', '', $recipient->phone);
+            if (!$digits) continue;
+            $phone = strlen($digits) === 8 ? '965' . $digits : $digits;
 
             Contact::updateOrCreate(
                 ['phone' => $phone],

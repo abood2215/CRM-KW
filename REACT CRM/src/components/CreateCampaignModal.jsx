@@ -1,4 +1,4 @@
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../api/axios';
 import { X, Loader2, Plus, Trash2, Search, Check, Upload, LayoutTemplate, MessageSquare, ChevronDown, Image, List } from 'lucide-react';
@@ -18,6 +18,7 @@ const CreateCampaignModal = ({ open, onClose }) => {
   const [imageUploading, setImageUploading] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [showTemplateDrop, setShowTemplateDrop] = useState(false);
+  const [selectedNumberId, setSelectedNumberId] = useState(null);
 
   const [recipients, setRecipients]         = useState([{ phone: '', name: '' }]);
   const [jsonText, setJsonText]             = useState('');
@@ -26,13 +27,27 @@ const CreateCampaignModal = ({ open, onClose }) => {
   const [selectedContactIds, setSelectedContactIds] = useState([]);
   const [selectedListId, setSelectedListId] = useState(null);
 
-  const { data: approvedTemplates = [] } = useQuery({
-    queryKey: ['templates-approved'],
+  const { data: whatsappNumbers = [] } = useQuery({
+    queryKey: ['whatsapp-numbers'],
     queryFn: async () => {
-      const { data } = await api.get('/templates', { params: { status: 'approved' } });
+      const { data } = await api.get('/whatsapp-numbers');
+      return data.whatsapp_numbers ?? [];
+    },
+    enabled: open,
+  });
+
+  const connectedNumbers = whatsappNumbers.filter(n => n.status === 'connected');
+  const effectiveNumberId = selectedNumberId ?? connectedNumbers[0]?.id ?? null;
+
+  const { data: approvedTemplates = [] } = useQuery({
+    queryKey: ['templates-approved', effectiveNumberId],
+    queryFn: async () => {
+      const { data } = await api.get('/templates', {
+        params: { status: 'approved', whatsapp_number_id: effectiveNumberId },
+      });
       return data.templates;
     },
-    enabled: open && msgMode === 'template',
+    enabled: open && msgMode === 'template' && !!effectiveNumberId,
   });
 
   const { data: contacts = [] } = useQuery({
@@ -56,6 +71,11 @@ const CreateCampaignModal = ({ open, onClose }) => {
   const filteredContacts = contacts.filter(c =>
     c.phone?.includes(contactSearch) || c.name?.includes(contactSearch)
   );
+
+  useEffect(() => {
+    setSelectedTemplate(null);
+    setShowTemplateDrop(false);
+  }, [selectedNumberId]);
 
   const toggleContact = (c) => {
     setSelectedContactIds(ids =>
@@ -84,6 +104,7 @@ const CreateCampaignModal = ({ open, onClose }) => {
     setInputMode('manual');
     setMsgMode('text');
     setSelectedTemplate(null);
+    setSelectedNumberId(null);
   };
 
   const addRecipient = () => setRecipients(r => [...r, { phone: '', name: '' }]);
@@ -176,9 +197,10 @@ const CreateCampaignModal = ({ open, onClose }) => {
 
     let finalRecipients = [];
     const payload = {
-      name:          form.name,
-      delay_seconds: Number(form.delay_seconds) || 5,
-      scheduled_at:  form.scheduled_at || undefined,
+      name:               form.name,
+      delay_seconds:      Number(form.delay_seconds) || 5,
+      scheduled_at:       form.scheduled_at || undefined,
+      whatsapp_number_id: effectiveNumberId || undefined,
     };
 
     if (inputMode === 'list') {
@@ -254,6 +276,29 @@ const CreateCampaignModal = ({ open, onClose }) => {
                     className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500" />
                 </div>
               </div>
+
+              {connectedNumbers.length === 0 && whatsappNumbers.length > 0 && (
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl">
+                  <p className="text-xs font-bold text-rose-700">⚠ لا يوجد رقم واتساب متصل. يرجى ربط رقم من إعدادات الواتساب.</p>
+                </div>
+              )}
+
+              {connectedNumbers.length > 1 && (
+                <div>
+                  <label className="block text-xs font-black text-slate-600 mb-1.5">رقم الواتساب المُرسِل *</label>
+                  <select
+                    value={effectiveNumberId ?? ''}
+                    onChange={e => setSelectedNumberId(Number(e.target.value))}
+                    className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                  >
+                    {connectedNumbers.map(n => (
+                      <option key={n.id} value={n.id}>
+                        {n.name ? `${n.name} — ${n.phone}` : n.phone}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               <div>
                 <label className="block text-xs font-black text-slate-600 mb-2">نوع الرسالة</label>
