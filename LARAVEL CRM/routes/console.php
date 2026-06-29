@@ -13,6 +13,9 @@ use App\Models\Campaign;
 // Reset WhatsApp daily sending limits at midnight
 Schedule::job(new \App\Jobs\ResetDailyLimitJob)->daily()->at('00:00');
 
+// تحويل المحادثات المفتوحة إلى "معلقة" بعد انتهاء نافذة الـ 24 ساعة لواتساب
+Schedule::job(new \App\Jobs\ExpireConversationsJob)->everyThirtyMinutes()->withoutOverlapping();
+
 // مزامنة قوالب واتساب كل 6 ساعات
 Schedule::job(new \App\Jobs\SyncTemplatesJob)->everySixHours();
 
