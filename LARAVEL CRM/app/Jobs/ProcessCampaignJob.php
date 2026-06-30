@@ -157,12 +157,11 @@ class ProcessCampaignJob implements ShouldQueue
                     Contact::updateOrCreate(
                         ['phone' => $normalizedPhone],
                         [
-                            'is_blacklisted'    => true,
                             'blacklisted_until' => now()->addYear(),
                             'name'              => $recipient->name ?? $normalizedPhone,
                         ]
                     );
-                    Log::info("[Campaign #{$campaign->id}] حُظر مؤقتاً 48 ساعة: {$recipient->phone}");
+                    Log::info("[Campaign #{$campaign->id}] حُظر مؤقتاً: {$recipient->phone}");
                 } catch (\Exception $ex) {
                     Log::warning("[Campaign #{$campaign->id}] فشل الحظر المؤقت: {$ex->getMessage()}");
                 }

@@ -19,6 +19,16 @@ Schedule::job(new \App\Jobs\ExpireConversationsJob)->everyThirtyMinutes()->witho
 // مزامنة قوالب واتساب كل 6 ساعات
 Schedule::job(new \App\Jobs\SyncTemplatesJob)->everySixHours();
 
+// فك الحظر المؤقت للأرقام التي انتهت مدة حظرها
+Schedule::call(function () {
+    $count = \App\Models\Contact::whereNotNull('blacklisted_until')
+        ->where('blacklisted_until', '<=', now())
+        ->update(['blacklisted_until' => null]);
+    if ($count > 0) {
+        \Illuminate\Support\Facades\Log::info("[Scheduler] فُكَّ الحظر المؤقت عن {$count} رقم");
+    }
+})->hourly()->name('auto-unblock-contacts')->withoutOverlapping();
+
 // تشغيل الحملات المجدولة التي حان وقتها — كل دقيقة
 // هذا fallback أساسي: يضمن تشغيل أي حملة حان وقتها حتى لو كان الـ queue worker متوقفاً لحظة الجدولة
 Schedule::call(function () {

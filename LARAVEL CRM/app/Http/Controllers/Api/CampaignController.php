@@ -68,7 +68,9 @@ class CampaignController extends Controller
             return strlen($d) === 8 ? '965' . $d : $d;
         };
         $blockedPhones = Contact::where(function ($q) {
-            $q->where('is_blacklisted', true)->orWhere('opt_out', true);
+            $q->where('is_blacklisted', true)
+              ->orWhere('opt_out', true)
+              ->orWhere(fn($q2) => $q2->whereNotNull('blacklisted_until')->where('blacklisted_until', '>', now()));
         })->pluck('phone')
           ->map($normalizePhoneStatic)
           ->flip()

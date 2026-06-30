@@ -96,11 +96,13 @@ class ProcessWhatsAppWebhookJob implements ShouldQueue
             return;
         }
 
-        // إذا كان المرسِل محظوراً مؤقتاً (فشل حملة) — يُفك حظره فور ما يبعث رسالة
-        // الحظر الدائم (131026 حجب فعلي) يبقى — blacklisted_until=null يعني دائم
+        // أي رقم يبعث رسالة = يُفك حظره تلقائياً (مؤقت أو قديم)
+        // منطق: لو أرسل رسالة فهو لم يحجب الحساب فعلاً
         $unblocked = Contact::where('phone', $fromPhone)
-            ->where('is_blacklisted', true)
-            ->whereNotNull('blacklisted_until')
+            ->where(function ($q) {
+                $q->whereNotNull('blacklisted_until')
+                  ->orWhere('is_blacklisted', true);
+            })
             ->update(['is_blacklisted' => false, 'blacklisted_until' => null]);
         if ($unblocked) {
             Log::info('[WhatsApp Webhook] تم فك الحظر المؤقت لأن الرقم بعث رسالة', ['phone' => $fromPhone]);
