@@ -108,13 +108,6 @@ class ProcessWhatsAppWebhookJob implements ShouldQueue
             Log::info('[WhatsApp Webhook] تم فك الحظر المؤقت لأن الرقم بعث رسالة', ['phone' => $fromPhone]);
         }
 
-        // Reactions are emoji replies to messages — not real messages, skip storing them
-        if ($messageType === 'reaction' || $messageType === 'unsupported') {
-            $msgLock->release();
-            Log::info('[WhatsApp Webhook] تجاهل نوع: ' . $messageType, ['from' => $fromPhone, 'wamid' => $waMessageId]);
-            return;
-        }
-
         // Resolve content
         $mediaId = match ($messageType) {
             'image'    => $msgData['image']['id']    ?? null,
@@ -142,6 +135,7 @@ class ProcessWhatsAppWebhookJob implements ShouldQueue
             'interactive' => $msgData['interactive']['button_reply']['title']
                           ?? $msgData['interactive']['list_reply']['title']
                           ?? '[تفاعل]',
+            'reaction'    => 'تفاعل: ' . ($msgData['reaction']['emoji'] ?? '👍'),
             'contacts'    => '[جهة اتصال: ' . ($msgData['contacts'][0]['name']['formatted_name'] ?? '') . ']',
             'order'       => '[طلب شراء]',
             default       => '[رسالة غير مدعومة: ' . $messageType . ']',
