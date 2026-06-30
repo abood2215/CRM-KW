@@ -245,21 +245,22 @@ const CreateCampaignModal = ({ open, onClose }) => {
   return (
     <AnimatePresence>
       {open && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-slate-900/50 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/50 backdrop-blur-sm">
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="bg-white rounded-t-[2rem] sm:rounded-[2rem] shadow-2xl w-full sm:max-w-2xl relative max-h-[95vh] sm:max-h-[90vh] flex flex-col"
+            className="bg-white rounded-2xl sm:rounded-[2rem] shadow-2xl w-full sm:max-w-2xl relative overflow-hidden"
+            style={{ maxHeight: 'calc(100vh - 32px)' }}
           >
-            <div className="px-5 py-4 sm:p-8 border-b border-slate-100 flex items-center justify-between flex-shrink-0">
-              <h2 className="text-lg sm:text-xl font-black text-slate-800">حملة ترويجية جديدة</h2>
-              <button onClick={handleClose} className="p-2 rounded-xl text-slate-400 hover:bg-slate-100 transition-all">
+            <div className="px-5 py-4 sm:px-8 sm:py-5 border-b border-slate-100 flex items-center justify-between">
+              <h2 className="text-base sm:text-xl font-black text-slate-800">حملة ترويجية جديدة</h2>
+              <button onClick={handleClose} className="p-2 rounded-xl text-slate-400 hover:bg-slate-100 transition-all flex-shrink-0">
                 <X size={20} />
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="px-5 py-4 sm:p-8 space-y-4 sm:space-y-5 overflow-y-auto flex-1">
+            <form onSubmit={handleSubmit} className="px-5 py-4 sm:px-8 sm:py-5 space-y-4 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 32px - 65px)' }}>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
