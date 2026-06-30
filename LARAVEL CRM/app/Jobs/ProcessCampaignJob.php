@@ -134,7 +134,13 @@ class ProcessCampaignJob implements ShouldQueue
                         ['phone' => $normalizedPhone],
                         ['is_blacklisted' => true, 'name' => $recipient->name ?? $normalizedPhone]
                     );
-                    CrmClient::where('phone', $normalizedPhone)->update(['phone' => null]);
+                    $blockedClient = CrmClient::where('phone', $normalizedPhone)->first();
+                    if ($blockedClient) {
+                        Conversation::where('client_id', $blockedClient->id)
+                            ->where('status', 'open')
+                            ->update(['status' => 'closed']);
+                        $blockedClient->update(['phone' => null]);
+                    }
 
                     // حذف السجل نهائياً — لا يُعدّ ولا يظهر في الإحصائيات
                     $recipient->delete();
@@ -161,6 +167,14 @@ class ProcessCampaignJob implements ShouldQueue
 
                     $contact->increment('fail_count');
                     $contact->update(['is_blacklisted' => true, 'blacklisted_until' => null]);
+
+                    // أغلق محادثاته المفتوحة حتى لا تظهر في صندوق الرسائل
+                    $crmClient = \App\Models\CrmClient::where('phone', $normalizedPhone)->first();
+                    if ($crmClient) {
+                        \App\Models\Conversation::where('client_id', $crmClient->id)
+                            ->where('status', 'open')
+                            ->update(['status' => 'closed']);
+                    }
 
                     Log::info("[Campaign #{$campaign->id}] حُظر (فشل #{$contact->fail_count}): {$recipient->phone}");
                 } catch (\Exception $ex) {
