@@ -57,11 +57,11 @@ class ProcessCampaignJob implements ShouldQueue
         }
 
         if (!$number->canSend()) {
-            Log::warning("[Campaign #{$campaign->id}] وصل الرقم {$number->phone} للحد اليومي");
+            Log::warning("[Campaign #{$campaign->id}] الرقم {$number->phone} غير متصل");
             $this->pauseWithNotification(
                 $campaign,
-                'تم الوصول للحد اليومي',
-                "الحملة \"{$campaign->name}\" موقوفة مؤقتاً: الرقم {$number->phone} وصل لحده اليومي ({$number->daily_limit})."
+                'رقم الواتساب غير متصل',
+                "الحملة \"{$campaign->name}\" موقوفة: الرقم {$number->phone} غير متصل بالواتساب."
             );
             return;
         }
@@ -151,10 +151,7 @@ class ProcessCampaignJob implements ShouldQueue
                 }
             } else {
                 // Non-block error (131049 throttle, 130472 experiment, network error, etc.)
-                // Progressive blacklist based on fail_count:
-                //   1st fail  → 30 days
-                //   2nd fail  → 6 months
-                //   3rd fail+ → permanent (is_blacklisted = true)
+                // Block immediately — unblocked only when the contact messages us back
                 try {
                     $normalizedPhone = $this->normalizePhone($recipient->phone);
                     $contact = Contact::firstOrCreate(
@@ -163,20 +160,11 @@ class ProcessCampaignJob implements ShouldQueue
                     );
 
                     $contact->increment('fail_count');
-                    $contact->refresh();
+                    $contact->update(['is_blacklisted' => true, 'blacklisted_until' => null]);
 
-                    if ($contact->fail_count >= 3) {
-                        $contact->update(['is_blacklisted' => true, 'blacklisted_until' => null]);
-                        Log::info("[Campaign #{$campaign->id}] حظر دائم (فشل {$contact->fail_count} مرات): {$recipient->phone}");
-                    } elseif ($contact->fail_count === 2) {
-                        $contact->update(['blacklisted_until' => now()->addMonths(6)]);
-                        Log::info("[Campaign #{$campaign->id}] حظر 6 أشهر (فشل مرتين): {$recipient->phone}");
-                    } else {
-                        $contact->update(['blacklisted_until' => now()->addDays(30)]);
-                        Log::info("[Campaign #{$campaign->id}] حظر 30 يوم (فشل أول مرة): {$recipient->phone}");
-                    }
+                    Log::info("[Campaign #{$campaign->id}] حُظر (فشل #{$contact->fail_count}): {$recipient->phone}");
                 } catch (\Exception $ex) {
-                    Log::warning("[Campaign #{$campaign->id}] فشل الحظر التدريجي: {$ex->getMessage()}");
+                    Log::warning("[Campaign #{$campaign->id}] فشل الحظر: {$ex->getMessage()}");
                 }
 
                 $recipient->update([

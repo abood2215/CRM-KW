@@ -140,13 +140,4 @@ class CampaignService
         ];
     }
 
-    // جلب حد الإرسال اليومي حسب أسبوع النشاط
-    public function getDailyLimit(WhatsappNumber $number): int
-    {
-        return match (true) {
-            $number->week_number >= 3 => 1000,
-            $number->week_number === 2 => 500,
-            default                   => 250,
-        };
-    }
 }

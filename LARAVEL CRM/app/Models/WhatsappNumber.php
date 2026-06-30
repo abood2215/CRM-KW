@@ -34,7 +34,7 @@ class WhatsappNumber extends Model
     }
     public function canSend(): bool
     {
-        return $this->status === 'connected' && $this->sent_today < $this->daily_limit;
+        return $this->status === 'connected';
     }
     public function incrementSent(): void
     {
