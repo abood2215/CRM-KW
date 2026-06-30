@@ -12,7 +12,7 @@ const CreateCampaignModal = ({ open, onClose }) => {
   const templateImageRef  = useRef(null);
 
   const [form, setForm] = useState({
-    name: '', message_text: '', delay_seconds: '5', scheduled_at: '', image_path: '',
+    name: '', message_text: '', delay_seconds: '30', scheduled_at: '', image_path: '',
   });
   const [msgMode, setMsgMode]               = useState('text');
   const [imageUploading, setImageUploading] = useState(false);
