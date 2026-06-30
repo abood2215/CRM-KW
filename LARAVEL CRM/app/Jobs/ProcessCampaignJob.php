@@ -151,19 +151,32 @@ class ProcessCampaignJob implements ShouldQueue
                 }
             } else {
                 // Non-block error (131049 throttle, 130472 experiment, network error, etc.)
-                // Blacklist temporarily — auto-unblacklist after 48h via scheduler
+                // Progressive blacklist based on fail_count:
+                //   1st fail  → 30 days
+                //   2nd fail  → 6 months
+                //   3rd fail+ → permanent (is_blacklisted = true)
                 try {
                     $normalizedPhone = $this->normalizePhone($recipient->phone);
-                    Contact::updateOrCreate(
+                    $contact = Contact::firstOrCreate(
                         ['phone' => $normalizedPhone],
-                        [
-                            'blacklisted_until' => now()->addYear(),
-                            'name'              => $recipient->name ?? $normalizedPhone,
-                        ]
+                        ['name'  => $recipient->name ?? $normalizedPhone]
                     );
-                    Log::info("[Campaign #{$campaign->id}] حُظر مؤقتاً: {$recipient->phone}");
+
+                    $contact->increment('fail_count');
+                    $contact->refresh();
+
+                    if ($contact->fail_count >= 3) {
+                        $contact->update(['is_blacklisted' => true, 'blacklisted_until' => null]);
+                        Log::info("[Campaign #{$campaign->id}] حظر دائم (فشل {$contact->fail_count} مرات): {$recipient->phone}");
+                    } elseif ($contact->fail_count === 2) {
+                        $contact->update(['blacklisted_until' => now()->addMonths(6)]);
+                        Log::info("[Campaign #{$campaign->id}] حظر 6 أشهر (فشل مرتين): {$recipient->phone}");
+                    } else {
+                        $contact->update(['blacklisted_until' => now()->addDays(30)]);
+                        Log::info("[Campaign #{$campaign->id}] حظر 30 يوم (فشل أول مرة): {$recipient->phone}");
+                    }
                 } catch (\Exception $ex) {
-                    Log::warning("[Campaign #{$campaign->id}] فشل الحظر المؤقت: {$ex->getMessage()}");
+                    Log::warning("[Campaign #{$campaign->id}] فشل الحظر التدريجي: {$ex->getMessage()}");
                 }
 
                 $recipient->update([

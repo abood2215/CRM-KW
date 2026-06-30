@@ -22,6 +22,7 @@ class Contact extends Model
         'opt_out_date',
         'is_blacklisted',
         'blacklisted_until',
+        'fail_count',
         'notes',
     ];
 
@@ -35,6 +36,7 @@ class Contact extends Model
             'opt_in_date'      => 'datetime',
             'opt_out_date'     => 'datetime',
             'blacklisted_until' => 'datetime',
+            'fail_count'        => 'integer',
         ];
     }
 
