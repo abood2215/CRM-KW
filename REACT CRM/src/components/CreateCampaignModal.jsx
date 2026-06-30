@@ -245,23 +245,23 @@ const CreateCampaignModal = ({ open, onClose }) => {
   return (
     <AnimatePresence>
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-slate-900/50 backdrop-blur-sm">
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 10 }}
-            className="bg-white rounded-[2rem] shadow-2xl w-full max-w-2xl relative"
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            className="bg-white rounded-t-[2rem] sm:rounded-[2rem] shadow-2xl w-full sm:max-w-2xl relative max-h-[95vh] sm:max-h-[90vh] flex flex-col"
           >
-            <div className="p-8 border-b border-slate-100 flex items-center justify-between">
-              <h2 className="text-xl font-black text-slate-800">حملة ترويجية جديدة</h2>
+            <div className="px-5 py-4 sm:p-8 border-b border-slate-100 flex items-center justify-between flex-shrink-0">
+              <h2 className="text-lg sm:text-xl font-black text-slate-800">حملة ترويجية جديدة</h2>
               <button onClick={handleClose} className="p-2 rounded-xl text-slate-400 hover:bg-slate-100 transition-all">
                 <X size={20} />
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-8 space-y-5 max-h-[75vh] overflow-y-auto">
+            <form onSubmit={handleSubmit} className="px-5 py-4 sm:p-8 space-y-4 sm:space-y-5 overflow-y-auto flex-1">
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-black text-slate-600 mb-1.5">اسم الحملة *</label>
                   <input type="text" required
@@ -302,17 +302,17 @@ const CreateCampaignModal = ({ open, onClose }) => {
 
               <div>
                 <label className="block text-xs font-black text-slate-600 mb-2">نوع الرسالة</label>
-                <div className="flex gap-2 p-1 bg-slate-100 rounded-xl w-fit">
+                <div className="flex flex-wrap gap-2 p-1 bg-slate-100 rounded-xl w-fit">
                   <button type="button" onClick={() => setMsgMode('text')}
-                    className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-all ${msgMode === 'text' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'}`}>
+                    className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg text-xs font-bold transition-all ${msgMode === 'text' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'}`}>
                     <MessageSquare size={13} /> نص حر
                   </button>
                   <button type="button" onClick={() => setMsgMode('image')}
-                    className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-all ${msgMode === 'image' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'}`}>
+                    className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg text-xs font-bold transition-all ${msgMode === 'image' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'}`}>
                     <Image size={13} /> صورة
                   </button>
                   <button type="button" onClick={() => setMsgMode('template')}
-                    className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-all ${msgMode === 'template' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'}`}>
+                    className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg text-xs font-bold transition-all ${msgMode === 'template' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'}`}>
                     <LayoutTemplate size={13} /> قالب Template
                   </button>
                 </div>
@@ -463,7 +463,7 @@ const CreateCampaignModal = ({ open, onClose }) => {
               </div>
 
               <div>
-                <div className="flex items-center justify-between mb-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
                   <label className="text-xs font-black text-slate-600">
                     المستلمون * {recipientCount > 0 && <span className="text-indigo-600">({recipientCount} رقم)</span>}
                   </label>
@@ -594,13 +594,13 @@ const CreateCampaignModal = ({ open, onClose }) => {
                 )}
               </div>
 
-              <div className="flex gap-3 pt-2">
+              <div className="flex gap-3 pt-2 pb-2">
                 <button type="button" onClick={handleClose}
-                  className="flex-1 h-12 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-all">
+                  className="flex-1 h-12 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-all text-sm">
                   إلغاء
                 </button>
                 <button type="submit" disabled={mutation.isPending}
-                  className="flex-1 h-12 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-all disabled:opacity-70 flex items-center justify-center gap-2">
+                  className="flex-1 h-12 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-all disabled:opacity-70 flex items-center justify-center gap-2 text-sm">
                   {mutation.isPending && <Loader2 size={18} className="animate-spin" />}
                   إطلاق الحملة
                 </button>
