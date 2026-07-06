@@ -13,6 +13,16 @@ export const uploadFile = (file) => {
 
 export const deleteFile = (id) => client.delete(`/drive/${id}`).then((res) => res.data);
 
-export const downloadFileUrl = (id) => `${client.defaults.baseURL}/drive/${id}/download`;
-
 export const getFilePreviewBlobUrl = (id) => client.get(`/drive/${id}/download`, { responseType: 'blob' }).then((res) => URL.createObjectURL(res.data));
+
+export const downloadFile = (id, filename) =>
+  client.get(`/drive/${id}/download`, { responseType: 'blob' }).then((res) => {
+    const url = URL.createObjectURL(res.data);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  });

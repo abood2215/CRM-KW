@@ -156,7 +156,7 @@ const DrivePage = () => {
                 </div>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
-                <a href={driveApi.downloadFileUrl(f.id)} className="p-2 text-slate-400 hover:text-indigo-600 rounded-lg"><Download size={15} /></a>
+                <button onClick={() => driveApi.downloadFile(f.id, f.original_name)} className="p-2 text-slate-400 hover:text-indigo-600 rounded-lg"><Download size={15} /></button>
                 <button onClick={() => deleteMutation.mutate(f.id)} className="p-2 text-slate-400 hover:text-rose-600 rounded-lg"><Trash2 size={15} /></button>
               </div>
             </div>
