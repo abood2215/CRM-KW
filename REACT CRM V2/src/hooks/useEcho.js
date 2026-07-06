@@ -21,7 +21,7 @@ function buildEcho(token) {
     forceTLS: useTLS,
     disableStats: true,
     enabledTransports: useTLS ? ['wss'] : ['ws'],
-    authEndpoint: `${(import.meta.env.VITE_API_BASE_URL || 'http://localhost:8001/api').replace(/\/api\/?$/, '')}/broadcasting/auth`,
+    authEndpoint: `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8001/api'}/broadcasting/auth`,
     auth: { headers: { Authorization: `Bearer ${token}` } },
   });
 }
