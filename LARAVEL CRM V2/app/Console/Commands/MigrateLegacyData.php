@@ -4,6 +4,8 @@ namespace App\Console\Commands;
 
 use App\ValueObjects\PhoneNumber;
 use Illuminate\Console\Command;
+use Illuminate\Contracts\Encryption\DecryptException;
+use Illuminate\Encryption\Encrypter;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -20,7 +22,7 @@ use Illuminate\Support\Facades\DB;
  */
 class MigrateLegacyData extends Command
 {
-    protected $signature = 'migrate:legacy-data {--dry-run : Roll back at the end and only report what would happen}';
+    protected $signature = 'migrate:legacy-data {--dry-run : Roll back at the end and only report what would happen} {--force : Skip the interactive backup-source confirmation}';
 
     protected $description = 'Migrate data from the old CRM database into the V2 schema';
 
@@ -46,6 +48,10 @@ class MigrateLegacyData extends Command
     private array $conversationMap = [];
 
     private array $counts = [];
+
+    private ?Encrypter $legacyEncrypter = null;
+
+    private bool $legacyEncrypterResolved = false;
 
     public function handle(): int
     {
@@ -111,6 +117,10 @@ class MigrateLegacyData extends Command
 
         $this->warn("About to READ from legacy database \"{$db}\" and WRITE into the current V2 database.");
 
+        if ($this->option('force')) {
+            return true;
+        }
+
         return $this->confirm('Confirm this is a restored backup copy, NOT the live production database?', false);
     }
 
@@ -123,6 +133,48 @@ class MigrateLegacyData extends Command
     private function legacy(string $table)
     {
         return DB::connection('legacy')->table($table);
+    }
+
+    /**
+     * Some crm_clients.phone rows are Laravel-encrypted (leftover from a past
+     * code version of the old app); others are plain text. Try decrypting
+     * with the old app's production APP_KEY and fall back to the raw value
+     * if it isn't ciphertext at all.
+     */
+    private function decryptLegacyValue(?string $value): ?string
+    {
+        if (! $value) {
+            return $value;
+        }
+
+        $encrypter = $this->legacyEncrypter();
+        if (! $encrypter) {
+            return $value;
+        }
+
+        try {
+            return $encrypter->decryptString($value);
+        } catch (DecryptException) {
+            return $value;
+        }
+    }
+
+    private function legacyEncrypter(): ?Encrypter
+    {
+        if ($this->legacyEncrypterResolved) {
+            return $this->legacyEncrypter;
+        }
+
+        $this->legacyEncrypterResolved = true;
+
+        $key = config('database.connections.legacy.app_key');
+        if (! $key) {
+            return null;
+        }
+
+        $key = str_starts_with($key, 'base64:') ? base64_decode(substr($key, 7)) : $key;
+
+        return $this->legacyEncrypter = new Encrypter($key, 'AES-256-CBC');
     }
 
     private function migrateUsers(): void
@@ -167,7 +219,7 @@ class MigrateLegacyData extends Command
         $count = 0;
 
         foreach ($this->legacy('crm_clients')->get() as $row) {
-            $phone = $row->phone ? PhoneNumber::normalize($row->phone) : null;
+            $phone = $row->phone ? PhoneNumber::normalize($this->decryptLegacyValue($row->phone)) : null;
 
             $newId = $phoneToNewId[$phone] ?? null;
             $data = [
@@ -204,7 +256,7 @@ class MigrateLegacyData extends Command
         }
 
         foreach ($this->legacy('contacts')->get() as $row) {
-            $phone = PhoneNumber::normalize($row->phone);
+            $phone = PhoneNumber::normalize($this->decryptLegacyValue($row->phone));
             $newId = $phoneToNewId[$phone] ?? null;
 
             $data = [

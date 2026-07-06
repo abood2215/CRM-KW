@@ -26,3 +26,7 @@ Thumbs.db
 **/dist
 **/build
 **/.vite
+
+# Database dumps — may contain real customer data, never commit
+*.sql
+*.sql.gz

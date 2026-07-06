@@ -77,6 +77,8 @@ return [
             'collation' => env('DB_COLLATION', 'utf8mb4_unicode_ci'),
             'prefix' => '',
             'prefix_indexes' => true,
+            // OLD app's production APP_KEY — needed to decrypt some legacy-encrypted columns.
+            'app_key' => env('LEGACY_APP_KEY'),
             'strict' => true,
             'engine' => null,
         ],
