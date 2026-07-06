@@ -1,0 +1,115 @@
+<?php
+
+use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\CampaignController;
+use App\Http\Controllers\Api\V1\CannedResponseController;
+use App\Http\Controllers\Api\V1\ContactController;
+use App\Http\Controllers\Api\V1\ContactListController;
+use App\Http\Controllers\Api\V1\ConversationController;
+use App\Http\Controllers\Api\V1\FileController;
+use App\Http\Controllers\Api\V1\MessageController;
+use App\Http\Controllers\Api\V1\NotificationController;
+use App\Http\Controllers\Api\V1\SettingsController;
+use App\Http\Controllers\Api\V1\StatsController;
+use App\Http\Controllers\Api\V1\TaskController;
+use App\Http\Controllers\Api\V1\TemplateController;
+use App\Http\Controllers\Api\V1\UserController;
+use App\Http\Controllers\Api\V1\WebhookController;
+use App\Http\Controllers\Api\V1\WhatsappNumberController;
+use Illuminate\Support\Facades\Route;
+
+// Rate limit: max 10 login attempts per minute per IP
+Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
+
+// Public webhooks — rate limited since they're unauthenticated
+Route::get('/webhooks/whatsapp', [WebhookController::class, 'whatsappVerify'])->middleware('throttle:20,1');
+Route::post('/webhooks/whatsapp', [WebhookController::class, 'whatsapp'])->middleware('throttle:120,1');
+Route::post('/webhooks/chatwoot', [WebhookController::class, 'chatwoot'])->middleware('throttle:60,1');
+
+Route::middleware(['auth:sanctum', 'update.last.seen'])->group(function () {
+    Route::prefix('auth')->group(function () {
+        Route::post('/logout', [AuthController::class, 'logout']);
+        Route::get('/me', [AuthController::class, 'me']);
+        Route::put('/profile', [AuthController::class, 'updateProfile']);
+        Route::put('/password', [AuthController::class, 'updatePassword']);
+    });
+
+    Route::get('/contacts/pipeline', [ContactController::class, 'pipeline']);
+    Route::get('/contacts/pipeline/{stage}', [ContactController::class, 'pipelineStage']);
+    Route::get('/contacts/export/csv', [ContactController::class, 'exportCsv']);
+    Route::post('/contacts/import/csv', [ContactController::class, 'importCsv']);
+    Route::delete('/contacts/destroy-all', [ContactController::class, 'destroyAll']);
+    Route::get('/contacts/{contact}/timeline', [ContactController::class, 'timeline']);
+    Route::post('/contacts/{contact}/opt-out', [ContactController::class, 'optOut']);
+    Route::post('/contacts/{contact}/blacklist', [ContactController::class, 'blacklist']);
+    Route::post('/contacts/{contact}/unblacklist', [ContactController::class, 'unblacklist']);
+    Route::apiResource('contacts', ContactController::class);
+
+    Route::post('/contact-lists/{contactList}/contacts', [ContactListController::class, 'addContacts']);
+    Route::apiResource('contact-lists', ContactListController::class);
+
+    Route::post('/tasks/{task}/complete', [TaskController::class, 'complete']);
+    Route::apiResource('tasks', TaskController::class);
+
+    Route::get('/whatsapp-numbers', [WhatsappNumberController::class, 'index']);
+    Route::post('/whatsapp-numbers', [WhatsappNumberController::class, 'store']);
+    Route::delete('/whatsapp-numbers/{whatsappNumber}', [WhatsappNumberController::class, 'destroy']);
+    Route::get('/whatsapp-numbers/{whatsappNumber}/qr', [WhatsappNumberController::class, 'qr']);
+    Route::get('/whatsapp-numbers/{whatsappNumber}/status', [WhatsappNumberController::class, 'status']);
+    Route::post('/whatsapp-numbers/{whatsappNumber}/sync-templates', [WhatsappNumberController::class, 'syncTemplates']);
+
+    Route::get('/templates/preview/{name}', [TemplateController::class, 'preview']);
+    Route::post('/templates/sync', [TemplateController::class, 'sync']);
+    Route::apiResource('templates', TemplateController::class);
+
+    Route::post('/campaigns/upload-image', [CampaignController::class, 'uploadImage']);
+    Route::post('/campaigns/{campaign}/start', [CampaignController::class, 'start']);
+    Route::post('/campaigns/{campaign}/pause', [CampaignController::class, 'pause']);
+    Route::post('/campaigns/{campaign}/resume', [CampaignController::class, 'resume']);
+    Route::post('/campaigns/{campaign}/blacklist-failed', [CampaignController::class, 'blacklistFailed']);
+    Route::get('/campaigns/{campaign}/recipients', [CampaignController::class, 'recipients']);
+    Route::get('/campaigns/{campaign}/analytics', [CampaignController::class, 'analytics']);
+    Route::get('/campaigns/{campaign}/report', [CampaignController::class, 'report']);
+    Route::apiResource('campaigns', CampaignController::class)->except(['show'])->parameters(['campaigns' => 'campaign']);
+    Route::get('/campaigns/{campaign}', [CampaignController::class, 'show']);
+
+    Route::post('/conversations', [ConversationController::class, 'store']);
+    Route::get('/conversations', [ConversationController::class, 'index']);
+    Route::get('/conversations/{conversation}', [ConversationController::class, 'show']);
+    Route::put('/conversations/{conversation}/status', [ConversationController::class, 'updateStatus']);
+    Route::put('/conversations/{conversation}/assign', [ConversationController::class, 'assign']);
+    Route::get('/conversations/{conversation}/messages', [MessageController::class, 'index']);
+    Route::post('/conversations/{conversation}/messages', [MessageController::class, 'store']);
+    Route::post('/conversations/{conversation}/send-template', [MessageController::class, 'sendTemplate']);
+    Route::post('/conversations/{conversation}/notes', [MessageController::class, 'addNote']);
+
+    Route::get('/stats/dashboard', [StatsController::class, 'dashboard']);
+    Route::get('/stats/campaigns', [StatsController::class, 'campaigns']);
+    Route::get('/stats/agents', [StatsController::class, 'agents']);
+    Route::get('/stats/whatsapp', [StatsController::class, 'whatsapp']);
+
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllRead']);
+    Route::post('/notifications/{notification}/read', [NotificationController::class, 'markRead']);
+    Route::delete('/notifications/{notification}', [NotificationController::class, 'destroy']);
+
+    Route::apiResource('canned-responses', CannedResponseController::class)->except(['show']);
+
+    Route::get('/drive', [FileController::class, 'index']);
+    Route::post('/drive/upload', [FileController::class, 'store']);
+    Route::get('/drive/{file}/download', [FileController::class, 'download']);
+    Route::delete('/drive/{file}', [FileController::class, 'destroy']);
+
+    Route::get('/users/online', [UserController::class, 'online']);
+    Route::get('/users', [UserController::class, 'index']);
+    Route::post('/users', [UserController::class, 'store']);
+    Route::put('/users/{user}', [UserController::class, 'update']);
+    Route::delete('/users/{user}', [UserController::class, 'destroy']);
+
+    Route::middleware('can:manage-settings')->prefix('settings')->group(function () {
+        Route::get('/business-hours', [SettingsController::class, 'getBusinessHours']);
+        Route::put('/business-hours', [SettingsController::class, 'updateBusinessHours']);
+        Route::get('/auto-replies', [SettingsController::class, 'getAutoReplies']);
+        Route::put('/auto-replies', [SettingsController::class, 'updateAutoReplies']);
+    });
+});
