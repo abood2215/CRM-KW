@@ -68,7 +68,7 @@ const MainLayout = () => {
   return (
     <div className="min-h-screen bg-slate-50">
       <header className="bg-white border-b border-slate-200 px-6 h-16 flex items-center justify-between gap-6">
-        <h1 className="font-black text-slate-800 whitespace-nowrap">CRM V2</h1>
+        <h1 className="font-black text-slate-800 whitespace-nowrap">مركز مطمئنة</h1>
         <nav className="flex items-center gap-1 flex-1 overflow-x-auto">
           {NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (
             <NavLink
