@@ -9,91 +9,114 @@ import { auth, notifications as notificationsApi } from '../api';
 import { cn } from '../utils/cn';
 import { useEcho } from '../hooks/useEcho';
 
+// Each nav item gets its own accent color (chip + active-state ring), instead of
+// one uniform color, so the sidebar reads as a set of distinct destinations.
+// Tailwind's scanner needs literal class strings (not `bg-${color}-50`), hence
+// this lookup table of pre-written literals rather than building them at runtime.
+const COLOR_STYLES = {
+  indigo: { chip: 'bg-indigo-50 text-indigo-600', chipActive: 'bg-indigo-600 text-white', active: 'bg-indigo-50 text-indigo-700 ring-1 ring-indigo-100' },
+  blue: { chip: 'bg-blue-50 text-blue-600', chipActive: 'bg-blue-600 text-white', active: 'bg-blue-50 text-blue-700 ring-1 ring-blue-100' },
+  violet: { chip: 'bg-violet-50 text-violet-600', chipActive: 'bg-violet-600 text-white', active: 'bg-violet-50 text-violet-700 ring-1 ring-violet-100' },
+  amber: { chip: 'bg-amber-50 text-amber-600', chipActive: 'bg-amber-600 text-white', active: 'bg-amber-50 text-amber-700 ring-1 ring-amber-100' },
+  cyan: { chip: 'bg-cyan-50 text-cyan-600', chipActive: 'bg-cyan-600 text-white', active: 'bg-cyan-50 text-cyan-700 ring-1 ring-cyan-100' },
+  emerald: { chip: 'bg-emerald-50 text-emerald-600', chipActive: 'bg-emerald-600 text-white', active: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100' },
+  green: { chip: 'bg-green-50 text-green-600', chipActive: 'bg-green-600 text-white', active: 'bg-green-50 text-green-700 ring-1 ring-green-100' },
+  purple: { chip: 'bg-purple-50 text-purple-600', chipActive: 'bg-purple-600 text-white', active: 'bg-purple-50 text-purple-700 ring-1 ring-purple-100' },
+  rose: { chip: 'bg-rose-50 text-rose-600', chipActive: 'bg-rose-600 text-white', active: 'bg-rose-50 text-rose-700 ring-1 ring-rose-100' },
+  orange: { chip: 'bg-orange-50 text-orange-600', chipActive: 'bg-orange-600 text-white', active: 'bg-orange-50 text-orange-700 ring-1 ring-orange-100' },
+  red: { chip: 'bg-red-50 text-red-600', chipActive: 'bg-red-600 text-white', active: 'bg-red-50 text-red-700 ring-1 ring-red-100' },
+  teal: { chip: 'bg-teal-50 text-teal-600', chipActive: 'bg-teal-600 text-white', active: 'bg-teal-50 text-teal-700 ring-1 ring-teal-100' },
+  gray: { chip: 'bg-slate-100 text-slate-500', chipActive: 'bg-slate-600 text-white', active: 'bg-slate-100 text-slate-700 ring-1 ring-slate-200' },
+};
+
 const NAV_GROUPS = [
   {
     label: 'الرئيسية',
-    items: [{ to: '/', label: 'لوحة التحكم', icon: LayoutDashboard, end: true }],
+    items: [{ to: '/', label: 'لوحة التحكم', icon: LayoutDashboard, end: true, color: 'indigo' }],
   },
   {
     label: 'العملاء',
     items: [
-      { to: '/pipeline', label: 'تتبع العملاء', icon: Kanban },
-      { to: '/contacts', label: 'جهات الاتصال', icon: Users },
-      { to: '/tasks', label: 'المهام', icon: CheckSquare },
-      { to: '/contact-lists', label: 'قوائم التواصل', icon: ListChecks },
+      { to: '/pipeline', label: 'تتبع العملاء', icon: Kanban, color: 'blue' },
+      { to: '/contacts', label: 'جهات الاتصال', icon: Users, color: 'violet' },
+      { to: '/tasks', label: 'المهام', icon: CheckSquare, color: 'amber' },
+      { to: '/contact-lists', label: 'قوائم التواصل', icon: ListChecks, color: 'cyan' },
     ],
   },
   {
     label: 'التواصل',
     items: [
-      { to: '/messages', label: 'المحادثات', icon: MessageSquare },
-      { to: '/whatsapp', label: 'أرقام واتساب', icon: Phone },
-      { to: '/templates', label: 'القوالب', icon: FileText },
-      { to: '/campaigns', label: 'الحملات', icon: Megaphone },
+      { to: '/messages', label: 'المحادثات', icon: MessageSquare, color: 'emerald' },
+      { to: '/whatsapp', label: 'أرقام واتساب', icon: Phone, color: 'green' },
+      { to: '/templates', label: 'القوالب', icon: FileText, color: 'purple' },
+      { to: '/campaigns', label: 'الحملات', icon: Megaphone, color: 'rose' },
     ],
   },
   {
     label: 'أخرى',
     items: [
-      { to: '/stats', label: 'التقارير', icon: BarChart3 },
-      { to: '/notifications', label: 'الإشعارات', icon: Bell, badge: 'notifications' },
-      { to: '/drive', label: 'الملفات', icon: HardDrive },
-      { to: '/settings', label: 'الإعدادات', icon: Settings },
+      { to: '/stats', label: 'التقارير', icon: BarChart3, color: 'orange' },
+      { to: '/notifications', label: 'الإشعارات', icon: Bell, color: 'red', badge: 'notifications' },
+      { to: '/drive', label: 'الملفات', icon: HardDrive, color: 'teal' },
+      { to: '/settings', label: 'الإعدادات', icon: Settings, color: 'gray' },
     ],
   },
 ];
 
 const ROLE_LABELS = { admin: 'مدير النظام', manager: 'مشرف', agent: 'موظف' };
 
-const NavItem = ({ to, label, icon: Icon, end, unreadCount, dark, onClick }) => (
-  <NavLink
-    to={to}
-    end={end}
-    onClick={onClick}
-    className={({ isActive }) =>
-      cn(
-        'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-colors relative',
-        dark
-          ? isActive
-            ? 'bg-indigo-600/15 text-indigo-400 border-r-2 border-indigo-500'
-            : 'text-slate-400 hover:bg-white/5 hover:text-slate-200 border-r-2 border-transparent'
-          : isActive
-            ? 'bg-indigo-50 text-indigo-600'
-            : 'text-slate-600 hover:bg-slate-50'
-      )
-    }
-  >
-    <Icon size={17} />
-    {label}
-    {unreadCount > 0 && (
-      <span className="mr-auto min-w-[20px] h-5 px-1.5 bg-rose-500 text-white text-[11px] font-black rounded-full flex items-center justify-center">
-        {unreadCount > 9 ? '9+' : unreadCount}
-      </span>
-    )}
-  </NavLink>
-);
+const NavItem = ({ to, label, icon: Icon, end, unreadCount, color, onClick }) => {
+  const styles = COLOR_STYLES[color] ?? COLOR_STYLES.gray;
 
-const NavGroups = ({ dark, unreadCount, onItemClick }) => (
+  return (
+    <NavLink
+      to={to}
+      end={end}
+      onClick={onClick}
+      className={({ isActive }) =>
+        cn('flex items-center gap-3 px-2.5 py-2.5 rounded-xl text-sm font-bold transition-all', isActive ? styles.active : 'text-slate-600 hover:bg-slate-50')
+      }
+    >
+      {({ isActive }) => (
+        <>
+          <span className={cn('w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors', isActive ? styles.chipActive : styles.chip)}>
+            <Icon size={16} />
+          </span>
+          {label}
+          {unreadCount > 0 && (
+            <span className="mr-auto min-w-[20px] h-5 px-1.5 bg-rose-500 text-white text-[11px] font-black rounded-full flex items-center justify-center">
+              {unreadCount > 9 ? '9+' : unreadCount}
+            </span>
+          )}
+        </>
+      )}
+    </NavLink>
+  );
+};
+
+const NavGroups = ({ unreadCount, onItemClick }) => (
   <>
     {NAV_GROUPS.map((group) => (
       <div key={group.label}>
-        <p className={cn('px-3 mb-1.5 text-[11px] font-black uppercase tracking-wider', dark ? 'text-slate-500' : 'text-slate-400')}>
-          {group.label}
-        </p>
+        <p className="px-3 mb-1.5 text-[11px] font-black uppercase tracking-wider text-slate-400">{group.label}</p>
         <div className="space-y-1">
           {group.items.map((item) => (
-            <NavItem
-              key={item.to}
-              {...item}
-              dark={dark}
-              unreadCount={item.badge === 'notifications' ? unreadCount : 0}
-              onClick={onItemClick}
-            />
+            <NavItem key={item.to} {...item} unreadCount={item.badge === 'notifications' ? unreadCount : 0} onClick={onItemClick} />
           ))}
         </div>
       </div>
     ))}
   </>
+);
+
+const UserCard = ({ user, initial, roleLabel }) => (
+  <div className="flex items-center gap-3 p-2.5 rounded-xl bg-slate-50">
+    <div className="w-9 h-9 rounded-full bg-indigo-500 flex items-center justify-center text-white font-black flex-shrink-0">{initial}</div>
+    <div className="min-w-0">
+      <p className="text-sm font-bold text-slate-800 truncate">{user?.name}</p>
+      <p className="text-xs text-slate-400 truncate">{roleLabel}</p>
+    </div>
+  </div>
 );
 
 const MainLayout = () => {
@@ -146,29 +169,24 @@ const MainLayout = () => {
   return (
     <div className="min-h-screen flex bg-slate-50">
       {/* Desktop sidebar */}
-      <aside className="hidden lg:flex lg:flex-col w-64 flex-shrink-0 h-screen sticky top-0 bg-slate-900">
-        <div className="h-16 flex items-center gap-3 px-5 border-b border-slate-800 flex-shrink-0">
+      <aside className="hidden lg:flex lg:flex-col w-64 flex-shrink-0 h-screen sticky top-0 bg-white border-l border-slate-100">
+        <div className="h-16 flex items-center gap-3 px-5 border-b border-slate-100 flex-shrink-0">
           <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-black flex-shrink-0">م</div>
-          <span className="font-black text-white truncate">مركز مطمئنة</span>
+          <span className="font-black text-slate-800 truncate">مركز مطمئنة</span>
         </div>
 
-        <nav className="flex-1 overflow-y-auto px-3 py-5 space-y-6">
-          <NavGroups dark unreadCount={unreadCount} />
+        <div className="px-4 pt-4 flex-shrink-0">
+          <UserCard user={user} initial={initial} roleLabel={roleLabel} />
+        </div>
+
+        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
+          <NavGroups unreadCount={unreadCount} />
         </nav>
 
-        <div className="p-4 border-t border-slate-800 flex-shrink-0">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center text-white font-black flex-shrink-0">
-              {initial}
-            </div>
-            <div className="min-w-0">
-              <p className="text-sm font-bold text-white truncate">{user?.name}</p>
-              <p className="text-xs text-slate-400 truncate">{roleLabel}</p>
-            </div>
-          </div>
+        <div className="p-4 border-t border-slate-100 flex-shrink-0">
           <button
             onClick={handleLogout}
-            className="w-full h-10 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-sm font-bold flex items-center justify-center gap-2 transition-colors"
+            className="w-full h-10 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 text-sm font-bold flex items-center justify-center gap-2 transition-colors"
           >
             <LogOut size={15} />
             تسجيل خروج
@@ -223,43 +241,38 @@ const MainLayout = () => {
               onClick={() => setDrawerOpen(false)}
             />
             <motion.div
-              className="fixed top-0 right-0 h-full w-72 max-w-[85vw] bg-slate-900 z-50 lg:hidden shadow-2xl flex flex-col"
+              className="fixed top-0 right-0 h-full w-72 max-w-[85vw] bg-white z-50 lg:hidden shadow-2xl flex flex-col"
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'tween', duration: 0.25 }}
             >
-              <div className="flex items-center justify-between p-4 border-b border-slate-800 flex-shrink-0">
+              <div className="flex items-center justify-between p-4 border-b border-slate-100 flex-shrink-0">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-black flex-shrink-0">م</div>
-                  <span className="font-black text-white">مركز مطمئنة</span>
+                  <span className="font-black text-slate-800">مركز مطمئنة</span>
                 </div>
                 <button
                   onClick={() => setDrawerOpen(false)}
-                  className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:bg-white/5 transition-colors"
+                  className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-50 transition-colors"
                   aria-label="إغلاق"
                 >
                   <X size={18} />
                 </button>
               </div>
 
-              <nav className="flex-1 overflow-y-auto p-3 space-y-6">
-                <NavGroups dark unreadCount={unreadCount} onItemClick={() => setDrawerOpen(false)} />
+              <div className="px-4 pt-4 flex-shrink-0">
+                <UserCard user={user} initial={initial} roleLabel={roleLabel} />
+              </div>
+
+              <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
+                <NavGroups unreadCount={unreadCount} onItemClick={() => setDrawerOpen(false)} />
               </nav>
 
-              <div className="p-4 border-t border-slate-800 flex-shrink-0">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center text-white font-black flex-shrink-0">
-                    {initial}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-bold text-white truncate">{user?.name}</p>
-                    <p className="text-xs text-slate-400 truncate">{roleLabel}</p>
-                  </div>
-                </div>
+              <div className="p-4 border-t border-slate-100 flex-shrink-0">
                 <button
                   onClick={handleLogout}
-                  className="w-full flex items-center justify-center gap-2 h-11 rounded-xl text-sm font-bold text-white bg-rose-600 hover:bg-rose-700 transition-colors"
+                  className="w-full flex items-center justify-center gap-2 h-11 rounded-xl text-sm font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 transition-colors"
                 >
                   <LogOut size={16} />
                   تسجيل خروج
