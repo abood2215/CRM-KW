@@ -100,8 +100,8 @@ const PipelinePage = () => {
           <h1 className="text-xl lg:text-2xl font-black text-slate-800">تتبع العملاء</h1>
           <p className="text-slate-500 font-medium mt-1 text-sm">نظام إدارة وتحويل العملاء المحتملين.</p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="relative w-56 lg:w-64">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <div className="relative w-full sm:w-56 lg:w-64">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
             <input
               type="text"
@@ -122,9 +122,9 @@ const PipelinePage = () => {
       </div>
 
       <DragDropContext onDragEnd={onDragEnd}>
-        <div className="flex gap-5 overflow-x-auto pb-6 flex-1 min-h-0">
+        <div className="flex gap-5 overflow-x-auto pb-6 flex-1 min-h-0 snap-x snap-mandatory">
           {STAGES.map((stage) => (
-            <div key={stage.id} className="flex-shrink-0 w-[280px] flex flex-col">
+            <div key={stage.id} className="flex-shrink-0 w-[280px] flex flex-col snap-start">
               <div className={cn('flex items-center justify-between px-4 py-3 border-b-2 mb-3 rounded-xl shadow-sm', stage.color)}>
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-black uppercase tracking-widest">{stage.title}</span>

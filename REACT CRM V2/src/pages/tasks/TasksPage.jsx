@@ -192,7 +192,7 @@ const TasksPage = () => {
                     onClick={() => {
                       if (window.confirm('هل تريد حذف هذه المهمة؟')) deleteTaskMutation.mutate(task.id);
                     }}
-                    className="p-2 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all flex-shrink-0 opacity-0 group-hover:opacity-100"
+                    className="p-2 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all flex-shrink-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
                   >
                     <Trash2 size={16} />
                   </button>

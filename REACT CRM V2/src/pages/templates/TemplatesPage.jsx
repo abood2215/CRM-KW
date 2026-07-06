@@ -65,12 +65,12 @@ const TemplatesPage = () => {
           <h1 className="text-xl lg:text-2xl font-black text-slate-800">قوالب الرسائل</h1>
           <p className="text-slate-500 mt-1 font-medium text-sm">قوالب واتساب المعتمدة من Meta لكل رقم.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <select
             value={numberId}
             onChange={(e) => setNumberId(e.target.value)}
             disabled={syncMutation.isPending}
-            className="h-11 px-4 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-600"
+            className="h-11 px-4 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-600 min-w-0 max-w-full"
           >
             <option value="">مزامنة قوالب رقم...</option>
             {numbers.map((n) => <option key={n.id} value={n.id}>{n.name}</option>)}

@@ -3,11 +3,11 @@ import { Search, Plus, Loader2, MessageSquare } from 'lucide-react';
 import { cn } from '../../../utils/cn';
 import ConversationListItem from './ConversationListItem';
 
-const ConversationList = ({ list, selectedId, onSelect, onNewConversation }) => {
+const ConversationList = ({ list, selectedId, onSelect, onNewConversation, className }) => {
   const { conversations, meta, isLoading, status, setStatus, search, setSearch, page, setPage, statusTabs } = list;
 
   return (
-    <div className="w-full max-w-sm flex flex-col border-l border-slate-100 bg-white h-full">
+    <div className={cn('w-full lg:max-w-sm flex-col border-l border-slate-100 bg-white h-full', className)}>
       <div className="p-4 border-b border-slate-100 space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="font-black text-slate-800">المحادثات</h2>

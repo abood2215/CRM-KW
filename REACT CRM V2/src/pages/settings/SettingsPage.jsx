@@ -88,14 +88,16 @@ const SettingsPage = () => {
             </div>
             <div className="space-y-2">
               {hours.map((h, i) => (
-                <div key={h.day_of_week} className="flex items-center gap-3">
-                  <label className="flex items-center gap-2 w-32">
+                <div key={h.day_of_week} className="flex flex-wrap items-center gap-2 sm:gap-3 py-1">
+                  <label className="flex items-center gap-2 w-28 sm:w-32 flex-shrink-0">
                     <input type="checkbox" checked={h.is_active} onChange={(e) => setHours((prev) => prev.map((x, idx) => (idx === i ? { ...x, is_active: e.target.checked } : x)))} />
                     <span className="text-sm font-bold text-slate-700">{DAYS[h.day_of_week]}</span>
                   </label>
-                  <input type="time" value={h.start_time.slice(0, 5)} onChange={(e) => setHours((prev) => prev.map((x, idx) => (idx === i ? { ...x, start_time: e.target.value } : x)))} className="h-9 px-2 bg-slate-50 border border-slate-200 rounded-lg text-sm" />
-                  <span className="text-slate-400 text-xs">إلى</span>
-                  <input type="time" value={h.end_time.slice(0, 5)} onChange={(e) => setHours((prev) => prev.map((x, idx) => (idx === i ? { ...x, end_time: e.target.value } : x)))} className="h-9 px-2 bg-slate-50 border border-slate-200 rounded-lg text-sm" />
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <input type="time" value={h.start_time.slice(0, 5)} onChange={(e) => setHours((prev) => prev.map((x, idx) => (idx === i ? { ...x, start_time: e.target.value } : x)))} className="h-9 px-2 bg-slate-50 border border-slate-200 rounded-lg text-sm" />
+                    <span className="text-slate-400 text-xs">إلى</span>
+                    <input type="time" value={h.end_time.slice(0, 5)} onChange={(e) => setHours((prev) => prev.map((x, idx) => (idx === i ? { ...x, end_time: e.target.value } : x)))} className="h-9 px-2 bg-slate-50 border border-slate-200 rounded-lg text-sm" />
+                  </div>
                 </div>
               ))}
             </div>

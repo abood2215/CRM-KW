@@ -46,12 +46,12 @@ const WhatsappPage = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-xl lg:text-2xl font-black text-slate-800">أرقام واتساب</h1>
           <p className="text-slate-500 mt-1 font-medium text-sm">إدارة أرقام الإرسال (Cloud API أو واتساب ويب).</p>
         </div>
-        <button onClick={() => setAddOpen(true)} className="h-11 px-6 bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:bg-indigo-700 transition-all flex items-center gap-2 text-sm">
+        <button onClick={() => setAddOpen(true)} className="h-11 px-6 bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:bg-indigo-700 transition-all flex items-center gap-2 text-sm self-start sm:self-auto">
           <Plus size={16} />
           <span>رقم جديد</span>
         </button>
