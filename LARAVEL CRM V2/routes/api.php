@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\V1\ActivityLogController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\CampaignController;
 use App\Http\Controllers\Api\V1\CannedResponseController;
@@ -7,6 +8,7 @@ use App\Http\Controllers\Api\V1\ContactController;
 use App\Http\Controllers\Api\V1\ContactListController;
 use App\Http\Controllers\Api\V1\ConversationController;
 use App\Http\Controllers\Api\V1\FileController;
+use App\Http\Controllers\Api\V1\GlobalSearchController;
 use App\Http\Controllers\Api\V1\MessageController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\SettingsController;
@@ -39,6 +41,8 @@ Route::middleware(['auth:sanctum', 'update.last.seen'])->group(function () {
     Route::get('/contacts/export/csv', [ContactController::class, 'exportCsv']);
     Route::post('/contacts/import/csv', [ContactController::class, 'importCsv']);
     Route::delete('/contacts/destroy-all', [ContactController::class, 'destroyAll']);
+    Route::post('/contacts/bulk-destroy', [ContactController::class, 'bulkDestroy']);
+    Route::post('/contacts/bulk-blacklist', [ContactController::class, 'bulkBlacklist']);
     Route::get('/contacts/{contact}/timeline', [ContactController::class, 'timeline']);
     Route::post('/contacts/{contact}/opt-out', [ContactController::class, 'optOut']);
     Route::post('/contacts/{contact}/blacklist', [ContactController::class, 'blacklist']);
@@ -85,8 +89,12 @@ Route::middleware(['auth:sanctum', 'update.last.seen'])->group(function () {
 
     Route::get('/stats/dashboard', [StatsController::class, 'dashboard']);
     Route::get('/stats/campaigns', [StatsController::class, 'campaigns']);
+    Route::get('/stats/campaigns/export/csv', [StatsController::class, 'exportCampaignsCsv']);
     Route::get('/stats/agents', [StatsController::class, 'agents']);
     Route::get('/stats/whatsapp', [StatsController::class, 'whatsapp']);
+
+    Route::get('/activity-logs', [ActivityLogController::class, 'index']);
+    Route::get('/search', GlobalSearchController::class);
 
     Route::get('/notifications', [NotificationController::class, 'index']);
     Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllRead']);

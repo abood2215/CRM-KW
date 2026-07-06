@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format, isPast, isToday } from 'date-fns';
 import { ar } from 'date-fns/locale';
+import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import {
   CheckSquare,
@@ -77,13 +78,15 @@ const TasksPage = () => {
             <h1 className="text-xl lg:text-2xl font-black text-slate-800">إدارة المهام</h1>
             <p className="text-slate-500 mt-1 font-medium text-sm">نظم يومك وتابع المهام المطلوبة.</p>
           </div>
-          <button
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.97 }}
             onClick={() => setAddOpen(true)}
-            className="h-11 px-6 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-all flex items-center gap-2 text-sm self-start sm:self-auto"
+            className="h-11 px-6 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-colors flex items-center gap-2 text-sm self-start sm:self-auto"
           >
             <Plus size={16} />
             <span>مهمة جديدة</span>
-          </button>
+          </motion.button>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
@@ -140,7 +143,8 @@ const TasksPage = () => {
                     task.status === 'completed' ? 'border-slate-50 opacity-60' : 'border-slate-100 shadow-sm'
                   )}
                 >
-                  <button
+                  <motion.button
+                    whileTap={{ scale: 0.85 }}
                     onClick={() => toggleTaskMutation.mutate(task.id)}
                     className={cn(
                       'w-8 h-8 rounded-xl flex items-center justify-center transition-all flex-shrink-0 mt-0.5',
@@ -150,7 +154,7 @@ const TasksPage = () => {
                     )}
                   >
                     {task.status === 'completed' ? <CheckSquare size={16} /> : <Circle size={16} />}
-                  </button>
+                  </motion.button>
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">

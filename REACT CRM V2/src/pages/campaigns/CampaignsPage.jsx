@@ -65,13 +65,15 @@ const CampaignsPage = () => {
             <h1 className="text-xl lg:text-2xl font-black text-slate-800">الحملات الترويجية</h1>
             <p className="text-slate-500 mt-1 font-medium text-sm">أطلق حملات واتساب للوصول إلى عملائك.</p>
           </div>
-          <button
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.97 }}
             onClick={() => setCreateOpen(true)}
-            className="h-11 px-6 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-all flex items-center gap-2 text-sm"
+            className="h-11 px-6 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-colors flex items-center gap-2 text-sm"
           >
             <Plus size={16} />
             <span>حملة جديدة</span>
-          </button>
+          </motion.button>
         </div>
 
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden min-h-[400px] flex flex-col">
@@ -188,7 +190,14 @@ const CampaignsPage = () => {
                   <Megaphone size={36} className="text-slate-200" />
                 </div>
                 <p className="text-lg font-black text-slate-700 mb-2">لا توجد حملات حالياً</p>
-                <p className="text-slate-400 font-medium max-w-xs mx-auto text-sm">أطلق حملتك الترويجية الأولى للوصول إلى عملائك.</p>
+                <p className="text-slate-400 font-medium max-w-xs mx-auto text-sm mb-5">أطلق حملتك الترويجية الأولى للوصول إلى عملائك.</p>
+                <button
+                  onClick={() => setCreateOpen(true)}
+                  className="h-10 px-5 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-all inline-flex items-center gap-2 text-sm"
+                >
+                  <Plus size={16} />
+                  حملة جديدة
+                </button>
               </div>
             )}
           </div>

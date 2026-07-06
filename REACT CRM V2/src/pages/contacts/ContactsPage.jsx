@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
-import { Plus, Search, Upload, Download, Trash2, ShieldAlert, Users } from 'lucide-react';
+import { Plus, Search, Upload, Download, Trash2, ShieldAlert, Users, ShieldOff, X } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { contacts as contactsApi } from '../../api';
 import AddContactModal from '../../components/AddContactModal';
@@ -18,6 +19,7 @@ const ContactsPage = () => {
   const [addOpen, setAddOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [deleteAllOpen, setDeleteAllOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState([]);
 
   const filters = tab === 'blacklisted'
     ? { is_blacklisted: true, search: search || undefined, page }
@@ -61,6 +63,21 @@ const ContactsPage = () => {
     onError: () => toast.error('فشل الحذف.'),
   });
 
+  const bulkDeleteMutation = useMutation({
+    mutationFn: (ids) => contactsApi.bulkDestroyContacts(ids),
+    onSuccess: (res) => { invalidate(); setSelectedIds([]); toast.success(`تم حذف ${res.deleted} جهة اتصال.`); },
+    onError: () => toast.error('فشل الحذف.'),
+  });
+
+  const bulkBlacklistMutation = useMutation({
+    mutationFn: (ids) => contactsApi.bulkBlacklistContacts(ids),
+    onSuccess: (res) => { invalidate(); setSelectedIds([]); toast.success(`تم حظر ${res.updated} جهة اتصال.`); },
+    onError: () => toast.error('فشل التحديث.'),
+  });
+
+  const toggleSelect = (id) => setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  const toggleSelectAll = (select) => setSelectedIds(select ? rows.map((c) => c.id) : []);
+
   const handleExport = async () => {
     try {
       const blob = await contactsApi.exportContactsCsv();
@@ -101,23 +118,28 @@ const ContactsPage = () => {
               مسح الكل
             </button>
           )}
-          <button onClick={() => setAddOpen(true)} className="h-10 px-5 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-all flex items-center gap-2 text-sm">
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={() => setAddOpen(true)}
+            className="h-10 px-5 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-colors flex items-center gap-2 text-sm"
+          >
             <Plus size={16} />
             جهة اتصال جديدة
-          </button>
+          </motion.button>
         </div>
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
         <div className="flex gap-8 px-6 border-b border-slate-50 overflow-x-auto">
           <button
-            onClick={() => { setTab('all'); setPage(1); }}
+            onClick={() => { setTab('all'); setPage(1); setSelectedIds([]); }}
             className={cn('py-4 text-sm font-black border-b-4 transition-all whitespace-nowrap flex items-center gap-2', tab === 'all' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600')}
           >
             <Users size={15} /> جهات الاتصال
           </button>
           <button
-            onClick={() => { setTab('blacklisted'); setPage(1); }}
+            onClick={() => { setTab('blacklisted'); setPage(1); setSelectedIds([]); }}
             className={cn('py-4 text-sm font-black border-b-4 transition-all whitespace-nowrap flex items-center gap-2', tab === 'blacklisted' ? 'border-rose-500 text-rose-600' : 'border-transparent text-slate-400 hover:text-slate-600')}
           >
             <ShieldAlert size={15} /> المحظورون
@@ -149,12 +171,42 @@ const ContactsPage = () => {
             )}
           </div>
 
+          {selectedIds.length > 0 && (
+            <div className="flex items-center justify-between bg-indigo-50 rounded-xl px-4 py-3 mb-4">
+              <span className="text-sm font-bold text-indigo-700">تم تحديد {selectedIds.length} جهة اتصال</span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => { if (window.confirm(`حظر ${selectedIds.length} جهة اتصال المحددة؟`)) bulkBlacklistMutation.mutate(selectedIds); }}
+                  className="h-8 px-3 rounded-lg bg-white border border-indigo-200 text-indigo-700 text-xs font-bold flex items-center gap-1.5 hover:bg-indigo-100 transition-colors"
+                >
+                  <ShieldOff size={13} />
+                  حظر المحدد
+                </button>
+                <button
+                  onClick={() => { if (window.confirm(`حذف ${selectedIds.length} جهة اتصال المحددة؟`)) bulkDeleteMutation.mutate(selectedIds); }}
+                  className="h-8 px-3 rounded-lg bg-white border border-rose-200 text-rose-600 text-xs font-bold flex items-center gap-1.5 hover:bg-rose-50 transition-colors"
+                >
+                  <Trash2 size={13} />
+                  حذف المحدد
+                </button>
+                <button onClick={() => setSelectedIds([])} className="h-8 w-8 rounded-lg flex items-center justify-center text-indigo-400 hover:bg-indigo-100 transition-colors">
+                  <X size={14} />
+                </button>
+              </div>
+            </div>
+          )}
+
           <ContactsTable
             contacts={rows}
             isLoading={isLoading}
             onOptOut={(id) => optOutMutation.mutate(id)}
             onToggleBlacklist={(contact) => blacklistMutation.mutate(contact)}
             onDelete={handleDelete}
+            selectedIds={selectedIds}
+            onToggleSelect={toggleSelect}
+            onToggleSelectAll={toggleSelectAll}
+            onAddContact={() => setAddOpen(true)}
+            onImport={() => setImportOpen(true)}
           />
 
           {meta && meta.last_page > 1 && (

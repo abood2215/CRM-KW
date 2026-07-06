@@ -14,3 +14,5 @@ export const uploadFile = (file) => {
 export const deleteFile = (id) => client.delete(`/drive/${id}`).then((res) => res.data);
 
 export const downloadFileUrl = (id) => `${client.defaults.baseURL}/drive/${id}/download`;
+
+export const getFilePreviewBlobUrl = (id) => client.get(`/drive/${id}/download`, { responseType: 'blob' }).then((res) => URL.createObjectURL(res.data));

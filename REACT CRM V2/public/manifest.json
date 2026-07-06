@@ -1,0 +1,20 @@
+{
+  "name": "مركز مطمئنة",
+  "short_name": "مطمئنة",
+  "description": "نظام إدارة العملاء والحملات الترويجية لمركز مطمئنة",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#4f46e5",
+  "orientation": "portrait-primary",
+  "dir": "rtl",
+  "lang": "ar",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

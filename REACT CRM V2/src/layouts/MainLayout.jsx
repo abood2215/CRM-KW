@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { Outlet, useNavigate, useLocation, NavLink, Link } from 'react-router-dom';
+import { Outlet, useNavigate, useLocation, NavLink } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AnimatePresence, motion } from 'framer-motion';
-import { LogOut, LayoutDashboard, Kanban, Users, CheckSquare, ListChecks, Phone, FileText, Megaphone, MessageSquare, Bell, Settings, HardDrive, BarChart3, Menu, X } from 'lucide-react';
+import { LogOut, LayoutDashboard, Kanban, Users, CheckSquare, ListChecks, Phone, FileText, Megaphone, MessageSquare, Bell, Settings, HardDrive, BarChart3, Menu, X, Search, History } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../store/useAuthStore';
 import { auth, notifications as notificationsApi } from '../api';
 import { cn } from '../utils/cn';
 import { useEcho } from '../hooks/useEcho';
+import CommandPalette from '../components/CommandPalette';
+import NotificationsDropdown from '../components/NotificationsDropdown';
 
 // Each nav item gets its own accent color (chip + active-state ring), instead of
 // one uniform color, so the sidebar reads as a set of distinct destinations.
@@ -58,6 +60,7 @@ const NAV_GROUPS = [
       { to: '/stats', label: 'التقارير', icon: BarChart3, color: 'orange' },
       { to: '/notifications', label: 'الإشعارات', icon: Bell, color: 'red', badge: 'notifications' },
       { to: '/drive', label: 'الملفات', icon: HardDrive, color: 'teal' },
+      { to: '/activity-log', label: 'سجل النشاط', icon: History, color: 'blue' },
       { to: '/settings', label: 'الإعدادات', icon: Settings, color: 'gray' },
     ],
   },
@@ -127,6 +130,7 @@ const MainLayout = () => {
   const logout = useAuthStore((state) => state.logout);
   const echo = useEcho();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
 
   const { data: notificationsData } = useQuery({
     queryKey: ['notifications'],
@@ -137,6 +141,17 @@ const MainLayout = () => {
   useEffect(() => {
     setDrawerOpen(false);
   }, [location.pathname]);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setPaletteOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   useEffect(() => {
     if (!echo || !user) return undefined;
@@ -208,26 +223,33 @@ const MainLayout = () => {
             <span className="font-black text-slate-800">مركز مطمئنة</span>
           </div>
 
-          <div className="hidden lg:block" />
-
-          <Link
-            to="/notifications"
-            className="relative w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-50 hover:text-indigo-600 transition-colors flex-shrink-0"
-            aria-label="الإشعارات"
+          <button
+            onClick={() => setPaletteOpen(true)}
+            className="hidden lg:flex items-center gap-2 h-9 px-3.5 rounded-xl border border-slate-200 text-slate-400 text-sm hover:border-indigo-200 hover:text-indigo-600 transition-colors"
           >
-            <Bell size={18} />
-            {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 bg-rose-500 text-white text-[10px] font-black rounded-full flex items-center justify-center">
-                {unreadCount > 9 ? '9+' : unreadCount}
-              </span>
-            )}
-          </Link>
+            <Search size={15} />
+            <span>بحث سريع</span>
+            <kbd className="text-[10px] font-bold border border-slate-200 rounded-md px-1.5 py-0.5 mr-1">Ctrl K</kbd>
+          </button>
+
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <button
+              onClick={() => setPaletteOpen(true)}
+              className="lg:hidden w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-50 hover:text-indigo-600 transition-colors"
+              aria-label="بحث"
+            >
+              <Search size={18} />
+            </button>
+            <NotificationsDropdown />
+          </div>
         </header>
 
         <main className="flex-1 p-4 lg:p-6">
           <Outlet />
         </main>
       </div>
+
+      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
 
       {/* Mobile drawer */}
       <AnimatePresence>

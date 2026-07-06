@@ -22,6 +22,7 @@ import MessagesPage from './pages/messages/MessagesPage';
 import NotificationsPage from './pages/notifications/NotificationsPage';
 import SettingsPage from './pages/settings/SettingsPage';
 import DrivePage from './pages/drive/DrivePage';
+import ActivityLogPage from './pages/activityLog/ActivityLogPage';
 
 const queryClient = new QueryClient();
 
@@ -57,6 +58,7 @@ function App() {
               <Route path="notifications" element={<NotificationsPage />} />
               <Route path="settings" element={<SettingsPage />} />
               <Route path="drive" element={<DrivePage />} />
+              <Route path="activity-log" element={<ActivityLogPage />} />
             </Route>
           </Routes>
         </ErrorBoundary>

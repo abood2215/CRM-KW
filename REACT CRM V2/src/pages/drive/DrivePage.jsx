@@ -1,9 +1,57 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { AnimatePresence, motion } from 'framer-motion';
 import toast from 'react-hot-toast';
-import { Upload, Trash2, Download, Loader2, FileIcon, HardDrive, Search } from 'lucide-react';
+import { Upload, Trash2, Download, Loader2, FileIcon, HardDrive, Search, X } from 'lucide-react';
 import { drive as driveApi } from '../../api';
 import { cn } from '../../utils/cn';
+
+const ImageThumbnail = ({ file, onOpen }) => {
+  const { data: url } = useQuery({
+    queryKey: ['drive-preview', file.id],
+    queryFn: () => driveApi.getFilePreviewBlobUrl(file.id),
+    staleTime: Infinity,
+  });
+
+  useEffect(() => () => { if (url) URL.revokeObjectURL(url); }, [url]);
+
+  if (!url) {
+    return <div className="w-10 h-10 rounded-xl bg-slate-100 flex-shrink-0 animate-pulse" />;
+  }
+
+  return (
+    <button onClick={() => onOpen(url)} className="w-10 h-10 rounded-xl overflow-hidden flex-shrink-0 border border-slate-100">
+      <img src={url} alt={file.original_name} className="w-full h-full object-cover" />
+    </button>
+  );
+};
+
+const ImagePreviewModal = ({ url, onClose }) => (
+  <AnimatePresence>
+    {url && (
+      <motion.div
+        className="fixed inset-0 bg-slate-900/80 z-50 flex items-center justify-center p-4"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+      >
+        <motion.img
+          src={url}
+          alt=""
+          className="max-w-full max-h-[85vh] rounded-2xl shadow-2xl"
+          initial={{ scale: 0.95 }}
+          animate={{ scale: 1 }}
+          exit={{ scale: 0.95 }}
+          onClick={(e) => e.stopPropagation()}
+        />
+        <button onClick={onClose} className="absolute top-4 left-4 w-10 h-10 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20">
+          <X size={20} />
+        </button>
+      </motion.div>
+    )}
+  </AnimatePresence>
+);
 
 const CATEGORIES = [
   { value: '', label: 'الكل' },
@@ -19,6 +67,7 @@ const DrivePage = () => {
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('');
   const [page, setPage] = useState(1);
+  const [previewUrl, setPreviewUrl] = useState(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['drive', search, category, page],
@@ -94,9 +143,13 @@ const DrivePage = () => {
           files.map((f) => (
             <div key={f.id} className="flex items-center justify-between p-4 border-b border-slate-50 last:border-0">
               <div className="flex items-center gap-3 min-w-0">
-                <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center flex-shrink-0">
-                  <FileIcon size={16} className="text-slate-400" />
-                </div>
+                {f.mime_type?.startsWith('image/') ? (
+                  <ImageThumbnail file={f} onOpen={setPreviewUrl} />
+                ) : (
+                  <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center flex-shrink-0">
+                    <FileIcon size={16} className="text-slate-400" />
+                  </div>
+                )}
                 <div className="min-w-0">
                   <p className="font-bold text-sm text-slate-800 truncate">{f.original_name}</p>
                   <p className="text-xs text-slate-400">{f.size_formatted}</p>
@@ -120,6 +173,8 @@ const DrivePage = () => {
           </div>
         </div>
       )}
+
+      <ImagePreviewModal url={previewUrl} onClose={() => setPreviewUrl(null)} />
     </div>
   );
 };

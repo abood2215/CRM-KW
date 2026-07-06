@@ -12,3 +12,5 @@ export * as cannedResponses from './cannedResponses';
 export * as drive from './drive';
 export * as settings from './settings';
 export * as users from './users';
+export * as search from './search';
+export * as activityLogs from './activityLogs';

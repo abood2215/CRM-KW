@@ -3,6 +3,7 @@
 use App\Jobs\ExpireConversationsJob;
 use App\Jobs\ProcessCampaignJob;
 use App\Jobs\ResetDailyLimitJob;
+use App\Jobs\SendTaskRemindersJob;
 use App\Jobs\SyncTemplatesJob;
 use App\Models\Campaign;
 use App\Models\Contact;
@@ -20,6 +21,8 @@ Schedule::job(new ResetDailyLimitJob)->daily()->at('00:00');
 Schedule::job(new ExpireConversationsJob)->everyThirtyMinutes()->withoutOverlapping();
 
 Schedule::job(new SyncTemplatesJob)->everySixHours();
+
+Schedule::job(new SendTaskRemindersJob)->dailyAt('08:00')->withoutOverlapping();
 
 // Clears temporary blacklists once their expiry has passed.
 Schedule::call(function () {

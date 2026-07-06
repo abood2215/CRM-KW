@@ -36,3 +36,7 @@ export const blacklistContact = (id) => client.post(`/contacts/${id}/blacklist`)
 export const unblacklistContact = (id) => client.post(`/contacts/${id}/unblacklist`).then((res) => res.data);
 
 export const destroyAllContacts = () => client.delete('/contacts/destroy-all').then((res) => res.data);
+
+export const bulkDestroyContacts = (ids) => client.post('/contacts/bulk-destroy', { ids }).then((res) => res.data);
+
+export const bulkBlacklistContacts = (ids) => client.post('/contacts/bulk-blacklist', { ids }).then((res) => res.data);

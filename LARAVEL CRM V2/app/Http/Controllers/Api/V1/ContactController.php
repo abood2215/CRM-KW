@@ -304,6 +304,25 @@ class ContactController extends Controller
         ]);
     }
 
+    public function bulkDestroy(Request $request): JsonResponse
+    {
+        $ids = $request->input('ids', []);
+        $query = ContactPolicy::scopeVisibleTo(Contact::whereIn('id', $ids), $request->user());
+        $count = $query->count();
+        $query->delete();
+
+        return response()->json(['message' => "تم حذف {$count} جهة اتصال.", 'deleted' => $count]);
+    }
+
+    public function bulkBlacklist(Request $request): JsonResponse
+    {
+        $ids = $request->input('ids', []);
+        $count = ContactPolicy::scopeVisibleTo(Contact::whereIn('id', $ids), $request->user())
+            ->update(['is_blacklisted' => true]);
+
+        return response()->json(['message' => "تم حظر {$count} جهة اتصال.", 'updated' => $count]);
+    }
+
     public function destroyAll(): JsonResponse
     {
         $count = Contact::count();
