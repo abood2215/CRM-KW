@@ -27,7 +27,12 @@ class MessageController extends Controller
     {
         $this->authorize('view', $conversation);
 
-        $messages = $conversation->messages()->orderBy('sent_at', 'asc')->paginate($request->per_page ?? 50);
+        // A message that never actually reached the customer (async delivery failure) shouldn't
+        // appear in the thread — it would mislead the agent into thinking it was delivered.
+        $messages = $conversation->messages()
+            ->where(fn ($q) => $q->whereNull('status')->orWhere('status', '!=', 'failed'))
+            ->orderBy('sent_at', 'asc')
+            ->paginate($request->per_page ?? 50);
 
         return response()->json([
             'messages' => MessageResource::collection($messages),

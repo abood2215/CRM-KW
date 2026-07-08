@@ -5,6 +5,7 @@ namespace App\Services\Conversations;
 use App\Events\ConversationUpdatedEvent;
 use App\Events\MessageStatusUpdatedEvent;
 use App\Models\CampaignRecipient;
+use App\Models\Conversation;
 use App\Models\Message;
 use Illuminate\Support\Facades\Log;
 
@@ -27,7 +28,15 @@ class MessageStatusUpdateService
         if ($message) {
             $message->update(['status' => $status]);
             event(new MessageStatusUpdatedEvent($message));
-            event(new ConversationUpdatedEvent($message->conversation()->first()));
+
+            $conversation = $message->conversation()->first();
+            if ($status === 'failed') {
+                // A message that never actually reached the customer shouldn't linger as the
+                // conversation's visible last-message preview, misleading agents into thinking it landed.
+                $this->refreshConversationPreview($conversation);
+            }
+
+            event(new ConversationUpdatedEvent($conversation));
         }
 
         $recipient = CampaignRecipient::where('whatsapp_message_id', $waMessageId)->first();
@@ -46,6 +55,20 @@ class MessageStatusUpdateService
         }
 
         $this->handleDeliveryFailure($recipient, $statusData);
+    }
+
+    /** Recomputes last_message/last_message_at from the most recent non-failed message, since the failed one shouldn't be shown as the preview. */
+    private function refreshConversationPreview(Conversation $conversation): void
+    {
+        $latest = $conversation->messages()
+            ->where(fn ($q) => $q->whereNull('status')->orWhere('status', '!=', 'failed'))
+            ->orderByDesc('sent_at')
+            ->first();
+
+        $conversation->update([
+            'last_message' => $latest?->content,
+            'last_message_at' => $latest?->sent_at,
+        ]);
     }
 
     private function handleDeliveryFailure(CampaignRecipient $recipient, array $statusData): void
