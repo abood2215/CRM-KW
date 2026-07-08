@@ -10,6 +10,7 @@ const emptyForm = {
   whatsapp_number_id: '',
   contact_list_id: '',
   template_name: '',
+  template_language: '',
   delay_seconds: 30,
 };
 
@@ -97,7 +98,7 @@ const CreateCampaignModal = ({ open, onClose }) => {
                 <label className="block text-xs font-black text-slate-600 mb-1.5">رقم الإرسال *</label>
                 <select
                   required value={form.whatsapp_number_id}
-                  onChange={(e) => setForm((f) => ({ ...f, whatsapp_number_id: e.target.value, template_name: '' }))}
+                  onChange={(e) => setForm((f) => ({ ...f, whatsapp_number_id: e.target.value, template_name: '', template_language: '' }))}
                   className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                 >
                   <option value="">اختر رقم واتساب</option>
@@ -121,7 +122,10 @@ const CreateCampaignModal = ({ open, onClose }) => {
                 <label className="block text-xs font-black text-slate-600 mb-1.5">القالب *</label>
                 <select
                   required value={form.template_name}
-                  onChange={(e) => setForm((f) => ({ ...f, template_name: e.target.value }))}
+                  onChange={(e) => {
+                    const selected = availableTemplates.find((t) => t.name === e.target.value);
+                    setForm((f) => ({ ...f, template_name: e.target.value, template_language: selected?.language ?? '' }));
+                  }}
                   className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                 >
                   <option value="">اختر قالب</option>
