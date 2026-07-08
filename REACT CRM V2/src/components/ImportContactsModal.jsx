@@ -1,17 +1,27 @@
 import React, { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { X, Loader2, Upload, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
-import { contacts as contactsApi } from '../api';
+import { contacts as contactsApi, contactLists as contactListsApi } from '../api';
 
+/** Pass a fixed contactListId (e.g. from the Contact Lists page) to lock the target list and hide the picker. */
 const ImportContactsModal = ({ open, onClose, contactListId = null }) => {
   const queryClient = useQueryClient();
   const [file, setFile] = useState(null);
+  const [selectedListId, setSelectedListId] = useState('');
   const [result, setResult] = useState(null);
 
+  const { data: lists = [] } = useQuery({
+    queryKey: ['contact-lists-select'],
+    queryFn: contactListsApi.getContactLists,
+    enabled: open && !contactListId,
+  });
+
+  const targetListId = contactListId || (selectedListId || null);
+
   const mutation = useMutation({
-    mutationFn: () => contactsApi.importContactsCsv(file, contactListId),
+    mutationFn: () => contactsApi.importContactsCsv(file, targetListId),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
       queryClient.invalidateQueries({ queryKey: ['contact-lists'] });
@@ -23,6 +33,7 @@ const ImportContactsModal = ({ open, onClose, contactListId = null }) => {
 
   const handleClose = () => {
     setFile(null);
+    setSelectedListId('');
     setResult(null);
     onClose();
   };
@@ -53,6 +64,20 @@ const ImportContactsModal = ({ open, onClose, contactListId = null }) => {
                 <span className="text-sm font-bold text-slate-600">{file ? file.name : 'اختر ملف CSV'}</span>
                 <input type="file" accept=".csv,.txt" className="hidden" onChange={(e) => setFile(e.target.files[0])} />
               </label>
+
+              {!contactListId && (
+                <div>
+                  <label className="block text-xs font-black text-slate-600 mb-1.5">إضافة إلى قائمة (اختياري)</label>
+                  <select
+                    value={selectedListId}
+                    onChange={(e) => setSelectedListId(e.target.value)}
+                    className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  >
+                    <option value="">بدون قائمة (جهات اتصال عامة فقط)</option>
+                    {lists.map((l) => <option key={l.id} value={l.id}>{l.name} ({l.count})</option>)}
+                  </select>
+                </div>
+              )}
 
               {result && (
                 <div className="bg-slate-50 rounded-xl p-4 text-xs space-y-1">
