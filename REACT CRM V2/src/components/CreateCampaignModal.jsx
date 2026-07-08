@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { X, Loader2 } from 'lucide-react';
+import { X, Loader2, Image as ImageIcon } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { campaigns as campaignsApi, contactLists as contactListsApi, whatsappNumbers as whatsappNumbersApi, templates as templatesApi } from '../api';
@@ -11,12 +11,14 @@ const emptyForm = {
   contact_list_id: '',
   template_name: '',
   template_language: '',
+  image_path: '',
   delay_seconds: 30,
 };
 
 const CreateCampaignModal = ({ open, onClose }) => {
   const queryClient = useQueryClient();
   const [form, setForm] = useState(emptyForm);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   const { data: numbers = [] } = useQuery({
     queryKey: ['whatsapp-numbers-select'],
@@ -41,6 +43,27 @@ const CreateCampaignModal = ({ open, onClose }) => {
     [allTemplates, form.whatsapp_number_id]
   );
 
+  const selectedTemplate = useMemo(
+    () => availableTemplates.find((t) => t.name === form.template_name),
+    [availableTemplates, form.template_name]
+  );
+  const needsImage = selectedTemplate?.header_type === 'image';
+
+  const handleImageChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setUploadingImage(true);
+    try {
+      const res = await campaignsApi.uploadCampaignImage(file);
+      setForm((f) => ({ ...f, image_path: res.url }));
+    } catch {
+      toast.error('فشل رفع الصورة');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
   const mutation = useMutation({
     mutationFn: (data) =>
       campaignsApi.createCampaign({
@@ -63,6 +86,7 @@ const CreateCampaignModal = ({ open, onClose }) => {
     if (!form.name.trim()) return toast.error('اسم الحملة مطلوب');
     if (!form.contact_list_id) return toast.error('اختر قائمة جهات اتصال');
     if (!form.template_name) return toast.error('اختر قالب رسالة');
+    if (needsImage && !form.image_path) return toast.error('هذا القالب يتطلب صورة بالرأس — ارفع صورة أولاً');
     mutation.mutate(form);
   };
 
@@ -124,7 +148,7 @@ const CreateCampaignModal = ({ open, onClose }) => {
                   required value={form.template_name}
                   onChange={(e) => {
                     const selected = availableTemplates.find((t) => t.name === e.target.value);
-                    setForm((f) => ({ ...f, template_name: e.target.value, template_language: selected?.language ?? '' }));
+                    setForm((f) => ({ ...f, template_name: e.target.value, template_language: selected?.language ?? '', image_path: '' }));
                   }}
                   className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                 >
@@ -132,6 +156,26 @@ const CreateCampaignModal = ({ open, onClose }) => {
                   {availableTemplates.map((t) => <option key={t.id} value={t.name}>{t.name}</option>)}
                 </select>
               </div>
+
+              {needsImage && (
+                <div>
+                  <label className="block text-xs font-black text-slate-600 mb-1.5">صورة القالب * (هذا القالب يتطلب صورة بالرأس)</label>
+                  {form.image_path ? (
+                    <div className="flex items-center gap-3">
+                      <img src={form.image_path} alt="" className="w-14 h-14 rounded-xl object-cover border border-slate-200" />
+                      <button type="button" onClick={() => setForm((f) => ({ ...f, image_path: '' }))} className="text-xs font-bold text-rose-600 hover:underline">
+                        إزالة الصورة
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="flex items-center justify-center gap-2 h-11 border-2 border-dashed border-slate-200 rounded-xl text-sm text-slate-400 cursor-pointer hover:border-indigo-300 hover:text-indigo-600 transition-colors">
+                      {uploadingImage ? <Loader2 size={16} className="animate-spin" /> : <ImageIcon size={16} />}
+                      {uploadingImage ? 'جارِ الرفع...' : 'اختر صورة'}
+                      <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} disabled={uploadingImage} />
+                    </label>
+                  )}
+                </div>
+              )}
 
               <div>
                 <label className="block text-xs font-black text-slate-600 mb-1.5">التأخير بين الرسائل (ثانية)</label>
@@ -146,7 +190,7 @@ const CreateCampaignModal = ({ open, onClose }) => {
                 <button type="button" onClick={onClose} className="flex-1 h-12 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-all">
                   إلغاء
                 </button>
-                <button type="submit" disabled={mutation.isPending} className="flex-1 h-12 bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:bg-indigo-700 transition-all disabled:opacity-70 flex items-center justify-center gap-2">
+                <button type="submit" disabled={mutation.isPending || uploadingImage} className="flex-1 h-12 bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:bg-indigo-700 transition-all disabled:opacity-70 flex items-center justify-center gap-2">
                   {mutation.isPending && <Loader2 size={18} className="animate-spin" />}
                   إنشاء الحملة
                 </button>
