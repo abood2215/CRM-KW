@@ -5,11 +5,14 @@ import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { contacts as contactsApi, contactLists as contactListsApi } from '../api';
 
+const NEW_LIST_VALUE = '__new__';
+
 /** Pass a fixed contactListId (e.g. from the Contact Lists page) to lock the target list and hide the picker. */
 const ImportContactsModal = ({ open, onClose, contactListId = null }) => {
   const queryClient = useQueryClient();
   const [file, setFile] = useState(null);
   const [selectedListId, setSelectedListId] = useState('');
+  const [newListName, setNewListName] = useState('');
   const [result, setResult] = useState(null);
 
   const { data: lists = [] } = useQuery({
@@ -18,7 +21,19 @@ const ImportContactsModal = ({ open, onClose, contactListId = null }) => {
     enabled: open && !contactListId,
   });
 
-  const targetListId = contactListId || (selectedListId || null);
+  const isCreatingNewList = selectedListId === NEW_LIST_VALUE;
+  const targetListId = contactListId || (isCreatingNewList ? null : selectedListId || null);
+
+  const createListMutation = useMutation({
+    mutationFn: () => contactListsApi.createContactList({ name: newListName }),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['contact-lists'] });
+      queryClient.invalidateQueries({ queryKey: ['contact-lists-select'] });
+      setSelectedListId(String(res.contact_list.id));
+      setNewListName('');
+    },
+    onError: (e) => toast.error(e?.response?.data?.message || 'فشل إنشاء القائمة'),
+  });
 
   const mutation = useMutation({
     mutationFn: () => contactsApi.importContactsCsv(file, targetListId),
@@ -34,6 +49,7 @@ const ImportContactsModal = ({ open, onClose, contactListId = null }) => {
   const handleClose = () => {
     setFile(null);
     setSelectedListId('');
+    setNewListName('');
     setResult(null);
     onClose();
   };
@@ -75,7 +91,30 @@ const ImportContactsModal = ({ open, onClose, contactListId = null }) => {
                   >
                     <option value="">بدون قائمة (جهات اتصال عامة فقط)</option>
                     {lists.map((l) => <option key={l.id} value={l.id}>{l.name} ({l.count})</option>)}
+                    <option value={NEW_LIST_VALUE}>+ إنشاء قائمة جديدة</option>
                   </select>
+
+                  {isCreatingNewList && (
+                    <div className="flex gap-2 mt-2">
+                      <input
+                        autoFocus
+                        placeholder="اسم القائمة الجديدة"
+                        value={newListName}
+                        onChange={(e) => setNewListName(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter' && newListName.trim()) { e.preventDefault(); createListMutation.mutate(); } }}
+                        className="flex-1 h-10 px-3 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => createListMutation.mutate()}
+                        disabled={!newListName.trim() || createListMutation.isPending}
+                        className="h-10 px-4 bg-indigo-600 text-white font-bold rounded-xl text-xs disabled:opacity-50 flex items-center gap-1.5"
+                      >
+                        {createListMutation.isPending && <Loader2 size={14} className="animate-spin" />}
+                        إنشاء
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -96,7 +135,7 @@ const ImportContactsModal = ({ open, onClose, contactListId = null }) => {
                 <button onClick={handleClose} className="flex-1 h-12 bg-slate-100 text-slate-600 font-bold rounded-xl">إغلاق</button>
                 <button
                   onClick={() => mutation.mutate()}
-                  disabled={!file || mutation.isPending}
+                  disabled={!file || mutation.isPending || isCreatingNewList}
                   className="flex-1 h-12 bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   {mutation.isPending && <Loader2 size={18} className="animate-spin" />}
