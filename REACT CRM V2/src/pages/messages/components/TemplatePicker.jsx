@@ -39,7 +39,7 @@ const TemplatePicker = ({ open, onClose, onSend }) => {
           <motion.div ref={ref} role="dialog" aria-modal="true" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md max-h-[80vh] flex flex-col">
             <div className="p-6 border-b border-slate-100 flex items-center justify-between">
               <h2 className="text-lg font-black text-slate-800">{selected ? selected.name : 'اختر قالب'}</h2>
-              <button onClick={() => { setSelected(null); onClose(); }} className="p-2 rounded-xl text-slate-400 hover:bg-slate-100"><X size={18} /></button>
+              <button onClick={() => { setSelected(null); onClose(); }} title="إغلاق" aria-label="إغلاق" className="p-2 rounded-xl text-slate-400 hover:bg-slate-100"><X size={18} /></button>
             </div>
 
             <div className="p-6 overflow-y-auto flex-1">
@@ -47,9 +47,10 @@ const TemplatePicker = ({ open, onClose, onSend }) => {
                 isLoading ? (
                   <div className="flex justify-center py-10"><Loader2 className="animate-spin text-indigo-600" size={24} /></div>
                 ) : templates.length === 0 ? (
-                  <div className="text-center py-10">
+                  <div className="text-center py-10 px-4">
                     <FileText size={32} className="text-slate-100 mx-auto mb-2" />
-                    <p className="text-slate-400 text-sm">لا توجد قوالب معتمدة</p>
+                    <p className="text-slate-500 text-sm font-bold">لا توجد قوالب معتمدة</p>
+                    <p className="text-slate-400 text-xs mt-1">أضف قالباً من صفحة "القوالب" وانتظر اعتماده من Meta لاستخدامه هنا.</p>
                   </div>
                 ) : (
                   <div className="space-y-2">

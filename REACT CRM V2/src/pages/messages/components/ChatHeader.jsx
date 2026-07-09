@@ -31,7 +31,7 @@ const AssigneePicker = ({ conversation, onAssign }) => {
         className="flex items-center gap-1.5 text-xs font-bold px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"
       >
         <UserCircle2 size={14} />
-        <span className="hidden sm:inline max-w-[100px] truncate">{conversation.assigned_user?.name ?? 'تعيين'}</span>
+        <span className="hidden sm:inline max-w-[100px] truncate">{conversation.assigned_user?.name ?? 'غير معيّنة'}</span>
         <ChevronDown size={12} />
       </button>
       {open && (
@@ -42,7 +42,7 @@ const AssigneePicker = ({ conversation, onAssign }) => {
               onClick={() => { onAssign(null); setOpen(false); }}
               className="w-full text-right px-3 py-2 text-xs font-bold hover:bg-slate-50 text-slate-400"
             >
-              بدون تعيين
+              غير معيّنة
             </button>
             {users.map((u) => (
               <button
@@ -99,7 +99,7 @@ const ChatHeader = ({ conversation, onUpdateStatus, onAssign, onBack }) => {
           className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 flex-shrink-0"
         >
           {isResolved ? <RotateCcw size={13} /> : <CheckCircle2 size={13} />}
-          <span className="hidden sm:inline">{isResolved ? 'إعادة فتح' : 'إنهاء'}</span>
+          <span className="hidden sm:inline">{isResolved ? 'إعادة فتح المحادثة' : 'إنهاء المحادثة'}</span>
         </button>
       </div>
     </div>

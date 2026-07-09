@@ -1,16 +1,17 @@
 import React from 'react';
-import { Check, CheckCheck, Clock, Lock } from 'lucide-react';
+import { Check, CheckCheck, AlertCircle, Lock } from 'lucide-react';
 import { cn } from '../../../utils/cn';
 
-const STATUS_ICON = {
-  sent: <Check size={13} />,
-  delivered: <CheckCheck size={13} />,
-  read: <CheckCheck size={13} className="text-sky-400" />,
-  failed: <Clock size={13} className="text-rose-300" />,
+const STATUS_META = {
+  sent: { icon: <Check size={13} />, label: 'أُرسلت' },
+  delivered: { icon: <CheckCheck size={13} />, label: 'تم التوصيل' },
+  read: { icon: <CheckCheck size={13} className="text-sky-400" />, label: 'تمت القراءة' },
+  failed: { icon: <AlertCircle size={13} className="text-rose-300" />, label: 'فشل الإرسال' },
 };
 
 const MessageBubble = ({ message }) => {
   const isOut = message.direction === 'out';
+  const statusMeta = STATUS_META[message.status];
 
   if (message.is_private) {
     return (
@@ -41,7 +42,7 @@ const MessageBubble = ({ message }) => {
         )}
         <div className={cn('flex items-center gap-1 mt-1 text-[10px]', isOut ? 'text-indigo-200 justify-end' : 'text-slate-400')}>
           <span>{message.sent_at ? new Date(message.sent_at).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }) : ''}</span>
-          {isOut && STATUS_ICON[message.status]}
+          {isOut && statusMeta && <span title={statusMeta.label} aria-label={statusMeta.label}>{statusMeta.icon}</span>}
         </div>
       </div>
     </div>

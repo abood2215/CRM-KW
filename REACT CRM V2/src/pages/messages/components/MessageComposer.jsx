@@ -123,7 +123,10 @@ const MessageComposer = ({ onSend, isSending, onOpenTemplatePicker }) => {
                 ) : (
                   <>
                     {cannedResponses.length === 0 ? (
-                      <p className="text-xs text-slate-400 text-center py-4">لا توجد ردود جاهزة بعد</p>
+                      <div className="text-center py-4 px-2">
+                        <p className="text-xs font-bold text-slate-500">لا توجد ردود جاهزة بعد</p>
+                        <p className="text-[11px] text-slate-400 mt-1">أضف ردوداً جاهزة لتوفير وقتك بالمحادثات المتكررة</p>
+                      </div>
                     ) : (
                       cannedResponses.map((r) => (
                         <button
@@ -149,7 +152,7 @@ const MessageComposer = ({ onSend, isSending, onOpenTemplatePicker }) => {
             )}
           </div>
           <div className="relative">
-            <button type="button" onClick={() => setShowEmoji((s) => !s)} className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-50">
+            <button type="button" onClick={() => setShowEmoji((s) => !s)} className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-50" title="إيموجي">
               <Smile size={16} />
             </button>
             {showEmoji && (
@@ -162,7 +165,7 @@ const MessageComposer = ({ onSend, isSending, onOpenTemplatePicker }) => {
               </div>
             )}
           </div>
-          <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading} className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-50">
+          <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading} className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-50" title="إرفاق صورة">
             {uploading ? <Loader2 size={16} className="animate-spin" /> : <Paperclip size={16} />}
           </button>
           <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />

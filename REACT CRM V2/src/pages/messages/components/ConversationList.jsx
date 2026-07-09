@@ -11,7 +11,7 @@ const ConversationList = ({ list, selectedId, onSelect, onNewConversation, class
       <div className="p-4 border-b border-slate-100 space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="font-black text-slate-800">المحادثات</h2>
-          <button onClick={onNewConversation} className="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center hover:bg-indigo-700">
+          <button onClick={onNewConversation} title="محادثة جديدة" aria-label="محادثة جديدة" className="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center hover:bg-indigo-700">
             <Plus size={16} />
           </button>
         </div>
@@ -45,8 +45,22 @@ const ConversationList = ({ list, selectedId, onSelect, onNewConversation, class
           <div className="flex justify-center py-10"><Loader2 className="animate-spin text-indigo-600" size={24} /></div>
         ) : conversations.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center px-4">
-            <MessageSquare size={32} className="text-slate-100 mb-2" />
-            <p className="text-slate-400 text-sm font-medium">لا توجد محادثات</p>
+            <MessageSquare size={32} className="text-slate-100 mb-3" />
+            {search ? (
+              <p className="text-slate-400 text-sm font-medium">لا توجد نتائج مطابقة لبحثك</p>
+            ) : (
+              <>
+                <p className="text-slate-500 text-sm font-bold mb-1">لا توجد محادثات هنا بعد</p>
+                <p className="text-slate-400 text-xs mb-4 max-w-[220px]">ابدأ محادثة جديدة مع أحد جهات الاتصال، أو انتظر رسالة واردة عبر واتساب.</p>
+                <button
+                  onClick={onNewConversation}
+                  className="h-9 px-4 bg-indigo-600 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 hover:bg-indigo-700 transition-colors"
+                >
+                  <Plus size={14} />
+                  محادثة جديدة
+                </button>
+              </>
+            )}
           </div>
         ) : (
           conversations.map((c) => (
