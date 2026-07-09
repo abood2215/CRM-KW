@@ -16,6 +16,7 @@ class MessageResource extends JsonResource
             'whatsapp_message_id' => $this->whatsapp_message_id,
             'content' => $this->content,
             'type' => $this->type,
+            'reaction_emoji' => $this->reaction_emoji,
             'direction' => $this->direction,
             'is_private' => $this->is_private,
             'sender_name' => $this->sender_name,

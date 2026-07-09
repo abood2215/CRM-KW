@@ -3,6 +3,7 @@
 namespace App\Services\Conversations;
 
 use App\Events\ConversationUpdatedEvent;
+use App\Events\MessageStatusUpdatedEvent;
 use App\Events\NewMessageEvent;
 use App\Models\Contact;
 use App\Models\Message;
@@ -37,6 +38,15 @@ class InboundMessageService
         // both passing the "does this message exist yet" check.
         $lock = Cache::lock('wamsg-'.$waMessageId, 30);
         if (! $lock->get()) {
+            return;
+        }
+
+        // A reaction targets an existing message — attach it there directly instead of
+        // creating a floating message with no visible link to what was reacted to.
+        if ($messageType === 'reaction') {
+            $this->handleReaction($msgData);
+            $lock->release();
+
             return;
         }
 
@@ -78,25 +88,36 @@ class InboundMessageService
 
         $lock->release();
 
-        // A reaction isn't a new message needing attention — keep the conversation's
-        // last-message preview/unread badge tied to the last real message instead.
-        $isReaction = $type === 'reaction';
-
-        if (! $isReaction) {
-            $conversation->update([
-                'last_message' => $content,
-                'last_message_at' => now(),
-                'unread_count' => $conversation->unread_count + 1,
-            ]);
-        }
+        $conversation->update([
+            'last_message' => $content,
+            'last_message_at' => now(),
+            'unread_count' => $conversation->unread_count + 1,
+        ]);
 
         event(new NewMessageEvent($message));
         event(new ConversationUpdatedEvent($conversation->fresh()));
 
-        if (! $isReaction) {
-            $this->replyAttribution->attribute($phone);
-            $this->autoReply->maybeReply($conversation, $phone);
+        $this->replyAttribution->attribute($phone);
+        $this->autoReply->maybeReply($conversation, $phone);
+    }
+
+    /** Meta sends an empty/missing emoji to mean "reaction removed" — clear it in that case. */
+    private function handleReaction(array $msgData): void
+    {
+        $targetWaMessageId = $msgData['reaction']['message_id'] ?? null;
+        if (! $targetWaMessageId) {
+            return;
         }
+
+        $targetMessage = Message::where('whatsapp_message_id', $targetWaMessageId)->first();
+        if (! $targetMessage) {
+            return;
+        }
+
+        $emoji = $msgData['reaction']['emoji'] ?? '';
+        $targetMessage->update(['reaction_emoji' => $emoji !== '' ? $emoji : null]);
+
+        event(new MessageStatusUpdatedEvent($targetMessage));
     }
 
     private function resolveContent(array $msgData, string $type, ?string $phoneNumberId): string
@@ -124,7 +145,6 @@ class InboundMessageService
             'interactive' => $msgData['interactive']['button_reply']['title']
                 ?? $msgData['interactive']['list_reply']['title']
                 ?? '[تفاعل]',
-            'reaction' => 'تفاعل: '.($msgData['reaction']['emoji'] ?? '👍'),
             'contacts' => '[جهة اتصال: '.($msgData['contacts'][0]['name']['formatted_name'] ?? '').']',
             'order' => '[طلب شراء]',
             default => '[رسالة غير مدعومة: '.$type.']',
@@ -138,7 +158,6 @@ class InboundMessageService
             'video' => 'video',
             'audio' => 'audio',
             'document' => 'file',
-            'reaction' => 'reaction',
             default => 'text',
         };
     }

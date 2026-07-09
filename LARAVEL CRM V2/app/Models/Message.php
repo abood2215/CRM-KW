@@ -16,6 +16,7 @@ class Message extends Model
         'whatsapp_message_id',
         'content',
         'type',
+        'reaction_emoji',
         'direction',
         'is_private',
         'sender_name',
