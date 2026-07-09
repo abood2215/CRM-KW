@@ -1,13 +1,72 @@
-import React from 'react';
-import { CheckCircle2, RotateCcw, Megaphone, ChevronRight } from 'lucide-react';
+import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { CheckCircle2, RotateCcw, Megaphone, ChevronRight, UserCircle2, ChevronDown } from 'lucide-react';
+import { users as usersApi } from '../../../api';
+import { useAuthStore } from '../../../store/useAuthStore';
 
-const ChatHeader = ({ conversation, onUpdateStatus, onBack }) => {
+const AssigneePicker = ({ conversation, onAssign }) => {
+  const [open, setOpen] = useState(false);
+  const currentUser = useAuthStore((s) => s.user);
+  const canAssign = currentUser?.role !== 'agent';
+
+  const { data: users = [] } = useQuery({
+    queryKey: ['users-select'],
+    queryFn: usersApi.getUsers,
+    enabled: open,
+  });
+
+  if (!canAssign) {
+    return (
+      <span className="hidden sm:flex items-center gap-1.5 text-xs font-bold text-slate-400 flex-shrink-0">
+        <UserCircle2 size={14} />
+        {conversation.assigned_user?.name ?? 'غير معيّنة'}
+      </span>
+    );
+  }
+
+  return (
+    <div className="relative flex-shrink-0">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="flex items-center gap-1.5 text-xs font-bold px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"
+      >
+        <UserCircle2 size={14} />
+        <span className="hidden sm:inline max-w-[100px] truncate">{conversation.assigned_user?.name ?? 'تعيين'}</span>
+        <ChevronDown size={12} />
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+          <div className="absolute left-0 top-9 w-48 bg-white border border-slate-200 rounded-xl shadow-lg z-20 py-1 max-h-60 overflow-y-auto">
+            <button
+              onClick={() => { onAssign(null); setOpen(false); }}
+              className="w-full text-right px-3 py-2 text-xs font-bold hover:bg-slate-50 text-slate-400"
+            >
+              بدون تعيين
+            </button>
+            {users.map((u) => (
+              <button
+                key={u.id}
+                onClick={() => { onAssign(u.id); setOpen(false); }}
+                className="w-full text-right px-3 py-2 text-xs font-bold hover:bg-indigo-50 text-slate-700 truncate"
+              >
+                {u.name}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
+const ChatHeader = ({ conversation, onUpdateStatus, onAssign, onBack }) => {
   if (!conversation) return null;
 
   const isResolved = conversation.status === 'resolved';
 
   return (
-    <div className="h-16 border-b border-slate-100 flex items-center justify-between px-3 lg:px-5 bg-white flex-shrink-0">
+    <div className="h-16 border-b border-slate-100 flex items-center justify-between px-3 lg:px-5 bg-white flex-shrink-0 gap-2">
       <div className="flex items-center gap-2 min-w-0">
         {onBack && (
           <button
@@ -32,13 +91,17 @@ const ChatHeader = ({ conversation, onUpdateStatus, onBack }) => {
         </div>
       </div>
 
-      <button
-        onClick={() => onUpdateStatus(isResolved ? 'open' : 'resolved')}
-        className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 flex-shrink-0"
-      >
-        {isResolved ? <RotateCcw size={13} /> : <CheckCircle2 size={13} />}
-        <span className="hidden sm:inline">{isResolved ? 'إعادة فتح' : 'إنهاء'}</span>
-      </button>
+      <div className="flex items-center gap-2 flex-shrink-0">
+        <AssigneePicker conversation={conversation} onAssign={onAssign} />
+
+        <button
+          onClick={() => onUpdateStatus(isResolved ? 'open' : 'resolved')}
+          className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 flex-shrink-0"
+        >
+          {isResolved ? <RotateCcw size={13} /> : <CheckCircle2 size={13} />}
+          <span className="hidden sm:inline">{isResolved ? 'إعادة فتح' : 'إنهاء'}</span>
+        </button>
+      </div>
     </div>
   );
 };

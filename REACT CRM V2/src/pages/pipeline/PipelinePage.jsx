@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 import { Users, Plus, Search, MoreVertical, DollarSign, Loader2, PhoneCall, CalendarDays, ChevronDown } from 'lucide-react';
 import { contacts } from '../../api';
 import { cn } from '../../utils/cn';
+import { useEcho } from '../../hooks/useEcho';
 import AddContactModal from '../../components/AddContactModal';
 
 const STAGES = [
@@ -31,6 +32,18 @@ const PipelinePage = () => {
     queryKey: ['contacts-pipeline'],
     queryFn: contacts.getPipeline,
   });
+
+  const echo = useEcho();
+  useEffect(() => {
+    if (!echo) return undefined;
+
+    const channel = echo.channel('contacts');
+    const onUpdated = () => queryClient.invalidateQueries({ queryKey: ['contacts-pipeline'] });
+
+    channel.listen('.ContactUpdatedEvent', onUpdated);
+
+    return () => channel.stopListening('.ContactUpdatedEvent', onUpdated);
+  }, [echo, queryClient]);
 
   const loadMore = async (stageId) => {
     const baseCount = getStageData(stageId)?.contacts.length ?? 0;

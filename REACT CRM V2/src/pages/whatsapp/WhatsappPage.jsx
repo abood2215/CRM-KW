@@ -1,9 +1,12 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Plus, Trash2, Loader2, RefreshCw, X } from 'lucide-react';
+import { Plus, Trash2, Loader2, RefreshCw, X, Pencil, QrCode } from 'lucide-react';
 import { whatsappNumbers as whatsappNumbersApi } from '../../api';
 import { cn } from '../../utils/cn';
+import { useConfirm } from '../../hooks/useConfirm';
+import { useModalA11y } from '../../hooks/useModalA11y';
+import BaileysQrModal from './components/BaileysQrModal';
 
 const emptyForm = {
   name: '',
@@ -13,12 +16,19 @@ const emptyForm = {
   access_token: '',
   business_account_id: '',
   session_name: '',
+  daily_limit: 500,
 };
 
 const WhatsappPage = () => {
   const queryClient = useQueryClient();
+  const { confirm, dialog: confirmDialog } = useConfirm();
   const [addOpen, setAddOpen] = useState(false);
+  const [editingNumber, setEditingNumber] = useState(null);
+  const [qrNumber, setQrNumber] = useState(null);
   const [form, setForm] = useState(emptyForm);
+  const modalRef = useModalA11y(addOpen || !!editingNumber, () => { setAddOpen(false); setEditingNumber(null); });
+
+  const isEdit = !!editingNumber;
 
   const { data: numbers = [], isLoading } = useQuery({
     queryKey: ['whatsapp-numbers'],
@@ -27,10 +37,40 @@ const WhatsappPage = () => {
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['whatsapp-numbers'] });
 
+  useEffect(() => {
+    if (isEdit) {
+      setForm({
+        name: editingNumber.name,
+        phone: editingNumber.phone,
+        api_type: editingNumber.api_type,
+        phone_number_id: editingNumber.phone_number_id ?? '',
+        access_token: '',
+        business_account_id: editingNumber.business_account_id ?? '',
+        session_name: editingNumber.session_name ?? '',
+        daily_limit: editingNumber.daily_limit ?? 500,
+      });
+    }
+  }, [editingNumber, isEdit]);
+
   const createMutation = useMutation({
     mutationFn: (data) => whatsappNumbersApi.createWhatsappNumber(data),
     onSuccess: () => { invalidate(); toast.success('تم إضافة الرقم بنجاح'); setAddOpen(false); setForm(emptyForm); },
     onError: (e) => toast.error(e?.response?.data?.message || 'فشل إضافة الرقم'),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: (data) => {
+      const payload = { name: data.name, daily_limit: Number(data.daily_limit) };
+      if (data.api_type === 'cloud') {
+        if (data.access_token) payload.access_token = data.access_token;
+        payload.phone_number_id = data.phone_number_id;
+        payload.business_account_id = data.business_account_id;
+      }
+
+      return whatsappNumbersApi.updateWhatsappNumber(editingNumber.id, payload);
+    },
+    onSuccess: () => { invalidate(); toast.success('تم تحديث الرقم'); setEditingNumber(null); setForm(emptyForm); },
+    onError: (e) => toast.error(e?.response?.data?.message || 'فشل تحديث الرقم'),
   });
 
   const deleteMutation = useMutation({
@@ -43,6 +83,12 @@ const WhatsappPage = () => {
     onSuccess: () => toast.success('جاري مزامنة القوالب في الخلفية'),
     onError: (e) => toast.error(e?.response?.data?.message || 'فشلت المزامنة'),
   });
+
+  const closeForm = () => { setAddOpen(false); setEditingNumber(null); setForm(emptyForm); };
+
+  const handleDelete = async (id) => {
+    if (await confirm('حذف هذا الرقم؟')) deleteMutation.mutate(id);
+  };
 
   return (
     <div className="space-y-6">
@@ -77,14 +123,31 @@ const WhatsappPage = () => {
                 <span>{n.sent_today} / {n.daily_limit} اليوم</span>
               </div>
               <div className="flex gap-2">
-                {n.api_type === 'cloud' && (
+                {n.api_type === 'cloud' ? (
                   <button onClick={() => syncMutation.mutate(n.id)} className="flex-1 h-9 rounded-lg border border-slate-200 text-slate-600 text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-slate-50">
                     <RefreshCw size={13} />
                     مزامنة القوالب
                   </button>
+                ) : (
+                  <button
+                    onClick={() => setQrNumber(n)}
+                    className={cn(
+                      'flex-1 h-9 rounded-lg border text-xs font-bold flex items-center justify-center gap-1.5',
+                      n.can_send ? 'border-slate-200 text-slate-600 hover:bg-slate-50' : 'border-indigo-200 text-indigo-600 bg-indigo-50 hover:bg-indigo-100'
+                    )}
+                  >
+                    <QrCode size={13} />
+                    {n.can_send ? 'إعادة الربط' : 'ربط عبر QR'}
+                  </button>
                 )}
                 <button
-                  onClick={() => { if (window.confirm('حذف هذا الرقم؟')) deleteMutation.mutate(n.id); }}
+                  onClick={() => setEditingNumber(n)}
+                  className="h-9 w-9 rounded-lg border border-slate-200 text-slate-400 hover:text-indigo-600 hover:border-indigo-200 flex items-center justify-center"
+                >
+                  <Pencil size={14} />
+                </button>
+                <button
+                  onClick={() => handleDelete(n.id)}
                   className="h-9 w-9 rounded-lg border border-slate-200 text-slate-400 hover:text-rose-600 hover:border-rose-200 flex items-center justify-center"
                 >
                   <Trash2 size={14} />
@@ -95,50 +158,59 @@ const WhatsappPage = () => {
         </div>
       )}
 
-      {addOpen && (
+      {(addOpen || isEdit) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-          <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-lg">
+          <div ref={modalRef} role="dialog" aria-modal="true" className="bg-white rounded-[2rem] shadow-2xl w-full max-w-lg">
             <div className="p-8 border-b border-slate-100 flex items-center justify-between">
-              <h2 className="text-xl font-black text-slate-800">رقم واتساب جديد</h2>
-              <button onClick={() => setAddOpen(false)} className="p-2 rounded-xl text-slate-400 hover:bg-slate-100"><X size={20} /></button>
+              <h2 className="text-xl font-black text-slate-800">{isEdit ? `تعديل ${editingNumber.name}` : 'رقم واتساب جديد'}</h2>
+              <button onClick={closeForm} className="p-2 rounded-xl text-slate-400 hover:bg-slate-100"><X size={20} /></button>
             </div>
             <form
-              onSubmit={(e) => { e.preventDefault(); createMutation.mutate(form); }}
+              onSubmit={(e) => { e.preventDefault(); isEdit ? updateMutation.mutate(form) : createMutation.mutate(form); }}
               className="p-8 space-y-4"
             >
               <input required placeholder="اسم الرقم" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                 className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm" />
-              <input required placeholder="رقم الهاتف" value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+              {!isEdit && (
+                <input required placeholder="رقم الهاتف" value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+                  className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm" />
+              )}
+              <input type="number" min="1" placeholder="الحد اليومي للإرسال" value={form.daily_limit} onChange={(e) => setForm((f) => ({ ...f, daily_limit: e.target.value }))}
                 className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm" />
-              <select value={form.api_type} onChange={(e) => setForm((f) => ({ ...f, api_type: e.target.value }))}
-                className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm">
-                <option value="cloud">Cloud API</option>
-                <option value="baileys">واتساب ويب (Baileys)</option>
-              </select>
+              {!isEdit && (
+                <select value={form.api_type} onChange={(e) => setForm((f) => ({ ...f, api_type: e.target.value }))}
+                  className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                  <option value="cloud">Cloud API</option>
+                  <option value="baileys">واتساب ويب (Baileys)</option>
+                </select>
+              )}
               {form.api_type === 'cloud' ? (
                 <>
-                  <input required placeholder="Phone Number ID" value={form.phone_number_id} onChange={(e) => setForm((f) => ({ ...f, phone_number_id: e.target.value }))}
+                  <input required={!isEdit} placeholder="Phone Number ID" value={form.phone_number_id} onChange={(e) => setForm((f) => ({ ...f, phone_number_id: e.target.value }))}
                     className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm" />
-                  <input required placeholder="Access Token" value={form.access_token} onChange={(e) => setForm((f) => ({ ...f, access_token: e.target.value }))}
+                  <input required={!isEdit} placeholder={isEdit ? 'Access Token (اتركه فاضي لعدم التغيير)' : 'Access Token'} value={form.access_token} onChange={(e) => setForm((f) => ({ ...f, access_token: e.target.value }))}
                     className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm" />
                   <input placeholder="Business Account ID" value={form.business_account_id} onChange={(e) => setForm((f) => ({ ...f, business_account_id: e.target.value }))}
                     className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm" />
                 </>
-              ) : (
+              ) : !isEdit ? (
                 <input required placeholder="اسم الجلسة (session_name)" value={form.session_name} onChange={(e) => setForm((f) => ({ ...f, session_name: e.target.value }))}
                   className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm" />
-              )}
+              ) : null}
               <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setAddOpen(false)} className="flex-1 h-12 bg-slate-100 text-slate-600 font-bold rounded-xl">إلغاء</button>
-                <button type="submit" disabled={createMutation.isPending} className="flex-1 h-12 bg-indigo-600 text-white font-bold rounded-xl flex items-center justify-center gap-2">
-                  {createMutation.isPending && <Loader2 size={18} className="animate-spin" />}
-                  إضافة
+                <button type="button" onClick={closeForm} className="flex-1 h-12 bg-slate-100 text-slate-600 font-bold rounded-xl">إلغاء</button>
+                <button type="submit" disabled={createMutation.isPending || updateMutation.isPending} className="flex-1 h-12 bg-indigo-600 text-white font-bold rounded-xl flex items-center justify-center gap-2">
+                  {(createMutation.isPending || updateMutation.isPending) && <Loader2 size={18} className="animate-spin" />}
+                  {isEdit ? 'حفظ' : 'إضافة'}
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
+
+      <BaileysQrModal number={qrNumber} onClose={() => setQrNumber(null)} />
+      {confirmDialog}
     </div>
   );
 };

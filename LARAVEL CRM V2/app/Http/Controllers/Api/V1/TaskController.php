@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\UserRole;
+use App\Events\TaskUpdatedEvent;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Task\StoreTaskRequest;
 use App\Http\Requests\Task\UpdateTaskRequest;
@@ -70,6 +71,7 @@ class TaskController extends Controller
         $task = Task::create($data);
 
         ActivityLogger::record($task, 'create', "إنشاء مهمة: {$task->title}");
+        event(new TaskUpdatedEvent($task->id));
 
         return response()->json([
             'task' => new TaskResource($task->load(['user', 'contact'])),
@@ -90,6 +92,7 @@ class TaskController extends Controller
         $task->update($data);
 
         ActivityLogger::record($task, 'update', "تحديث مهمة: {$task->title}");
+        event(new TaskUpdatedEvent($task->id));
 
         return response()->json([
             'task' => new TaskResource($task->fresh()->load(['user', 'contact'])),
@@ -103,7 +106,9 @@ class TaskController extends Controller
 
         ActivityLogger::record($task, 'delete', "حذف مهمة: {$task->title}");
 
+        $taskId = $task->id;
         $task->delete();
+        event(new TaskUpdatedEvent($taskId));
 
         return response()->json([
             'message' => 'تم حذف المهمة.',
@@ -117,6 +122,7 @@ class TaskController extends Controller
         $task->markAsCompleted();
 
         ActivityLogger::record($task, 'complete', "إكمال مهمة: {$task->title}");
+        event(new TaskUpdatedEvent($task->id));
 
         return response()->json([
             'task' => new TaskResource($task->fresh()->load(['user', 'contact'])),

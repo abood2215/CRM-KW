@@ -1,17 +1,39 @@
 import React, { useRef, useState } from 'react';
-import { Send, Smile, Paperclip, Lock, Loader2, FileText } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Send, Smile, Paperclip, Lock, Loader2, FileText, Zap, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { cn } from '../../../utils/cn';
-import { campaigns as campaignsApi } from '../../../api';
+import { campaigns as campaignsApi, cannedResponses as cannedResponsesApi } from '../../../api';
 
 const COMMON_EMOJIS = ['😀', '😂', '😍', '👍', '🙏', '❤️', '😢', '🎉', '🔥', '✅'];
 
 const MessageComposer = ({ onSend, isSending, onOpenTemplatePicker }) => {
+  const queryClient = useQueryClient();
   const [text, setText] = useState('');
   const [isPrivate, setIsPrivate] = useState(false);
   const [showEmoji, setShowEmoji] = useState(false);
+  const [showCanned, setShowCanned] = useState(false);
+  const [addingCanned, setAddingCanned] = useState(false);
+  const [newCanned, setNewCanned] = useState({ title: '', content: '' });
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef(null);
+
+  const { data: cannedResponses = [] } = useQuery({
+    queryKey: ['canned-responses'],
+    queryFn: cannedResponsesApi.getCannedResponses,
+    enabled: showCanned,
+  });
+
+  const createCannedMutation = useMutation({
+    mutationFn: () => cannedResponsesApi.createCannedResponse(newCanned),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['canned-responses'] });
+      setNewCanned({ title: '', content: '' });
+      setAddingCanned(false);
+      toast.success('تم إضافة الرد الجاهز');
+    },
+    onError: (e) => toast.error(e?.response?.data?.message || 'فشل إضافة الرد'),
+  });
 
   const handleSend = () => {
     if (!text.trim()) return;
@@ -64,6 +86,68 @@ const MessageComposer = ({ onSend, isSending, onOpenTemplatePicker }) => {
           <button type="button" onClick={onOpenTemplatePicker} className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-50" title="إرسال قالب">
             <FileText size={16} />
           </button>
+          <div className="relative">
+            <button type="button" onClick={() => setShowCanned((s) => !s)} className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-50" title="ردود جاهزة">
+              <Zap size={16} />
+            </button>
+            {showCanned && (
+              <div className="absolute bottom-11 right-0 bg-white border border-slate-200 rounded-xl shadow-lg p-2 w-64 max-h-80 overflow-y-auto z-10">
+                {addingCanned ? (
+                  <div className="p-1.5 space-y-2">
+                    <input
+                      autoFocus
+                      placeholder="عنوان الرد"
+                      value={newCanned.title}
+                      onChange={(e) => setNewCanned((f) => ({ ...f, title: e.target.value }))}
+                      className="w-full h-8 px-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs"
+                    />
+                    <textarea
+                      rows={3}
+                      placeholder="نص الرد"
+                      value={newCanned.content}
+                      onChange={(e) => setNewCanned((f) => ({ ...f, content: e.target.value }))}
+                      className="w-full px-2.5 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs resize-none"
+                    />
+                    <div className="flex gap-1.5">
+                      <button onClick={() => setAddingCanned(false)} className="flex-1 h-7 rounded-lg bg-slate-100 text-slate-600 text-xs font-bold">إلغاء</button>
+                      <button
+                        onClick={() => createCannedMutation.mutate()}
+                        disabled={!newCanned.title.trim() || !newCanned.content.trim() || createCannedMutation.isPending}
+                        className="flex-1 h-7 rounded-lg bg-indigo-600 text-white text-xs font-bold disabled:opacity-50 flex items-center justify-center gap-1"
+                      >
+                        {createCannedMutation.isPending && <Loader2 size={11} className="animate-spin" />}
+                        حفظ
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {cannedResponses.length === 0 ? (
+                      <p className="text-xs text-slate-400 text-center py-4">لا توجد ردود جاهزة بعد</p>
+                    ) : (
+                      cannedResponses.map((r) => (
+                        <button
+                          key={r.id}
+                          onClick={() => { setText(r.content); setShowCanned(false); }}
+                          className="w-full text-right p-2.5 rounded-lg hover:bg-indigo-50/50 transition-colors"
+                        >
+                          <p className="text-xs font-bold text-slate-800 truncate">{r.title}</p>
+                          <p className="text-[11px] text-slate-400 line-clamp-2 mt-0.5">{r.content}</p>
+                        </button>
+                      ))
+                    )}
+                    <button
+                      onClick={() => setAddingCanned(true)}
+                      className="w-full flex items-center justify-center gap-1.5 p-2 mt-1 rounded-lg border-t border-slate-100 text-xs font-bold text-indigo-600 hover:bg-indigo-50/50"
+                    >
+                      <Plus size={13} />
+                      إضافة رد جديد
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
           <div className="relative">
             <button type="button" onClick={() => setShowEmoji((s) => !s)} className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-50">
               <Smile size={16} />

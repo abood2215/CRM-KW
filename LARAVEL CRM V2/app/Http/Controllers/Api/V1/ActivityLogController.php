@@ -12,6 +12,8 @@ class ActivityLogController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        $this->authorize('manage-settings');
+
         $query = ActivityLog::with('user')->orderByDesc('created_at');
 
         if ($request->has('action')) {

@@ -10,6 +10,7 @@ import { cn } from '../utils/cn';
 import { useEcho } from '../hooks/useEcho';
 import CommandPalette from '../components/CommandPalette';
 import NotificationsDropdown from '../components/NotificationsDropdown';
+import ErrorBoundary from '../components/ErrorBoundary';
 
 // Each nav item gets its own accent color (chip + active-state ring), instead of
 // one uniform color, so the sidebar reads as a set of distinct destinations.
@@ -245,7 +246,9 @@ const MainLayout = () => {
         </header>
 
         <main className="flex-1 p-4 lg:p-6">
-          <Outlet />
+          <ErrorBoundary key={location.pathname}>
+            <Outlet />
+          </ErrorBoundary>
         </main>
       </div>
 

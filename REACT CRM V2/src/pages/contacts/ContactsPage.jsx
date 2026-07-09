@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import { Plus, Search, Upload, Download, Trash2, ShieldAlert, Users, ShieldOff, X } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { contacts as contactsApi } from '../../api';
+import { useConfirm } from '../../hooks/useConfirm';
 import AddContactModal from '../../components/AddContactModal';
 import ImportContactsModal from '../../components/ImportContactsModal';
 import ContactsTable from './components/ContactsTable';
@@ -12,6 +13,7 @@ import DeleteAllContactsModal from './components/DeleteAllContactsModal';
 
 const ContactsPage = () => {
   const queryClient = useQueryClient();
+  const { confirm, dialog: confirmDialog } = useConfirm();
   const [tab, setTab] = useState('all');
   const [search, setSearch] = useState('');
   const [optInFilter, setOptInFilter] = useState('');
@@ -94,7 +96,7 @@ const ContactsPage = () => {
     }
   };
 
-  const handleDelete = (id) => { if (window.confirm('حذف هذه الجهة؟')) deleteMutation.mutate(id); };
+  const handleDelete = async (id) => { if (await confirm('حذف هذه الجهة؟')) deleteMutation.mutate(id); };
 
   return (
     <div className="space-y-6">
@@ -176,14 +178,14 @@ const ContactsPage = () => {
               <span className="text-sm font-bold text-indigo-700">تم تحديد {selectedIds.length} جهة اتصال</span>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => { if (window.confirm(`حظر ${selectedIds.length} جهة اتصال المحددة؟`)) bulkBlacklistMutation.mutate(selectedIds); }}
+                  onClick={async () => { if (await confirm(`حظر ${selectedIds.length} جهة اتصال المحددة؟`)) bulkBlacklistMutation.mutate(selectedIds); }}
                   className="h-8 px-3 rounded-lg bg-white border border-indigo-200 text-indigo-700 text-xs font-bold flex items-center gap-1.5 hover:bg-indigo-100 transition-colors"
                 >
                   <ShieldOff size={13} />
                   حظر المحدد
                 </button>
                 <button
-                  onClick={() => { if (window.confirm(`حذف ${selectedIds.length} جهة اتصال المحددة؟`)) bulkDeleteMutation.mutate(selectedIds); }}
+                  onClick={async () => { if (await confirm(`حذف ${selectedIds.length} جهة اتصال المحددة؟`)) bulkDeleteMutation.mutate(selectedIds); }}
                   className="h-8 px-3 rounded-lg bg-white border border-rose-200 text-rose-600 text-xs font-bold flex items-center gap-1.5 hover:bg-rose-50 transition-colors"
                 >
                   <Trash2 size={13} />
@@ -231,6 +233,7 @@ const ContactsPage = () => {
         total={meta?.total}
         isPending={deleteAllMutation.isPending}
       />
+      {confirmDialog}
     </div>
   );
 };

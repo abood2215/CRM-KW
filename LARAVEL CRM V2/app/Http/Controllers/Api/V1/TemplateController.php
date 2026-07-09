@@ -56,6 +56,8 @@ class TemplateController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        $this->authorize('create', WhatsappTemplate::class);
+
         $data = $request->validate([
             'whatsapp_number_id' => 'required|exists:whatsapp_numbers,id',
             'name' => [
@@ -85,6 +87,8 @@ class TemplateController extends Controller
 
     public function update(Request $request, WhatsappTemplate $template): JsonResponse
     {
+        $this->authorize('update', $template);
+
         $data = $request->validate([
             'name' => [
                 'sometimes', 'string', 'max:255', 'regex:/^[a-z0-9_]+$/',
@@ -113,6 +117,8 @@ class TemplateController extends Controller
 
     public function destroy(WhatsappTemplate $template): JsonResponse
     {
+        $this->authorize('delete', $template);
+
         ActivityLogger::record($template, 'delete', "حذف قالب واتساب: {$template->name}");
         $template->delete();
 
@@ -121,6 +127,8 @@ class TemplateController extends Controller
 
     public function sync(Request $request, TemplateSyncService $service): JsonResponse
     {
+        $this->authorize('sync', WhatsappTemplate::class);
+
         $request->validate(['whatsapp_number_id' => 'required|exists:whatsapp_numbers,id']);
 
         $number = WhatsappNumber::findOrFail($request->whatsapp_number_id);

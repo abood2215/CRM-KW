@@ -4,6 +4,8 @@ export const getWhatsappNumbers = () => client.get('/whatsapp-numbers').then((re
 
 export const createWhatsappNumber = (data) => client.post('/whatsapp-numbers', data).then((res) => res.data);
 
+export const updateWhatsappNumber = (id, data) => client.put(`/whatsapp-numbers/${id}`, data).then((res) => res.data);
+
 export const deleteWhatsappNumber = (id) => client.delete(`/whatsapp-numbers/${id}`).then((res) => res.data);
 
 export const getWhatsappNumberStatus = (id) => client.get(`/whatsapp-numbers/${id}/status`).then((res) => res.data);

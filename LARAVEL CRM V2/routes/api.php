@@ -28,12 +28,15 @@ Route::get('/webhooks/whatsapp', [WebhookController::class, 'whatsappVerify'])->
 Route::post('/webhooks/whatsapp', [WebhookController::class, 'whatsapp'])->middleware('throttle:120,1');
 Route::post('/webhooks/chatwoot', [WebhookController::class, 'chatwoot'])->middleware('throttle:60,1');
 
-Route::middleware(['auth:sanctum', 'update.last.seen'])->group(function () {
+// Default cap for every authenticated route below — most sensitive/costly
+// endpoints (password changes, WhatsApp sends) additionally get a stricter
+// explicit throttle on top of this.
+Route::middleware(['auth:sanctum', 'update.last.seen', 'throttle:60,1'])->group(function () {
     Route::prefix('auth')->group(function () {
         Route::post('/logout', [AuthController::class, 'logout']);
         Route::get('/me', [AuthController::class, 'me']);
         Route::put('/profile', [AuthController::class, 'updateProfile']);
-        Route::put('/password', [AuthController::class, 'updatePassword']);
+        Route::put('/password', [AuthController::class, 'updatePassword'])->middleware('throttle:10,1');
     });
 
     Route::get('/contacts/pipeline', [ContactController::class, 'pipeline']);
@@ -57,6 +60,7 @@ Route::middleware(['auth:sanctum', 'update.last.seen'])->group(function () {
 
     Route::get('/whatsapp-numbers', [WhatsappNumberController::class, 'index']);
     Route::post('/whatsapp-numbers', [WhatsappNumberController::class, 'store']);
+    Route::put('/whatsapp-numbers/{whatsappNumber}', [WhatsappNumberController::class, 'update']);
     Route::delete('/whatsapp-numbers/{whatsappNumber}', [WhatsappNumberController::class, 'destroy']);
     Route::get('/whatsapp-numbers/{whatsappNumber}/qr', [WhatsappNumberController::class, 'qr']);
     Route::get('/whatsapp-numbers/{whatsappNumber}/status', [WhatsappNumberController::class, 'status']);
@@ -67,7 +71,7 @@ Route::middleware(['auth:sanctum', 'update.last.seen'])->group(function () {
     Route::apiResource('templates', TemplateController::class);
 
     Route::post('/campaigns/upload-image', [CampaignController::class, 'uploadImage']);
-    Route::post('/campaigns/{campaign}/start', [CampaignController::class, 'start']);
+    Route::post('/campaigns/{campaign}/start', [CampaignController::class, 'start'])->middleware('throttle:20,1');
     Route::post('/campaigns/{campaign}/pause', [CampaignController::class, 'pause']);
     Route::post('/campaigns/{campaign}/resume', [CampaignController::class, 'resume']);
     Route::post('/campaigns/{campaign}/blacklist-failed', [CampaignController::class, 'blacklistFailed']);
@@ -83,8 +87,8 @@ Route::middleware(['auth:sanctum', 'update.last.seen'])->group(function () {
     Route::put('/conversations/{conversation}/status', [ConversationController::class, 'updateStatus']);
     Route::put('/conversations/{conversation}/assign', [ConversationController::class, 'assign']);
     Route::get('/conversations/{conversation}/messages', [MessageController::class, 'index']);
-    Route::post('/conversations/{conversation}/messages', [MessageController::class, 'store']);
-    Route::post('/conversations/{conversation}/send-template', [MessageController::class, 'sendTemplate']);
+    Route::post('/conversations/{conversation}/messages', [MessageController::class, 'store'])->middleware('throttle:20,1');
+    Route::post('/conversations/{conversation}/send-template', [MessageController::class, 'sendTemplate'])->middleware('throttle:20,1');
     Route::post('/conversations/{conversation}/notes', [MessageController::class, 'addNote']);
 
     Route::get('/stats/dashboard', [StatsController::class, 'dashboard']);

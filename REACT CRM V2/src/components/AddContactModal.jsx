@@ -4,6 +4,7 @@ import { X, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { contacts } from '../api';
+import { useModalA11y } from '../hooks/useModalA11y';
 
 const SOURCES = [
   { value: 'whatsapp', label: 'واتساب' },
@@ -34,6 +35,7 @@ const emptyForm = (defaultStage) => ({
 
 const AddContactModal = ({ open, onClose, defaultStage = 'new' }) => {
   const queryClient = useQueryClient();
+  const ref = useModalA11y(open, onClose);
   const [form, setForm] = useState(emptyForm(defaultStage));
 
   useEffect(() => {
@@ -64,6 +66,9 @@ const AddContactModal = ({ open, onClose, defaultStage = 'new' }) => {
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
           <motion.div
+            ref={ref}
+            role="dialog"
+            aria-modal="true"
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}

@@ -4,6 +4,7 @@ import { X, Loader2, Image as ImageIcon } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { campaigns as campaignsApi, contactLists as contactListsApi, whatsappNumbers as whatsappNumbersApi, templates as templatesApi } from '../api';
+import { useModalA11y } from '../hooks/useModalA11y';
 
 const emptyForm = {
   name: '',
@@ -17,6 +18,7 @@ const emptyForm = {
 
 const CreateCampaignModal = ({ open, onClose }) => {
   const queryClient = useQueryClient();
+  const ref = useModalA11y(open, onClose);
   const [form, setForm] = useState(emptyForm);
   const [uploadingImage, setUploadingImage] = useState(false);
 
@@ -95,6 +97,9 @@ const CreateCampaignModal = ({ open, onClose }) => {
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
           <motion.div
+            ref={ref}
+            role="dialog"
+            aria-modal="true"
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}

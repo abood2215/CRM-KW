@@ -19,6 +19,8 @@ class WhatsappNumber extends Model
         'business_account_id',
         'api_type',
         'status',
+        'quality_rating',
+        'quality_checked_at',
         'daily_limit',
         'sent_today',
         'week_number',
@@ -32,6 +34,7 @@ class WhatsappNumber extends Model
             'sent_today' => 'integer',
             'week_number' => 'integer',
             'last_sent_at' => 'datetime',
+            'quality_checked_at' => 'datetime',
         ];
     }
 

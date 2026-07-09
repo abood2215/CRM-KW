@@ -4,6 +4,7 @@ import { X, Loader2, Upload, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { contacts as contactsApi, contactLists as contactListsApi } from '../api';
+import { useModalA11y } from '../hooks/useModalA11y';
 
 const NEW_LIST_VALUE = '__new__';
 
@@ -54,11 +55,16 @@ const ImportContactsModal = ({ open, onClose, contactListId = null }) => {
     onClose();
   };
 
+  const ref = useModalA11y(open, handleClose);
+
   return (
     <AnimatePresence>
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
           <motion.div
+            ref={ref}
+            role="dialog"
+            aria-modal="true"
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}

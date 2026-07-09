@@ -17,6 +17,11 @@ class WhatsappNumberPolicy
         return $user->isAdmin();
     }
 
+    public function update(User $user, WhatsappNumber $number): bool
+    {
+        return $user->isAdmin();
+    }
+
     public function delete(User $user, WhatsappNumber $number): bool
     {
         return $user->isAdmin();

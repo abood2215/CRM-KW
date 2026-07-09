@@ -143,6 +143,7 @@ class StatsService
                 'name' => $n->name,
                 'phone' => $n->phone,
                 'status' => $n->status,
+                'quality_rating' => $n->quality_rating,
                 'sent_today' => $n->sent_today,
                 'daily_limit' => $n->daily_limit,
                 'week_number' => $n->week_number,

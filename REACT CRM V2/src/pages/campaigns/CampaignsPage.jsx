@@ -8,6 +8,7 @@ import { ar } from 'date-fns/locale';
 import { Megaphone, Plus, Pause, Play, Trash2, CheckCircle2, Clock, Loader2, BarChart3, Phone } from 'lucide-react';
 import { campaigns as campaignsApi } from '../../api';
 import { cn } from '../../utils/cn';
+import { useConfirm } from '../../hooks/useConfirm';
 import CreateCampaignModal from '../../components/CreateCampaignModal';
 
 const STATUS_MAP = {
@@ -27,6 +28,7 @@ const TABS = [
 const CampaignsPage = () => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const { confirm, dialog: confirmDialog } = useConfirm();
   const [activeTab, setActiveTab] = useState('all');
   const [createOpen, setCreateOpen] = useState(false);
 
@@ -109,7 +111,7 @@ const CampaignsPage = () => {
                       </span>
                       {['draft', 'completed', 'paused'].includes(campaign.status) && (
                         <button
-                          onClick={() => { if (window.confirm('هل تريد حذف هذه الحملة؟')) deleteMutation.mutate(campaign.id); }}
+                          onClick={async () => { if (await confirm('هل تريد حذف هذه الحملة؟')) deleteMutation.mutate(campaign.id); }}
                           className="p-1.5 text-slate-300 hover:text-rose-500 rounded-lg transition-colors"
                         >
                           <Trash2 size={15} />
@@ -205,6 +207,7 @@ const CampaignsPage = () => {
       </div>
 
       <CreateCampaignModal open={createOpen} onClose={() => setCreateOpen(false)} />
+      {confirmDialog}
     </>
   );
 };

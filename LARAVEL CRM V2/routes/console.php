@@ -24,6 +24,10 @@ Schedule::job(new SyncTemplatesJob)->everySixHours();
 
 Schedule::job(new SendTaskRemindersJob)->dailyAt('08:00')->withoutOverlapping();
 
+Schedule::command('backup:run')->dailyAt('03:00')->withoutOverlapping();
+
+Schedule::command('whatsapp:check-health')->hourly()->withoutOverlapping();
+
 // Clears temporary blacklists once their expiry has passed.
 Schedule::call(function () {
     $count = Contact::whereNotNull('blacklisted_until')

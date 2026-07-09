@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\WhatsappNumber\StoreWhatsappNumberRequest;
+use App\Http\Requests\WhatsappNumber\UpdateWhatsappNumberRequest;
 use App\Http\Resources\WhatsappNumberResource;
 use App\Jobs\SyncTemplatesJob;
 use App\Models\WhatsappNumber;
@@ -31,6 +32,17 @@ class WhatsappNumberController extends Controller
             'whatsapp_number' => new WhatsappNumberResource($number),
             'message' => 'تم إضافة الرقم بنجاح.',
         ], 201);
+    }
+
+    public function update(UpdateWhatsappNumberRequest $request, WhatsappNumber $whatsappNumber): JsonResponse
+    {
+        $whatsappNumber->update($request->validated());
+        ActivityLogger::record($whatsappNumber, 'update', "تحديث رقم واتساب: {$whatsappNumber->name}");
+
+        return response()->json([
+            'whatsapp_number' => new WhatsappNumberResource($whatsappNumber->fresh()),
+            'message' => 'تم تحديث الرقم.',
+        ]);
     }
 
     public function destroy(WhatsappNumber $whatsappNumber): JsonResponse

@@ -21,5 +21,6 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        // No-ops if SENTRY_LARAVEL_DSN is unset — safe to leave enabled even before signing up.
+        \Sentry\Laravel\Integration::handles($exceptions);
     })->create();

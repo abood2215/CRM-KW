@@ -57,15 +57,18 @@ class MessageController extends Controller
 
         $conversation->load('contact');
         $waMessageId = null;
+        $isPrivate = $request->boolean('is_private', false);
 
-        if ($conversation->chatwoot_conv_id) {
+        // A private/internal note must never actually reach the customer — only real
+        // outbound messages get sent via Chatwoot/WhatsApp below.
+        if (! $isPrivate && $conversation->chatwoot_conv_id) {
             $this->chatwoot->sendMessage($conversation->chatwoot_conv_id, $request->content);
         }
 
-        if (! $conversation->chatwoot_conv_id && $conversation->source === 'whatsapp') {
+        if (! $isPrivate && ! $conversation->chatwoot_conv_id && $conversation->source === 'whatsapp') {
             $contactPhone = $conversation->contact?->phone;
 
-            if (! $contactPhone && ! $request->boolean('is_private', false)) {
+            if (! $contactPhone) {
                 return response()->json(['message' => 'لا يوجد رقم هاتف مرتبط بهذه المحادثة.'], 422);
             }
 
@@ -93,7 +96,7 @@ class MessageController extends Controller
             'content' => $request->content,
             'type' => $request->type ?? 'text',
             'direction' => 'out',
-            'is_private' => $request->boolean('is_private', false),
+            'is_private' => $isPrivate,
             'sender_name' => $request->user()->name,
             'status' => $waMessageId ? 'sent' : null,
             'sent_at' => now(),

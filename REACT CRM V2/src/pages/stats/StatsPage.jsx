@@ -4,9 +4,17 @@ import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   LineChart, Line, Cell, PieChart, Pie,
 } from 'recharts';
-import { Loader2, Users, Target, PhoneCall, Clock } from 'lucide-react';
+import { Loader2, Users, Target, PhoneCall, Clock, Download, Phone } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { stats as statsApi } from '../../api';
+import { useAuthStore } from '../../store/useAuthStore';
 import { cn } from '../../utils/cn';
+
+const QUALITY_LABELS = {
+  GREEN: { label: 'جيدة', cls: 'bg-emerald-50 text-emerald-600' },
+  YELLOW: { label: 'متوسطة', cls: 'bg-amber-50 text-amber-600' },
+  RED: { label: 'ضعيفة', cls: 'bg-rose-50 text-rose-600' },
+};
 
 const RANGES = [
   { id: 'week', label: 'أسبوع' },
@@ -24,6 +32,8 @@ const PALETTE = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#3b82f6', '#8b5cf6
 
 const StatsPage = () => {
   const [range, setRange] = useState('week');
+  const currentUser = useAuthStore((s) => s.user);
+  const canViewAgentStats = currentUser?.role !== 'agent';
 
   const { data: stats, isLoading } = useQuery({
     queryKey: ['dashboard-stats', range],
@@ -33,9 +43,31 @@ const StatsPage = () => {
   const { data: agents = [] } = useQuery({
     queryKey: ['stats-agents'],
     queryFn: statsApi.getAgentStats,
+    enabled: canViewAgentStats,
+  });
+
+  const { data: whatsappStats } = useQuery({
+    queryKey: ['stats-whatsapp'],
+    queryFn: statsApi.getWhatsappStats,
   });
 
   const agentData = agents.map((a) => ({ name: a.name, deals: a.clients_count }));
+
+  const handleExportCsv = async () => {
+    try {
+      const blob = await statsApi.exportCampaignsCsv();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'campaigns-report.csv');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      toast.error('فشل التصدير');
+    }
+  };
 
   const sourceData = Object.entries(stats?.clients_by_source ?? {}).map(([name, value], i) => ({
     name,
@@ -54,16 +86,22 @@ const StatsPage = () => {
           <h1 className="text-xl lg:text-2xl font-black text-slate-800">التقارير</h1>
           <p className="text-slate-500 mt-1 text-sm">تحليل أداء مركز مطمئنة لاتخاذ قرارات أفضل.</p>
         </div>
-        <div className="flex gap-1 bg-white rounded-xl border border-slate-200 p-1">
-          {RANGES.map((r) => (
-            <button
-              key={r.id}
-              onClick={() => setRange(r.id)}
-              className={cn('px-3 py-1.5 rounded-lg text-xs font-bold', range === r.id ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:bg-slate-50')}
-            >
-              {r.label}
-            </button>
-          ))}
+        <div className="flex items-center gap-2">
+          <div className="flex gap-1 bg-white rounded-xl border border-slate-200 p-1">
+            {RANGES.map((r) => (
+              <button
+                key={r.id}
+                onClick={() => setRange(r.id)}
+                className={cn('px-3 py-1.5 rounded-lg text-xs font-bold', range === r.id ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:bg-slate-50')}
+              >
+                {r.label}
+              </button>
+            ))}
+          </div>
+          <button onClick={handleExportCsv} className="h-10 px-4 border border-slate-200 rounded-xl text-slate-600 font-bold text-sm flex items-center gap-2 hover:bg-slate-50 transition-all bg-white">
+            <Download size={16} />
+            <span className="hidden sm:inline">تصدير الحملات CSV</span>
+          </button>
         </div>
       </div>
 
@@ -99,6 +137,7 @@ const StatsPage = () => {
           </ResponsiveContainer>
         </div>
 
+        {canViewAgentStats && (
         <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
           <h3 className="font-black text-slate-800 mb-4">أداء الموظفين</h3>
           {agentData.length === 0 ? (
@@ -119,7 +158,40 @@ const StatsPage = () => {
             </ResponsiveContainer>
           )}
         </div>
+        )}
       </div>
+
+      {whatsappStats?.numbers?.length > 0 && (
+        <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
+          <h3 className="font-black text-slate-800 mb-4 flex items-center gap-2">
+            <Phone size={16} className="text-indigo-600" />
+            صحة أرقام واتساب
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {whatsappStats.numbers.map((n) => {
+              const quality = QUALITY_LABELS[n.quality_rating];
+
+              return (
+                <div key={n.id} className="border border-slate-100 rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="font-bold text-sm text-slate-800 truncate">{n.name}</p>
+                    <span className={cn('text-[10px] font-black px-2 py-0.5 rounded-lg uppercase', n.status === 'connected' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400')}>
+                      {n.status === 'connected' ? 'متصل' : 'غير متصل'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400 font-mono mb-2">{n.phone}</p>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-500 font-bold">{n.sent_today} / {n.daily_limit} اليوم</span>
+                    {quality && (
+                      <span className={cn('font-black px-2 py-0.5 rounded-lg', quality.cls)}>جودة {quality.label}</span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {sourceData.length > 0 && (
         <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">

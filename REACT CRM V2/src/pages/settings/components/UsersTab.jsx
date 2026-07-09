@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { Loader2, UserPlus, Pencil, Trash2 } from 'lucide-react';
 import { users as usersApi } from '../../../api';
 import { useAuthStore } from '../../../store/useAuthStore';
+import { useConfirm } from '../../../hooks/useConfirm';
 import UserFormModal from './UserFormModal';
 
 const ROLE_LABELS = {
@@ -15,6 +16,7 @@ const ROLE_LABELS = {
 const UsersTab = () => {
   const queryClient = useQueryClient();
   const currentUser = useAuthStore((s) => s.user);
+  const { confirm, dialog: confirmDialog } = useConfirm();
   const [formOpen, setFormOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
 
@@ -69,7 +71,7 @@ const UsersTab = () => {
                   </button>
                   {u.id !== currentUser?.id && (
                     <button
-                      onClick={() => { if (window.confirm(`هل تريد حذف "${u.name}"؟`)) deleteMutation.mutate(u.id); }}
+                      onClick={async () => { if (await confirm(`هل تريد حذف "${u.name}"؟`)) deleteMutation.mutate(u.id); }}
                       className="p-2 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
                     >
                       <Trash2 size={15} />
@@ -83,6 +85,7 @@ const UsersTab = () => {
       )}
 
       <UserFormModal open={formOpen} onClose={() => setFormOpen(false)} user={editingUser} />
+      {confirmDialog}
     </div>
   );
 };

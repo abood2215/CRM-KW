@@ -72,6 +72,12 @@ export function useChatPane(conversationId) {
     onSuccess: invalidateAll,
   });
 
+  const assignMutation = useMutation({
+    mutationFn: (userId) => conversationsApi.assignConversation(conversationId, userId),
+    onSuccess: invalidateAll,
+    onError: (e) => toast.error(e?.response?.data?.message || 'فشل تعيين المحادثة'),
+  });
+
   return {
     conversation,
     messages,
@@ -81,5 +87,6 @@ export function useChatPane(conversationId) {
     isSending: sendMessageMutation.isPending,
     sendTemplate: sendTemplateMutation.mutate,
     updateStatus: updateStatusMutation.mutate,
+    assignConversation: assignMutation.mutate,
   };
 }

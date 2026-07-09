@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\ContactPipelineStage;
 use App\Enums\UserRole;
+use App\Events\ContactUpdatedEvent;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Contact\ImportContactsCsvRequest;
 use App\Http\Requests\Contact\StoreContactRequest;
@@ -79,6 +80,7 @@ class ContactController extends Controller
         $this->authorize('create', Contact::class);
 
         $contact = $this->contacts->create($request->validated(), $request->user());
+        event(new ContactUpdatedEvent($contact->id));
 
         return response()->json([
             'contact' => new ContactResource($contact->load('user')),
@@ -100,6 +102,7 @@ class ContactController extends Controller
         $this->authorize('update', $contact);
 
         $contact = $this->contacts->update($contact, $request->validated(), $request->user());
+        event(new ContactUpdatedEvent($contact->id));
 
         return response()->json([
             'contact' => new ContactResource($contact->load('user')),
@@ -111,7 +114,9 @@ class ContactController extends Controller
     {
         $this->authorize('delete', $contact);
 
+        $contactId = $contact->id;
         $this->contacts->delete($contact);
+        event(new ContactUpdatedEvent($contactId));
 
         return response()->json([
             'message' => 'تم حذف جهة الاتصال بنجاح.',

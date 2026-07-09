@@ -3,11 +3,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { Plus, Trash2, Pencil, Loader2, ListChecks, X } from 'lucide-react';
 import { contactLists as contactListsApi } from '../../api';
+import { useConfirm } from '../../hooks/useConfirm';
 import ImportContactsModal from '../../components/ImportContactsModal';
 import ListContactsModal from './components/ListContactsModal';
 
 const ContactListsPage = () => {
   const queryClient = useQueryClient();
+  const { confirm, dialog: confirmDialog } = useConfirm();
   const [addOpen, setAddOpen] = useState(false);
   const [importListId, setImportListId] = useState(null);
   const [viewList, setViewList] = useState(null);
@@ -70,7 +72,7 @@ const ContactListsPage = () => {
                   <button onClick={() => openEdit(l)} className="p-1.5 text-slate-300 hover:text-indigo-500">
                     <Pencil size={14} />
                   </button>
-                  <button onClick={() => { if (window.confirm('حذف هذه القائمة؟')) deleteMutation.mutate(l.id); }} className="p-1.5 text-slate-300 hover:text-rose-500">
+                  <button onClick={async () => { if (await confirm('حذف هذه القائمة؟')) deleteMutation.mutate(l.id); }} className="p-1.5 text-slate-300 hover:text-rose-500">
                     <Trash2 size={15} />
                   </button>
                 </div>
@@ -124,6 +126,7 @@ const ContactListsPage = () => {
 
       <ImportContactsModal open={!!importListId} onClose={() => setImportListId(null)} contactListId={importListId} />
       <ListContactsModal list={viewList} onClose={() => setViewList(null)} />
+      {confirmDialog}
     </div>
   );
 };

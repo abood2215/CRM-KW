@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Loader2, Save, Clock, BellRing, Users } from 'lucide-react';
+import { Loader2, Save, Clock, BellRing, Users, UserCog } from 'lucide-react';
 import { settings as settingsApi } from '../../api';
 import { useAuthStore } from '../../store/useAuthStore';
 import { cn } from '../../utils/cn';
 import UsersTab from './components/UsersTab';
+import AccountTab from './components/AccountTab';
 
 const DAYS = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
 const TRIGGERS = [
@@ -17,7 +18,7 @@ const SettingsPage = () => {
   const queryClient = useQueryClient();
   const currentUser = useAuthStore((s) => s.user);
   const canManageUsers = currentUser?.role === 'admin' || currentUser?.role === 'manager';
-  const [tab, setTab] = useState('hours');
+  const [tab, setTab] = useState('account');
   const [hours, setHours] = useState(null);
   const [replies, setReplies] = useState(null);
 
@@ -47,6 +48,7 @@ const SettingsPage = () => {
   });
 
   const tabs = [
+    { id: 'account', label: 'حسابي', icon: UserCog },
     { id: 'hours', label: 'ساعات العمل', icon: Clock },
     { id: 'replies', label: 'الردود التلقائية', icon: BellRing },
     ...(canManageUsers ? [{ id: 'users', label: 'إدارة المستخدمين', icon: Users }] : []),
@@ -73,6 +75,8 @@ const SettingsPage = () => {
           );
         })}
       </div>
+
+      {tab === 'account' && <AccountTab />}
 
       {tab === 'hours' && (
         hoursLoading || !hours ? (

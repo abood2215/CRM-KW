@@ -2,9 +2,11 @@ import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { X, Search, Loader2, Users, Phone } from 'lucide-react';
 import { contactLists as contactListsApi } from '../../../api';
+import { useModalA11y } from '../../../hooks/useModalA11y';
 
 const ListContactsModal = ({ list, onClose }) => {
   const [search, setSearch] = useState('');
+  const ref = useModalA11y(!!list, onClose);
 
   const { data, isLoading } = useQuery({
     queryKey: ['contact-list', list?.id],
@@ -19,7 +21,7 @@ const ListContactsModal = ({ list, onClose }) => {
 
   return (
     <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg flex flex-col max-h-[85vh]">
+      <div ref={ref} role="dialog" aria-modal="true" className="bg-white rounded-3xl shadow-2xl w-full max-w-lg flex flex-col max-h-[85vh]">
         <div className="flex items-center justify-between px-8 py-6 border-b border-slate-100 shrink-0">
           <div>
             <h2 className="text-xl font-black text-slate-800">{list.name}</h2>

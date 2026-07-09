@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { Loader2, FileText, Plus, Pencil, Trash2, RefreshCw, Search } from 'lucide-react';
 import { templates as templatesApi, whatsappNumbers as whatsappNumbersApi } from '../../api';
 import { cn } from '../../utils/cn';
+import { useConfirm } from '../../hooks/useConfirm';
 import TemplateFormModal from './components/TemplateFormModal';
 
 const STATUS_COLORS = {
@@ -21,6 +22,7 @@ const CATEGORY_LABELS = {
 
 const TemplatesPage = () => {
   const queryClient = useQueryClient();
+  const { confirm, dialog: confirmDialog } = useConfirm();
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('');
   const [numberId, setNumberId] = useState('');
@@ -129,7 +131,7 @@ const TemplatesPage = () => {
                     <Pencil size={14} />
                   </button>
                   <button
-                    onClick={() => { if (window.confirm('حذف هذا القالب؟')) deleteMutation.mutate(t.id); }}
+                    onClick={async () => { if (await confirm('حذف هذا القالب؟')) deleteMutation.mutate(t.id); }}
                     className="p-1.5 text-slate-300 hover:text-rose-500"
                   >
                     <Trash2 size={14} />
@@ -147,6 +149,7 @@ const TemplatesPage = () => {
       )}
 
       <TemplateFormModal open={formOpen} onClose={() => setFormOpen(false)} template={editingTemplate} />
+      {confirmDialog}
     </div>
   );
 };

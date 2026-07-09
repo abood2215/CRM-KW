@@ -8,7 +8,7 @@ import MessageComposer from './MessageComposer';
 import TemplatePicker from './TemplatePicker';
 
 const ChatPane = ({ conversationId, onBack, className }) => {
-  const { conversation, messages, isLoading, bottomRef, sendMessage, isSending, sendTemplate, updateStatus } = useChatPane(conversationId);
+  const { conversation, messages, isLoading, bottomRef, sendMessage, isSending, sendTemplate, updateStatus, assignConversation } = useChatPane(conversationId);
   const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
 
   if (!conversationId) {
@@ -22,7 +22,7 @@ const ChatPane = ({ conversationId, onBack, className }) => {
 
   return (
     <div className={cn('flex-1 flex-col h-full bg-slate-50/50', className)}>
-      <ChatHeader conversation={conversation} onUpdateStatus={updateStatus} onBack={onBack} />
+      <ChatHeader conversation={conversation} onUpdateStatus={updateStatus} onAssign={assignConversation} onBack={onBack} />
 
       <div className="flex-1 overflow-y-auto p-5">
         {isLoading ? (

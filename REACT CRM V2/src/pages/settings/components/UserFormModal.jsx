@@ -3,11 +3,13 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { X, Loader2, Eye, EyeOff } from 'lucide-react';
 import { users as usersApi } from '../../../api';
+import { useModalA11y } from '../../../hooks/useModalA11y';
 
 const emptyForm = { name: '', email: '', password: '', role: 'agent', phone: '', is_active: true };
 
 const UserFormModal = ({ open, onClose, user }) => {
   const queryClient = useQueryClient();
+  const ref = useModalA11y(open, onClose);
   const [form, setForm] = useState(emptyForm);
   const [showPassword, setShowPassword] = useState(false);
   const isEdit = !!user;
@@ -49,7 +51,7 @@ const UserFormModal = ({ open, onClose, user }) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-      <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md max-h-[85vh] flex flex-col">
+      <div ref={ref} role="dialog" aria-modal="true" className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md max-h-[85vh] flex flex-col">
         <div className="p-6 border-b border-slate-100 flex items-center justify-between flex-shrink-0">
           <h2 className="text-lg font-black text-slate-800">{isEdit ? 'تعديل المستخدم' : 'مستخدم جديد'}</h2>
           <button onClick={onClose} className="p-2 rounded-xl text-slate-400 hover:bg-slate-100"><X size={18} /></button>

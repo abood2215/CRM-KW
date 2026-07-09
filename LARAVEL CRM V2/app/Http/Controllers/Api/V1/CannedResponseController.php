@@ -37,6 +37,8 @@ class CannedResponseController extends Controller
 
     public function update(StoreCannedResponseRequest $request, CannedResponse $cannedResponse): JsonResponse
     {
+        $this->authorize('update', $cannedResponse);
+
         $cannedResponse->update($request->validated());
         ActivityLogger::record($cannedResponse, 'update', "تحديث رد جاهز: {$cannedResponse->title}");
 
@@ -48,6 +50,8 @@ class CannedResponseController extends Controller
 
     public function destroy(CannedResponse $cannedResponse): JsonResponse
     {
+        $this->authorize('delete', $cannedResponse);
+
         ActivityLogger::record($cannedResponse, 'delete', "حذف رد جاهز: {$cannedResponse->title}");
         $cannedResponse->delete();
 

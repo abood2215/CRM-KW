@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format, isPast, isToday } from 'date-fns';
 import { ar } from 'date-fns/locale';
@@ -19,6 +19,8 @@ import {
 } from 'lucide-react';
 import { tasks as tasksApi } from '../../api';
 import { cn } from '../../utils/cn';
+import { useConfirm } from '../../hooks/useConfirm';
+import { useEcho } from '../../hooks/useEcho';
 import AddTaskModal from '../../components/AddTaskModal';
 
 const priorityColors = {
@@ -35,6 +37,7 @@ const filterItems = [
 
 const TasksPage = () => {
   const queryClient = useQueryClient();
+  const { confirm, dialog: confirmDialog } = useConfirm();
   const [filter, setFilter] = useState('pending');
   const [addOpen, setAddOpen] = useState(false);
 
@@ -47,6 +50,18 @@ const TasksPage = () => {
     queryKey: ['tasks', 'all'],
     queryFn: () => tasksApi.getTasks({ status: 'all' }).then((res) => res.tasks),
   });
+
+  const echo = useEcho();
+  useEffect(() => {
+    if (!echo) return undefined;
+
+    const channel = echo.channel('tasks');
+    const onUpdated = () => queryClient.invalidateQueries({ queryKey: ['tasks'] });
+
+    channel.listen('.TaskUpdatedEvent', onUpdated);
+
+    return () => channel.stopListening('.TaskUpdatedEvent', onUpdated);
+  }, [echo, queryClient]);
 
   const completedCount = allTasks.filter((t) => t.status === 'completed').length;
   const totalCount = allTasks.length;
@@ -193,8 +208,8 @@ const TasksPage = () => {
                   </div>
 
                   <button
-                    onClick={() => {
-                      if (window.confirm('هل تريد حذف هذه المهمة؟')) deleteTaskMutation.mutate(task.id);
+                    onClick={async () => {
+                      if (await confirm('هل تريد حذف هذه المهمة؟')) deleteTaskMutation.mutate(task.id);
                     }}
                     className="p-2 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all flex-shrink-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
                   >
@@ -216,6 +231,7 @@ const TasksPage = () => {
       </div>
 
       <AddTaskModal open={addOpen} onClose={() => setAddOpen(false)} />
+      {confirmDialog}
     </>
   );
 };

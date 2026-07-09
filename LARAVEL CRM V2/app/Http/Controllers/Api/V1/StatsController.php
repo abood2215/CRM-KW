@@ -57,8 +57,11 @@ class StatsController extends Controller
         }, 200, $headers);
     }
 
+    /** Cross-agent performance comparison — admin/manager only, not a peer-to-peer ranking agents should see. */
     public function agents(): JsonResponse
     {
+        $this->authorize('manage-settings');
+
         return response()->json(['agents' => $this->stats->agents()]);
     }
 

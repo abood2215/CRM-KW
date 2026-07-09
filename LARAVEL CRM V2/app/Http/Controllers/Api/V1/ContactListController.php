@@ -44,6 +44,8 @@ class ContactListController extends Controller
 
     public function update(UpdateContactListRequest $request, ContactList $contactList): JsonResponse
     {
+        $this->authorize('update', $contactList);
+
         $contactList->update($request->validated());
 
         return response()->json([
@@ -54,6 +56,8 @@ class ContactListController extends Controller
 
     public function destroy(ContactList $contactList): JsonResponse
     {
+        $this->authorize('delete', $contactList);
+
         ActivityLogger::record($contactList, 'delete', "حذف قائمة تواصل: {$contactList->name}");
         $contactList->contacts()->detach();
         $contactList->delete();
