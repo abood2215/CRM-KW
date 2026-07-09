@@ -24,7 +24,19 @@ import SettingsPage from './pages/settings/SettingsPage';
 import DrivePage from './pages/drive/DrivePage';
 import ActivityLogPage from './pages/activityLog/ActivityLogPage';
 
-const queryClient = new QueryClient();
+// Default react-query retries 3x with backoff even on 4xx — during a backend slowdown this
+// multiplies request volume across every mounted widget instead of failing fast.
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: (failureCount, error) => {
+        const status = error?.response?.status;
+        if (status && status >= 400 && status < 500) return false;
+        return failureCount < 2;
+      },
+    },
+  },
+});
 
 function App() {
   return (

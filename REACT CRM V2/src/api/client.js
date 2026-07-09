@@ -1,4 +1,5 @@
 import axios from 'axios';
+import toast from 'react-hot-toast';
 import { useAuthStore } from '../store/useAuthStore';
 
 const client = axios.create({
@@ -20,6 +21,7 @@ client.interceptors.request.use((config) => {
 });
 
 let isRedirectingToLogin = false;
+let rateLimitToastShownAt = 0;
 
 client.interceptors.response.use(
   (response) => response,
@@ -36,6 +38,13 @@ client.interceptors.response.use(
         isRedirectingToLogin = false;
         window.location.href = '/login';
       }, 200);
+    }
+
+    // A burst of failed queries can each hit this — show at most one toast per 10s
+    // instead of stacking duplicates, and make clear it's temporary (not a real error).
+    if (error.response?.status === 429 && Date.now() - rateLimitToastShownAt > 10000) {
+      rateLimitToastShownAt = Date.now();
+      toast.error('عدد كبير من الطلبات — انتظر لحظة وحاول مجدداً.');
     }
 
     return Promise.reject(error);

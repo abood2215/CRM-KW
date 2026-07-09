@@ -5,11 +5,14 @@ namespace App\Events;
 use App\Models\Message;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class NewMessageEvent implements ShouldBroadcast
+/** Broadcasts synchronously (not queued) — queuing this put it on the same
+ * database-backed queue as webhook/campaign jobs, and a burst of these
+ * (e.g. after a mass campaign) could starve that queue for minutes. */
+class NewMessageEvent implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 

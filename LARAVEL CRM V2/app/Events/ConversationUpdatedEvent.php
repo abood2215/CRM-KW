@@ -5,11 +5,14 @@ namespace App\Events;
 use App\Models\Conversation;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class ConversationUpdatedEvent implements ShouldBroadcast
+/** Broadcasts synchronously (not queued) — queuing this put it on the same
+ * database-backed queue as webhook/campaign jobs, and a burst of these
+ * (e.g. many conversations expiring in one scheduler tick) could starve that queue. */
+class ConversationUpdatedEvent implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 

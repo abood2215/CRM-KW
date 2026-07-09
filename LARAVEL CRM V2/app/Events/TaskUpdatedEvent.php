@@ -4,12 +4,13 @@ namespace App\Events;
 
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-/** Public signal-only event — the frontend just refetches its task list on receipt, no payload needed beyond identifying the task. */
-class TaskUpdatedEvent implements ShouldBroadcast
+/** Public signal-only event — the frontend just refetches its task list on receipt, no payload needed beyond identifying the task.
+ * Broadcasts synchronously (not queued) to avoid competing with webhook/campaign jobs on the shared database queue. */
+class TaskUpdatedEvent implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 

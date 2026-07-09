@@ -4,12 +4,13 @@ namespace App\Events;
 
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-/** Public signal-only event — covers both edits and pipeline-stage moves, since both go through the same update endpoint. */
-class ContactUpdatedEvent implements ShouldBroadcast
+/** Public signal-only event — covers both edits and pipeline-stage moves, since both go through the same update endpoint.
+ * Broadcasts synchronously (not queued) to avoid competing with webhook/campaign jobs on the shared database queue. */
+class ContactUpdatedEvent implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 

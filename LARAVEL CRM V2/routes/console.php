@@ -16,11 +16,11 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-Schedule::job(new ResetDailyLimitJob)->daily()->at('00:00');
+Schedule::job(new ResetDailyLimitJob)->daily()->at('00:00')->withoutOverlapping();
 
 Schedule::job(new ExpireConversationsJob)->everyThirtyMinutes()->withoutOverlapping();
 
-Schedule::job(new SyncTemplatesJob)->everySixHours();
+Schedule::job(new SyncTemplatesJob)->everySixHours()->withoutOverlapping();
 
 Schedule::job(new SendTaskRemindersJob)->dailyAt('08:00')->withoutOverlapping();
 

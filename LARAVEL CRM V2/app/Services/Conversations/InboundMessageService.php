@@ -35,58 +35,59 @@ class InboundMessageService
         }
 
         // De-dupe: Meta retries webhook delivery, and a lock avoids two concurrent jobs
-        // both passing the "does this message exist yet" check.
+        // both passing the "does this message exist yet" check. Released in `finally` —
+        // otherwise an exception here leaks the lock, and the job's automatic retry finds
+        // it still held and silently returns without ever completing the work (message loss).
         $lock = Cache::lock('wamsg-'.$waMessageId, 30);
         if (! $lock->get()) {
             return;
         }
 
-        // A reaction targets an existing message — attach it there directly instead of
-        // creating a floating message with no visible link to what was reacted to.
-        if ($messageType === 'reaction') {
-            $this->handleReaction($msgData);
+        try {
+            // A reaction targets an existing message — attach it there directly instead of
+            // creating a floating message with no visible link to what was reacted to.
+            if ($messageType === 'reaction') {
+                $this->handleReaction($msgData);
+
+                return;
+            }
+
+            if (Message::where('whatsapp_message_id', $waMessageId)->exists()) {
+                return;
+            }
+
+            $phone = PhoneNumber::normalize($fromPhone);
+            $content = $this->resolveContent($msgData, $messageType, $phoneNumberId);
+            $type = $this->normalizeType($messageType);
+
+            $contact = Contact::firstOrCreate(
+                ['phone' => $phone],
+                ['name' => $contactName ?? $phone, 'source' => 'whatsapp'],
+            );
+
+            if ($contactName && ($contact->name === $contact->phone || ! $contact->name)) {
+                $contact->update(['name' => $contactName]);
+            }
+
+            // A contact who messages us clearly hasn't blocked the business — clear any block.
+            $this->blacklistPolicy->clearIfMessaged($contact);
+
+            $conversation = $this->conversations->resolveForContact($contact);
+
+            $message = Message::create([
+                'conversation_id' => $conversation->id,
+                'whatsapp_message_id' => $waMessageId,
+                'content' => $content,
+                'type' => $type,
+                'direction' => 'in',
+                'is_private' => false,
+                'sender_name' => $contactName ?? $phone,
+                'status' => 'received',
+                'sent_at' => now(),
+            ]);
+        } finally {
             $lock->release();
-
-            return;
         }
-
-        if (Message::where('whatsapp_message_id', $waMessageId)->exists()) {
-            $lock->release();
-
-            return;
-        }
-
-        $phone = PhoneNumber::normalize($fromPhone);
-        $content = $this->resolveContent($msgData, $messageType, $phoneNumberId);
-        $type = $this->normalizeType($messageType);
-
-        $contact = Contact::firstOrCreate(
-            ['phone' => $phone],
-            ['name' => $contactName ?? $phone, 'source' => 'whatsapp'],
-        );
-
-        if ($contactName && ($contact->name === $contact->phone || ! $contact->name)) {
-            $contact->update(['name' => $contactName]);
-        }
-
-        // A contact who messages us clearly hasn't blocked the business — clear any block.
-        $this->blacklistPolicy->clearIfMessaged($contact);
-
-        $conversation = $this->conversations->resolveForContact($contact);
-
-        $message = Message::create([
-            'conversation_id' => $conversation->id,
-            'whatsapp_message_id' => $waMessageId,
-            'content' => $content,
-            'type' => $type,
-            'direction' => 'in',
-            'is_private' => false,
-            'sender_name' => $contactName ?? $phone,
-            'status' => 'received',
-            'sent_at' => now(),
-        ]);
-
-        $lock->release();
 
         $conversation->update([
             'last_message' => $content,

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Loader2, Save, Clock, BellRing, Users, UserCog, ShieldCheck } from 'lucide-react';
+import { Loader2, Save, Clock, BellRing, Users, UserCog, ShieldCheck, AlertTriangle } from 'lucide-react';
 import { settings as settingsApi } from '../../api';
 import { usePermission } from '../../hooks/usePermission';
 import { cn } from '../../utils/cn';
@@ -17,14 +17,25 @@ const TRIGGERS = [
 
 const SettingsPage = () => {
   const queryClient = useQueryClient();
+  const canManageSettings = usePermission('settings.manage');
   const canManageUsers = usePermission('users.manage');
   const canManageRoles = usePermission('roles.manage');
   const [tab, setTab] = useState('account');
   const [hours, setHours] = useState(null);
   const [replies, setReplies] = useState(null);
 
-  const { data: hoursData, isLoading: hoursLoading } = useQuery({ queryKey: ['business-hours'], queryFn: settingsApi.getBusinessHours });
-  const { data: repliesData, isLoading: repliesLoading } = useQuery({ queryKey: ['auto-replies'], queryFn: settingsApi.getAutoReplies });
+  const { data: hoursData, isLoading: hoursLoading, isError: hoursError } = useQuery({
+    queryKey: ['business-hours'],
+    queryFn: settingsApi.getBusinessHours,
+    enabled: canManageSettings,
+    retry: false,
+  });
+  const { data: repliesData, isLoading: repliesLoading, isError: repliesError } = useQuery({
+    queryKey: ['auto-replies'],
+    queryFn: settingsApi.getAutoReplies,
+    enabled: canManageSettings,
+    retry: false,
+  });
 
   useEffect(() => {
     if (hoursData) {
@@ -50,8 +61,8 @@ const SettingsPage = () => {
 
   const tabs = [
     { id: 'account', label: 'حسابي', icon: UserCog },
-    { id: 'hours', label: 'ساعات العمل', icon: Clock },
-    { id: 'replies', label: 'الردود التلقائية', icon: BellRing },
+    ...(canManageSettings ? [{ id: 'hours', label: 'ساعات العمل', icon: Clock }] : []),
+    ...(canManageSettings ? [{ id: 'replies', label: 'الردود التلقائية', icon: BellRing }] : []),
     ...(canManageUsers ? [{ id: 'users', label: 'إدارة المستخدمين', icon: Users }] : []),
     ...(canManageRoles ? [{ id: 'roles', label: 'الأدوار والصلاحيات', icon: ShieldCheck }] : []),
   ];
@@ -81,7 +92,12 @@ const SettingsPage = () => {
       {tab === 'account' && <AccountTab />}
 
       {tab === 'hours' && (
-        hoursLoading || !hours ? (
+        hoursError ? (
+          <div className="flex flex-col items-center gap-2 py-20 text-center">
+            <AlertTriangle className="text-rose-400" size={28} />
+            <p className="text-slate-500 text-sm font-bold">تعذّر تحميل ساعات العمل — حاول تحديث الصفحة.</p>
+          </div>
+        ) : hoursLoading || !hours ? (
           <div className="flex justify-center py-20"><Loader2 className="animate-spin text-indigo-600" size={28} /></div>
         ) : (
           <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
@@ -112,7 +128,12 @@ const SettingsPage = () => {
       )}
 
       {tab === 'replies' && (
-        repliesLoading || !replies ? (
+        repliesError ? (
+          <div className="flex flex-col items-center gap-2 py-20 text-center">
+            <AlertTriangle className="text-rose-400" size={28} />
+            <p className="text-slate-500 text-sm font-bold">تعذّر تحميل الردود التلقائية — حاول تحديث الصفحة.</p>
+          </div>
+        ) : repliesLoading || !replies ? (
           <div className="flex justify-center py-20"><Loader2 className="animate-spin text-indigo-600" size={28} /></div>
         ) : (
           <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">

@@ -5,11 +5,14 @@ namespace App\Events;
 use App\Models\Message;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class MessageStatusUpdatedEvent implements ShouldBroadcast
+/** Broadcasts synchronously (not queued) — a single Meta webhook call can carry
+ * dozens of batched delivery-status updates, each firing this; queuing them put
+ * that whole burst on the same database-backed queue as webhook/campaign jobs. */
+class MessageStatusUpdatedEvent implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 

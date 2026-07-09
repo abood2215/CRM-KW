@@ -30,7 +30,6 @@ class AutoReplyService
 
         $number = WhatsappNumber::where('api_type', 'cloud')->where('status', 'connected')->first();
         if (! $number || ! $number->access_token) {
-            Cache::forget($cooldownKey);
             Log::warning('[AutoReplyService] no connected Cloud API number for auto-reply');
 
             return;
@@ -56,7 +55,9 @@ class AutoReplyService
 
             Log::info('[AutoReplyService] sent', ['trigger' => $autoReply->trigger]);
         } catch (\Exception $e) {
-            Cache::forget($cooldownKey);
+            // Deliberately NOT clearing the cooldown here — during a WhatsApp API outage,
+            // every subsequent qualifying inbound message would otherwise retry this same
+            // blocking send attempt with no cooldown at all, backing up the queue worker.
             Log::error('[AutoReplyService] failed', ['error' => $e->getMessage()]);
         }
     }

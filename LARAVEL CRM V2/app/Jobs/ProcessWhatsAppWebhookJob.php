@@ -20,6 +20,13 @@ class ProcessWhatsAppWebhookJob implements ShouldQueue
     {
     }
 
+    /** Without this, a payload that always throws retries near-instantly, competing with
+     * everything else on the single-worker queue instead of backing off. */
+    public function backoff(): array
+    {
+        return [5, 15, 30];
+    }
+
     public function handle(InboundMessageService $inbound, MessageStatusUpdateService $statusUpdates): void
     {
         foreach ($this->payload['entry'] ?? [] as $entry) {
