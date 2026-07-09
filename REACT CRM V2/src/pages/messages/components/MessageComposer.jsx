@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Send, Smile, Paperclip, Lock, Loader2, FileText, Zap, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -11,17 +11,32 @@ const MessageComposer = ({ onSend, isSending, onOpenTemplatePicker }) => {
   const queryClient = useQueryClient();
   const [text, setText] = useState('');
   const [isPrivate, setIsPrivate] = useState(false);
-  const [showEmoji, setShowEmoji] = useState(false);
-  const [showCanned, setShowCanned] = useState(false);
+  const [openPopover, setOpenPopover] = useState(null); // null | 'emoji' | 'canned'
   const [addingCanned, setAddingCanned] = useState(false);
   const [newCanned, setNewCanned] = useState({ title: '', content: '' });
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef(null);
+  const toolbarRef = useRef(null);
+
+  // Closes any open popover when clicking outside the toolbar — a full-screen backdrop
+  // would also intercept clicks meant for the OTHER trigger buttons in this same row.
+  useEffect(() => {
+    if (!openPopover) return undefined;
+
+    const handleClickOutside = (e) => {
+      if (toolbarRef.current && !toolbarRef.current.contains(e.target)) {
+        setOpenPopover(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [openPopover]);
 
   const { data: cannedResponses = [] } = useQuery({
     queryKey: ['canned-responses'],
     queryFn: cannedResponsesApi.getCannedResponses,
-    enabled: showCanned,
+    enabled: openPopover === 'canned',
   });
 
   const createCannedMutation = useMutation({
@@ -81,7 +96,7 @@ const MessageComposer = ({ onSend, isSending, onOpenTemplatePicker }) => {
             : 'border-slate-200 bg-slate-50 focus-within:border-indigo-300 focus-within:bg-white focus-within:ring-4 focus-within:ring-indigo-500/10'
         )}
       >
-        <div className="flex gap-0.5 flex-shrink-0">
+        <div ref={toolbarRef} className="flex gap-0.5 flex-shrink-0">
           <button
             type="button"
             onClick={() => setIsPrivate((p) => !p)}
@@ -94,11 +109,16 @@ const MessageComposer = ({ onSend, isSending, onOpenTemplatePicker }) => {
             <FileText size={16} />
           </button>
           <div className="relative">
-            <button type="button" onClick={() => setShowCanned((s) => !s)} className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-200/60 hover:text-slate-600 transition-colors" title="ردود جاهزة">
+            <button
+              type="button"
+              onClick={() => setOpenPopover((p) => (p === 'canned' ? null : 'canned'))}
+              className={cn('w-9 h-9 rounded-xl flex items-center justify-center transition-colors', openPopover === 'canned' ? 'bg-indigo-100 text-indigo-600' : 'text-slate-400 hover:bg-slate-200/60 hover:text-slate-600')}
+              title="ردود جاهزة"
+            >
               <Zap size={16} />
             </button>
-            {showCanned && (
-              <div className="absolute bottom-11 right-0 bg-white border border-slate-200 rounded-xl shadow-lg p-2 w-64 max-h-80 overflow-y-auto z-10">
+            {openPopover === 'canned' && (
+              <div className="absolute bottom-11 right-0 bg-white border border-slate-200 rounded-xl shadow-lg p-2 w-64 max-h-80 overflow-y-auto z-20">
                 {addingCanned ? (
                   <div className="p-1.5 space-y-2">
                     <input
@@ -138,7 +158,7 @@ const MessageComposer = ({ onSend, isSending, onOpenTemplatePicker }) => {
                       cannedResponses.map((r) => (
                         <button
                           key={r.id}
-                          onClick={() => { setText(r.content); setShowCanned(false); }}
+                          onClick={() => { setText(r.content); setOpenPopover(null); }}
                           className="w-full text-right p-2.5 rounded-lg hover:bg-indigo-50/50 transition-colors"
                         >
                           <p className="text-xs font-bold text-slate-800 truncate">{r.title}</p>
@@ -159,13 +179,18 @@ const MessageComposer = ({ onSend, isSending, onOpenTemplatePicker }) => {
             )}
           </div>
           <div className="relative">
-            <button type="button" onClick={() => setShowEmoji((s) => !s)} className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-200/60 hover:text-slate-600 transition-colors" title="إيموجي">
+            <button
+              type="button"
+              onClick={() => setOpenPopover((p) => (p === 'emoji' ? null : 'emoji'))}
+              className={cn('w-9 h-9 rounded-xl flex items-center justify-center transition-colors', openPopover === 'emoji' ? 'bg-indigo-100 text-indigo-600' : 'text-slate-400 hover:bg-slate-200/60 hover:text-slate-600')}
+              title="إيموجي"
+            >
               <Smile size={16} />
             </button>
-            {showEmoji && (
-              <div className="absolute bottom-11 right-0 bg-white border border-slate-200 rounded-xl shadow-lg p-2 grid grid-cols-5 gap-1 z-10">
+            {openPopover === 'emoji' && (
+              <div className="absolute bottom-11 right-0 w-48 bg-white border border-slate-200 rounded-xl shadow-lg p-2 grid grid-cols-5 gap-1 z-20">
                 {COMMON_EMOJIS.map((emoji) => (
-                  <button key={emoji} onClick={() => { setText((t) => t + emoji); setShowEmoji(false); }} className="text-lg hover:bg-slate-50 rounded p-1">
+                  <button key={emoji} onClick={() => { setText((t) => t + emoji); setOpenPopover(null); }} className="text-lg hover:bg-slate-100 rounded-lg p-1.5 transition-colors">
                     {emoji}
                   </button>
                 ))}
