@@ -22,6 +22,13 @@ class ConversationUpdatedEvent implements ShouldBroadcast
         return [new Channel('conversations')];
     }
 
+    /** Without this, Laravel broadcasts the FQCN as the wire event name, which never matches
+     * the frontend's `.ConversationUpdatedEvent` listener. */
+    public function broadcastAs(): string
+    {
+        return 'ConversationUpdatedEvent';
+    }
+
     public function broadcastWith(): array
     {
         return [

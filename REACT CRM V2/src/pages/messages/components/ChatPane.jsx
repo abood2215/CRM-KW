@@ -25,14 +25,16 @@ const ChatPane = ({ conversationId, onBack, className }) => {
       <ChatHeader conversation={conversation} onUpdateStatus={updateStatus} onAssign={assignConversation} onBack={onBack} />
 
       <div className="flex-1 overflow-y-auto p-5">
-        {isLoading ? (
-          <div className="flex justify-center py-10"><Loader2 className="animate-spin text-indigo-600" size={24} /></div>
-        ) : (
-          <>
-            {messages.map((m) => <MessageBubble key={m.id} message={m} />)}
-            <div ref={bottomRef} />
-          </>
-        )}
+        <div className="max-w-3xl mx-auto">
+          {isLoading ? (
+            <div className="flex justify-center py-10"><Loader2 className="animate-spin text-indigo-600" size={24} /></div>
+          ) : (
+            <>
+              {messages.map((m) => <MessageBubble key={m.id} message={m} />)}
+              <div ref={bottomRef} />
+            </>
+          )}
+        </div>
       </div>
 
       <MessageComposer onSend={sendMessage} isSending={isSending} onOpenTemplatePicker={() => setTemplatePickerOpen(true)} />

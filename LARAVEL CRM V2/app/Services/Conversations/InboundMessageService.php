@@ -78,17 +78,25 @@ class InboundMessageService
 
         $lock->release();
 
-        $conversation->update([
-            'last_message' => $content,
-            'last_message_at' => now(),
-            'unread_count' => $conversation->unread_count + 1,
-        ]);
+        // A reaction isn't a new message needing attention — keep the conversation's
+        // last-message preview/unread badge tied to the last real message instead.
+        $isReaction = $type === 'reaction';
+
+        if (! $isReaction) {
+            $conversation->update([
+                'last_message' => $content,
+                'last_message_at' => now(),
+                'unread_count' => $conversation->unread_count + 1,
+            ]);
+        }
 
         event(new NewMessageEvent($message));
         event(new ConversationUpdatedEvent($conversation->fresh()));
 
-        $this->replyAttribution->attribute($phone);
-        $this->autoReply->maybeReply($conversation, $phone);
+        if (! $isReaction) {
+            $this->replyAttribution->attribute($phone);
+            $this->autoReply->maybeReply($conversation, $phone);
+        }
     }
 
     private function resolveContent(array $msgData, string $type, ?string $phoneNumberId): string
@@ -130,6 +138,7 @@ class InboundMessageService
             'video' => 'video',
             'audio' => 'audio',
             'document' => 'file',
+            'reaction' => 'reaction',
             default => 'text',
         };
     }

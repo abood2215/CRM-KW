@@ -1,5 +1,5 @@
 import React from 'react';
-import { Check, CheckCheck, AlertCircle, Lock } from 'lucide-react';
+import { Check, CheckCheck, AlertCircle, Lock, FileText, Download, Heart } from 'lucide-react';
 import { cn } from '../../../utils/cn';
 
 const STATUS_META = {
@@ -24,6 +24,17 @@ const MessageBubble = ({ message }) => {
     );
   }
 
+  if (message.type === 'reaction') {
+    return (
+      <div className="flex justify-center my-2">
+        <div className="bg-slate-100 text-slate-500 text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5">
+          <Heart size={11} />
+          {message.content}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={cn('flex mb-2', isOut ? 'justify-start' : 'justify-end')}>
       <div
@@ -37,6 +48,24 @@ const MessageBubble = ({ message }) => {
         )}
         {message.type === 'image' ? (
           <img src={message.content} alt="" className="rounded-lg max-w-full" />
+        ) : message.type === 'audio' ? (
+          <audio controls src={message.content} className="max-w-full" />
+        ) : message.type === 'video' ? (
+          <video controls src={message.content} className="rounded-lg max-w-full max-h-72" />
+        ) : message.type === 'file' ? (
+          <a
+            href={message.content}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(
+              'flex items-center gap-2 rounded-lg px-3 py-2 -mx-1 hover:opacity-80 transition-opacity',
+              isOut ? 'bg-white/10' : 'bg-slate-50'
+            )}
+          >
+            <FileText size={18} className="flex-shrink-0" />
+            <span className="truncate flex-1">مستند مرفق</span>
+            <Download size={14} className="flex-shrink-0" />
+          </a>
         ) : (
           <p className="whitespace-pre-wrap break-words">{message.content}</p>
         )}

@@ -85,19 +85,22 @@ class ConversationController extends Controller
         $conversation = $this->conversations->resolveForContact($contact);
 
         $number = WhatsappNumber::where('api_type', 'cloud')->where('status', 'connected')->first();
-        $waMessageId = null;
 
-        if ($number) {
-            try {
-                $sender = WhatsAppSenderFactory::make($number);
-                $result = $request->template_name
-                    ? $sender->sendTemplate($contact->phone, $request->template_name, $request->template_language ?? 'ar', $this->buildComponents($request->variables ?? []))
-                    : $sender->sendMessage($contact->phone, $request->message);
-                $waMessageId = $result['messages'][0]['id'] ?? null;
-                $number->incrementSent();
-            } catch (\Exception $e) {
-                Log::error('[ConversationController] send failed', ['error' => $e->getMessage()]);
-            }
+        if (! $number) {
+            return response()->json(['message' => 'لا يوجد رقم واتساب متصل حالياً لإرسال الرسالة.'], 422);
+        }
+
+        try {
+            $sender = WhatsAppSenderFactory::make($number);
+            $result = $request->template_name
+                ? $sender->sendTemplate($contact->phone, $request->template_name, $request->template_language ?? 'ar', $this->buildComponents($request->variables ?? []))
+                : $sender->sendMessage($contact->phone, $request->message);
+            $waMessageId = $result['messages'][0]['id'] ?? null;
+            $number->incrementSent();
+        } catch (\Exception $e) {
+            Log::error('[ConversationController] send failed', ['error' => $e->getMessage()]);
+
+            return response()->json(['message' => $e->getMessage()], 422);
         }
 
         $this->conversations->recordOutboundMessage($conversation, $request->message, $waMessageId, $request->user()->name);
@@ -117,7 +120,11 @@ class ConversationController extends Controller
         $this->authorize('view', $conversation);
 
         $conversation->load(['contact', 'assignedUser'])->loadCount('messages');
-        $conversation->update(['unread_count' => 0]);
+
+        if ($conversation->unread_count !== 0) {
+            $conversation->update(['unread_count' => 0]);
+            event(new ConversationUpdatedEvent($conversation->fresh()));
+        }
 
         return response()->json(['conversation' => new ConversationResource($conversation)]);
     }

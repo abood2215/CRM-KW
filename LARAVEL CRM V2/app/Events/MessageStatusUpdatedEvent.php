@@ -25,6 +25,13 @@ class MessageStatusUpdatedEvent implements ShouldBroadcast
         ];
     }
 
+    /** Without this, Laravel broadcasts the FQCN as the wire event name, which never matches
+     * the frontend's `.MessageStatusUpdatedEvent` listener. */
+    public function broadcastAs(): string
+    {
+        return 'MessageStatusUpdatedEvent';
+    }
+
     public function broadcastWith(): array
     {
         return [

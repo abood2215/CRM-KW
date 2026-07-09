@@ -25,6 +25,13 @@ class NewMessageEvent implements ShouldBroadcast
         ];
     }
 
+    /** Without this, Laravel broadcasts the FQCN (App\Events\NewMessageEvent) as the wire event
+     * name instead of this bare string, which never matches the frontend's `.NewMessageEvent` listener. */
+    public function broadcastAs(): string
+    {
+        return 'NewMessageEvent';
+    }
+
     public function broadcastWith(): array
     {
         return [

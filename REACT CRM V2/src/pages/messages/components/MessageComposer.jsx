@@ -73,7 +73,7 @@ const MessageComposer = ({ onSend, isSending, onOpenTemplatePicker }) => {
           ملاحظة داخلية (لن تُرسل للعميل)
         </div>
       )}
-      <div className="flex items-end gap-2">
+      <div className="flex items-end gap-2 max-w-3xl mx-auto">
         <div className="flex gap-1">
           <button
             type="button"

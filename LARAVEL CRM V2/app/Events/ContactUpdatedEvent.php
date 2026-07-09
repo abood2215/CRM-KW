@@ -22,6 +22,13 @@ class ContactUpdatedEvent implements ShouldBroadcast
         return [new Channel('contacts')];
     }
 
+    /** Without this, Laravel broadcasts the FQCN as the wire event name, which never matches
+     * the frontend's `.ContactUpdatedEvent` listener. */
+    public function broadcastAs(): string
+    {
+        return 'ContactUpdatedEvent';
+    }
+
     public function broadcastWith(): array
     {
         return ['id' => $this->contactId];

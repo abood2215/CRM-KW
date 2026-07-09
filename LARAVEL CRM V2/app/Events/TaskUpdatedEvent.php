@@ -22,6 +22,13 @@ class TaskUpdatedEvent implements ShouldBroadcast
         return [new Channel('tasks')];
     }
 
+    /** Without this, Laravel broadcasts the FQCN as the wire event name, which never matches
+     * the frontend's `.TaskUpdatedEvent` listener. */
+    public function broadcastAs(): string
+    {
+        return 'TaskUpdatedEvent';
+    }
+
     public function broadcastWith(): array
     {
         return ['id' => $this->taskId];

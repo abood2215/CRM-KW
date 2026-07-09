@@ -61,14 +61,15 @@ class AutoReplyService
         }
     }
 
+    /**
+     * "First message" and "outside hours" are independent conditions, not an either/or —
+     * a message can be both, or a business with no business_hours rows configured for today
+     * (isWithinBusinessHours() defaults to false = "outside hours") would otherwise permanently
+     * block the first_message trigger from ever being reached. Check first_message first since
+     * it's the more specific/welcoming case; fall back to outside_hours independently.
+     */
     private function resolveApplicableAutoReply(Conversation $conversation): ?AutoReply
     {
-        $isOutsideHours = ! $this->isWithinBusinessHours();
-
-        if ($isOutsideHours) {
-            return AutoReply::where('trigger', 'outside_hours')->where('is_active', true)->first();
-        }
-
         // "first message" trigger — skip if we've messaged this contact recently, or already sent this before.
         $recentOutgoing = Message::where('conversation_id', $conversation->id)
             ->where('direction', 'out')
@@ -76,26 +77,31 @@ class AutoReplyService
             ->where('created_at', '>=', now()->subHours(24))
             ->exists();
 
-        if ($recentOutgoing) {
-            return null;
+        if (! $recentOutgoing) {
+            $contactId = $conversation->contact_id;
+            $alreadyReceived = $contactId
+                ? Message::where('direction', 'out')
+                    ->where('sender_name', 'Auto Reply')
+                    ->whereHas('conversation', fn ($q) => $q->where('contact_id', $contactId))
+                    ->exists()
+                : Message::where('direction', 'out')
+                    ->where('sender_name', 'Auto Reply')
+                    ->where('conversation_id', $conversation->id)
+                    ->exists();
+
+            if (! $alreadyReceived) {
+                $firstMessageReply = AutoReply::where('trigger', 'first_message')->where('is_active', true)->first();
+                if ($firstMessageReply) {
+                    return $firstMessageReply;
+                }
+            }
         }
 
-        $contactId = $conversation->contact_id;
-        $alreadyReceived = $contactId
-            ? Message::where('direction', 'out')
-                ->where('sender_name', 'Auto Reply')
-                ->whereHas('conversation', fn ($q) => $q->where('contact_id', $contactId))
-                ->exists()
-            : Message::where('direction', 'out')
-                ->where('sender_name', 'Auto Reply')
-                ->where('conversation_id', $conversation->id)
-                ->exists();
-
-        if ($alreadyReceived) {
-            return null;
+        if (! $this->isWithinBusinessHours()) {
+            return AutoReply::where('trigger', 'outside_hours')->where('is_active', true)->first();
         }
 
-        return AutoReply::where('trigger', 'first_message')->where('is_active', true)->first();
+        return null;
     }
 
     private function isWithinBusinessHours(): bool
