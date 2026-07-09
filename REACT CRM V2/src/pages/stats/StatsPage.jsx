@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
-  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip,
   LineChart, Line, Cell, PieChart, Pie,
 } from 'recharts';
 import { Loader2, Users, Target, PhoneCall, Clock, Download, Phone } from 'lucide-react';
@@ -29,6 +29,13 @@ const SOURCE_COLORS = {
   google: '#3b82f6',
 };
 const PALETTE = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#3b82f6', '#8b5cf6'];
+
+const formatResponseTime = (minutes) => {
+  if (minutes == null) return '—';
+  if (minutes < 60) return `${minutes} دقيقة`;
+  if (minutes < 1440) return `${(minutes / 60).toFixed(1)} ساعة`;
+  return `${(minutes / 1440).toFixed(1)} يوم`;
+};
 
 const StatsPage = () => {
   const [range, setRange] = useState('week');
@@ -107,7 +114,7 @@ const StatsPage = () => {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { icon: Users, label: 'إجمالي العملاء', value: stats?.total_clients ?? '—', color: 'text-indigo-600 bg-indigo-50' },
-          { icon: Clock, label: 'سرعة الرد', value: stats?.avg_response_minutes != null ? `${stats.avg_response_minutes} دقيقة` : '—', color: 'text-emerald-600 bg-emerald-50' },
+          { icon: Clock, label: 'سرعة الرد', value: formatResponseTime(stats?.avg_response_minutes), color: 'text-emerald-600 bg-emerald-50' },
           { icon: Target, label: 'أفضل مصدر', value: stats?.top_source ?? '—', color: 'text-amber-600 bg-amber-50' },
           { icon: PhoneCall, label: 'معدل الحجوزات', value: `${stats?.booking_rate ?? 0}%`, color: 'text-rose-600 bg-rose-50' },
         ].map(({ icon: Icon, label, value, color }) => (
@@ -142,19 +149,29 @@ const StatsPage = () => {
           {agentData.length === 0 ? (
             <div className="flex items-center justify-center h-[260px] text-slate-400 text-sm">لا توجد بيانات</div>
           ) : (
-            <ResponsiveContainer width="100%" height={260}>
-              <BarChart data={agentData} layout="vertical" margin={{ left: 10 }}>
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
-                <XAxis type="number" hide allowDecimals={false} />
-                <YAxis axisLine={false} tickLine={false} dataKey="name" type="category" tick={{ fill: '#475569', fontSize: 12, fontWeight: 700 }} width={70} />
-                <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }} />
-                <Bar dataKey="deals" radius={[0, 8, 8, 0]} barSize={22}>
-                  {agentData.map((_, index) => (
-                    <Cell key={index} fill={index % 2 === 0 ? '#6366f1' : '#ec4899'} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+            <div className="space-y-4">
+              {agentData.map((a, i) => {
+                const max = Math.max(...agentData.map((x) => x.deals), 1);
+                const pct = (a.deals / max) * 100;
+
+                return (
+                  <div key={a.name}>
+                    <div className="flex items-center justify-between gap-3 mb-1.5">
+                      <span className="text-xs font-bold text-slate-700 truncate">{a.name}</span>
+                      <span className="text-xs font-black text-slate-800 flex-shrink-0">{a.deals}</span>
+                    </div>
+                    <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                      {a.deals > 0 && (
+                        <div
+                          className={cn('h-full rounded-full', i % 2 === 0 ? 'bg-indigo-500' : 'bg-rose-400')}
+                          style={{ width: `${pct}%` }}
+                        />
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
         )}
