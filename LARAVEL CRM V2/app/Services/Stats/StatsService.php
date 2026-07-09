@@ -108,7 +108,7 @@ class StatsService
         return $agents->map(fn ($u) => [
             'id' => $u->id,
             'name' => $u->name,
-            'role' => $u->role->value,
+            'role' => $u->role->name,
             'is_online' => $u->isOnline(),
             'clients_count' => $u->contacts_count,
             'pending_tasks_count' => $u->tasks_count,

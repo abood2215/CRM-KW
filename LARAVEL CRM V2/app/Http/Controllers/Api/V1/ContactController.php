@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\ContactPipelineStage;
-use App\Enums\UserRole;
 use App\Events\ContactUpdatedEvent;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Contact\ImportContactsCsvRequest;
@@ -31,7 +30,7 @@ class ContactController extends Controller
     {
         $query = ContactPolicy::scopeVisibleTo(Contact::with('user')->withCount('tasks'), $request->user());
 
-        if ($request->user()->role !== UserRole::Agent && $request->has('user_id')) {
+        if ($request->user()->hasPermission('contacts.view_all') && $request->has('user_id')) {
             $query->where('user_id', $request->user_id);
         }
 

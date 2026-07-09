@@ -2,7 +2,6 @@
 
 namespace App\Services\Contacts;
 
-use App\Enums\UserRole;
 use App\Models\Contact;
 use App\Models\User;
 use App\Services\Activity\ActivityLogger;
@@ -11,7 +10,7 @@ class ContactService
 {
     public function create(array $data, User $actor): Contact
     {
-        if ($actor->role === UserRole::Agent || ! isset($data['user_id'])) {
+        if (! $actor->hasPermission('contacts.view_all') || ! isset($data['user_id'])) {
             $data['user_id'] = $actor->id;
         }
 
@@ -24,7 +23,7 @@ class ContactService
 
     public function update(Contact $contact, array $data, User $actor): Contact
     {
-        if ($actor->role === UserRole::Agent) {
+        if (! $actor->hasPermission('contacts.view_all')) {
             unset($data['user_id']);
         }
 

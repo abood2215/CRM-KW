@@ -14,16 +14,16 @@ class WhatsappNumberPolicy
 
     public function create(User $user): bool
     {
-        return $user->isAdmin();
+        return $user->hasPermission('whatsapp_numbers.manage');
     }
 
     public function update(User $user, WhatsappNumber $number): bool
     {
-        return $user->isAdmin();
+        return $user->hasPermission('whatsapp_numbers.manage');
     }
 
     public function delete(User $user, WhatsappNumber $number): bool
     {
-        return $user->isAdmin();
+        return $user->hasPermission('whatsapp_numbers.manage');
     }
 }

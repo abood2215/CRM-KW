@@ -2,7 +2,6 @@
 
 namespace App\Policies;
 
-use App\Enums\UserRole;
 use App\Models\ContactList;
 use App\Models\User;
 
@@ -27,7 +26,7 @@ class ContactListPolicy
     /** Agents can only edit/delete their own lists — admins/managers can manage any. */
     public function update(User $user, ContactList $contactList): bool
     {
-        return $user->role !== UserRole::Agent || $contactList->user_id === $user->id;
+        return $user->hasPermission('contact_lists.manage_others') || $contactList->user_id === $user->id;
     }
 
     public function delete(User $user, ContactList $contactList): bool

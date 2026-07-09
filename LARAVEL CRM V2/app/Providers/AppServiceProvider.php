@@ -7,6 +7,7 @@ use App\Models\Contact;
 use App\Models\ContactList;
 use App\Models\Conversation;
 use App\Models\Message;
+use App\Models\Role;
 use App\Models\Task;
 use App\Models\User;
 use App\Models\WhatsappNumber;
@@ -40,10 +41,11 @@ class AppServiceProvider extends ServiceProvider
             'whatsapp_number' => WhatsappNumber::class,
             'conversation' => Conversation::class,
             'message' => Message::class,
+            'role' => Role::class,
         ]);
 
         // Route-group-level authorization (not tied to a model instance, so a Policy
-        // doesn't apply) — the modern replacement for the old app's RoleMiddleware.
-        Gate::define('manage-settings', fn (User $user) => $user->isAdmin() || $user->isManager());
+        // doesn't apply) — checks a permission key by name against the user's role.
+        Gate::define('permission', fn (User $user, string $key) => $user->hasPermission($key));
     }
 }

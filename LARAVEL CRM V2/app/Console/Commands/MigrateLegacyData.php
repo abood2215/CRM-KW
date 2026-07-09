@@ -181,6 +181,7 @@ class MigrateLegacyData extends Command
     {
         $this->info('Migrating users...');
         $rows = $this->legacy('users')->get();
+        $roleIds = DB::table('roles')->pluck('id', 'slug');
 
         foreach ($rows as $row) {
             $existing = DB::table('users')->where('email', $row->email)->first();
@@ -195,7 +196,7 @@ class MigrateLegacyData extends Command
                 'name' => $row->name,
                 'email' => $row->email,
                 'password' => $row->password,
-                'role' => $row->role ?? 'agent',
+                'role_id' => $roleIds[$row->role ?? 'agent'] ?? $roleIds['agent'],
                 'avatar' => $row->avatar ?? null,
                 'phone' => $row->phone ?? null,
                 'last_seen_at' => $row->last_seen_at ?? null,

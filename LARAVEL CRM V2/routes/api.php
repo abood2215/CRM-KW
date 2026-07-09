@@ -11,6 +11,8 @@ use App\Http\Controllers\Api\V1\FileController;
 use App\Http\Controllers\Api\V1\GlobalSearchController;
 use App\Http\Controllers\Api\V1\MessageController;
 use App\Http\Controllers\Api\V1\NotificationController;
+use App\Http\Controllers\Api\V1\PermissionController;
+use App\Http\Controllers\Api\V1\RoleController;
 use App\Http\Controllers\Api\V1\SettingsController;
 use App\Http\Controllers\Api\V1\StatsController;
 use App\Http\Controllers\Api\V1\TaskController;
@@ -118,10 +120,17 @@ Route::middleware(['auth:sanctum', 'update.last.seen', 'throttle:60,1'])->group(
     Route::put('/users/{user}', [UserController::class, 'update']);
     Route::delete('/users/{user}', [UserController::class, 'destroy']);
 
-    Route::middleware('can:manage-settings')->prefix('settings')->group(function () {
+    // The `can:` middleware only treats a bare argument as a literal string when quoted —
+    // otherwise it tries to resolve it as a route parameter and silently passes null.
+    Route::middleware("can:permission,'settings.manage'")->prefix('settings')->group(function () {
         Route::get('/business-hours', [SettingsController::class, 'getBusinessHours']);
         Route::put('/business-hours', [SettingsController::class, 'updateBusinessHours']);
         Route::get('/auto-replies', [SettingsController::class, 'getAutoReplies']);
         Route::put('/auto-replies', [SettingsController::class, 'updateAutoReplies']);
+    });
+
+    Route::middleware("can:permission,'roles.manage'")->group(function () {
+        Route::apiResource('roles', RoleController::class)->except(['show']);
+        Route::get('/permissions', [PermissionController::class, 'index']);
     });
 });

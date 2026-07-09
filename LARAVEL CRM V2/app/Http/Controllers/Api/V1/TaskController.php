@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Enums\UserRole;
 use App\Events\TaskUpdatedEvent;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Task\StoreTaskRequest;
@@ -64,7 +63,7 @@ class TaskController extends Controller
         $data = $request->validated();
         $user = $request->user();
 
-        if ($user->role === UserRole::Agent || ! isset($data['user_id'])) {
+        if (! $user->hasPermission('tasks.view_all') || ! isset($data['user_id'])) {
             $data['user_id'] = $user->id;
         }
 
@@ -85,7 +84,7 @@ class TaskController extends Controller
 
         $data = $request->validated();
 
-        if ($request->user()->role === UserRole::Agent) {
+        if (! $request->user()->hasPermission('tasks.view_all')) {
             unset($data['user_id']);
         }
 

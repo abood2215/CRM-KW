@@ -2,12 +2,11 @@ import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { CheckCircle2, RotateCcw, Megaphone, ChevronRight, UserCircle2, ChevronDown } from 'lucide-react';
 import { users as usersApi } from '../../../api';
-import { useAuthStore } from '../../../store/useAuthStore';
+import { usePermission } from '../../../hooks/usePermission';
 
 const AssigneePicker = ({ conversation, onAssign }) => {
   const [open, setOpen] = useState(false);
-  const currentUser = useAuthStore((s) => s.user);
-  const canAssign = currentUser?.role !== 'agent';
+  const canAssign = usePermission('conversations.assign');
 
   const { data: users = [] } = useQuery({
     queryKey: ['users-select'],

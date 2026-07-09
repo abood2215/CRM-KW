@@ -12,7 +12,7 @@ class ActivityLogController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $this->authorize('manage-settings');
+        $this->authorize('permission', 'activity_log.view');
 
         $query = ActivityLog::with('user')->orderByDesc('created_at');
 

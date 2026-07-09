@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Enums\UserRole;
 use App\Events\ConversationUpdatedEvent;
 use App\Events\NewMessageEvent;
 use App\Http\Controllers\Controller;
@@ -39,7 +38,7 @@ class ConversationController extends Controller
             $query->where('status', $request->status);
         }
 
-        if ($request->user()->role !== UserRole::Agent && $request->has('assigned_user_id')) {
+        if ($request->user()->hasPermission('conversations.view_all') && $request->has('assigned_user_id')) {
             $query->where('assigned_user_id', $request->assigned_user_id);
         }
 

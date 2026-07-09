@@ -13,16 +13,16 @@ class UserPolicy
 
     public function create(User $user): bool
     {
-        return $user->isAdmin();
+        return $user->hasPermission('users.manage');
     }
 
     public function update(User $user, User $target): bool
     {
-        return $user->isAdmin();
+        return $user->hasPermission('users.manage');
     }
 
     public function delete(User $user, User $target): bool
     {
-        return $user->isAdmin() && $user->id !== $target->id;
+        return $user->hasPermission('users.manage') && $user->id !== $target->id;
     }
 }

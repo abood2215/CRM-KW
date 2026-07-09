@@ -2,17 +2,16 @@
 
 namespace App\Policies;
 
-use App\Enums\UserRole;
 use App\Models\Task;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 
 class TaskPolicy
 {
-    /** Agents only see tasks they own; admins/managers see everything. */
+    /** Users without tasks.view_all only see tasks they own. */
     public static function scopeVisibleTo(Builder $query, User $user): Builder
     {
-        if ($user->role === UserRole::Agent) {
+        if (! $user->hasPermission('tasks.view_all')) {
             return $query->where('user_id', $user->id);
         }
 
@@ -26,7 +25,7 @@ class TaskPolicy
 
     public function view(User $user, Task $task): bool
     {
-        return $user->role !== UserRole::Agent || $task->user_id === $user->id;
+        return $user->hasPermission('tasks.view_all') || $task->user_id === $user->id;
     }
 
     public function create(User $user): bool
@@ -36,16 +35,11 @@ class TaskPolicy
 
     public function update(User $user, Task $task): bool
     {
-        return $user->role !== UserRole::Agent || $task->user_id === $user->id;
+        return $user->hasPermission('tasks.view_all') || $task->user_id === $user->id;
     }
 
     public function delete(User $user, Task $task): bool
     {
-        return $user->role !== UserRole::Agent || $task->user_id === $user->id;
-    }
-
-    public function reassign(User $user): bool
-    {
-        return $user->role !== UserRole::Agent;
+        return $user->hasPermission('tasks.view_all') || $task->user_id === $user->id;
     }
 }

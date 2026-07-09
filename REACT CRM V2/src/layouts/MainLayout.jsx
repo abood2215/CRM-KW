@@ -67,8 +67,6 @@ const NAV_GROUPS = [
   },
 ];
 
-const ROLE_LABELS = { admin: 'مدير النظام', manager: 'مشرف', agent: 'موظف' };
-
 const NavItem = ({ to, label, icon: Icon, end, unreadCount, color, onClick }) => {
   const styles = COLOR_STYLES[color] ?? COLOR_STYLES.gray;
 
@@ -180,7 +178,7 @@ const MainLayout = () => {
   };
 
   const initial = user?.name?.trim()?.charAt(0)?.toUpperCase() ?? '؟';
-  const roleLabel = ROLE_LABELS[user?.role] ?? user?.role;
+  const roleLabel = user?.role?.name;
 
   return (
     <div className="min-h-screen flex bg-slate-50">

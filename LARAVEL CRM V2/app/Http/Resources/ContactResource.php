@@ -17,7 +17,7 @@ class ContactResource extends JsonResource
             'source' => $this->source,
             'tags' => $this->tags,
             'service' => $this->service,
-            'budget' => $this->budget,
+            'budget' => $request->user()->hasPermission('contacts.view_budget') ? $this->budget : null,
             'pipeline_stage' => $this->pipeline_stage?->value,
             'pipeline_stage_label' => $this->pipeline_stage?->label(),
             'notes' => $this->notes,

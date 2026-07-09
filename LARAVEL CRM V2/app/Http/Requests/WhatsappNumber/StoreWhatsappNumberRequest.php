@@ -8,7 +8,7 @@ class StoreWhatsappNumberRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()->isAdmin();
+        return $this->user()->hasPermission('whatsapp_numbers.manage');
     }
 
     public function rules(): array

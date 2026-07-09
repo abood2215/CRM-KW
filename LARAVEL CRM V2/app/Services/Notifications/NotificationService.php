@@ -2,7 +2,6 @@
 
 namespace App\Services\Notifications;
 
-use App\Enums\UserRole;
 use App\Events\NotificationEvent;
 use App\Models\Notification;
 use App\Models\User;
@@ -22,9 +21,13 @@ class NotificationService
         event(new NotificationEvent($userId, $type, $title, $message, $data));
     }
 
+    /** "Management" here means whoever can manage general settings — the same audience the old admin/manager roles gave. */
     public static function sendToAdmins(string $type, string $title, string $message, array $data = []): void
     {
-        $admins = User::whereIn('role', [UserRole::Admin, UserRole::Manager])->pluck('id');
+        $admins = User::with('role.permissions')
+            ->get()
+            ->filter(fn (User $user) => $user->hasPermission('settings.manage'))
+            ->pluck('id');
 
         foreach ($admins as $userId) {
             self::send($userId, $type, $title, $message, $data);

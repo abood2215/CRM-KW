@@ -2,7 +2,6 @@
 
 namespace App\Policies;
 
-use App\Enums\UserRole;
 use App\Models\CannedResponse;
 use App\Models\User;
 
@@ -25,7 +24,7 @@ class CannedResponsePolicy
             return true;
         }
 
-        return $user->role !== UserRole::Agent;
+        return $user->hasPermission('canned_responses.manage_global');
     }
 
     public function delete(User $user, CannedResponse $cannedResponse): bool

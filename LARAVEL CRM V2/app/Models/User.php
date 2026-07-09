@@ -3,9 +3,9 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
-use App\Enums\UserRole;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -25,7 +25,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'role',
+        'role_id',
         'avatar',
         'phone',
         'last_seen_at',
@@ -42,6 +42,9 @@ class User extends Authenticatable
         'remember_token',
     ];
 
+    /** Every User query eager-loads its role (cheap, avoids N+1 wherever a user is nested in another resource). */
+    protected $with = ['role'];
+
     /**
      * Get the attributes that should be cast.
      *
@@ -52,20 +55,20 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
-            'role' => UserRole::class,
             'last_seen_at' => 'datetime',
             'is_active' => 'boolean',
         ];
     }
 
-    public function isAdmin(): bool
+    public function role(): BelongsTo
     {
-        return $this->role === UserRole::Admin;
+        return $this->belongsTo(Role::class);
     }
 
-    public function isManager(): bool
+    /** Checks the current role's permission set. Assumes role.permissions is loaded/loadable without N+1 risk per-request. */
+    public function hasPermission(string $key): bool
     {
-        return $this->role === UserRole::Manager;
+        return $this->loadMissing('role.permissions')->role->permissions->contains('key', $key);
     }
 
     public function isOnline(): bool

@@ -24,7 +24,7 @@ const LoginPage = () => {
     setLoading(true);
     try {
       const data = await auth.login(email, password);
-      setAuth(data.user, data.token);
+      setAuth({ ...data.user, permissions: data.permissions }, data.token);
       toast.success('تم تسجيل الدخول بنجاح');
       navigate('/', { replace: true });
     } catch (err) {

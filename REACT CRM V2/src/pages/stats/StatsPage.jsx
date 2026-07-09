@@ -7,7 +7,7 @@ import {
 import { Loader2, Users, Target, PhoneCall, Clock, Download, Phone } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { stats as statsApi } from '../../api';
-import { useAuthStore } from '../../store/useAuthStore';
+import { usePermission } from '../../hooks/usePermission';
 import { cn } from '../../utils/cn';
 
 const QUALITY_LABELS = {
@@ -32,8 +32,7 @@ const PALETTE = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#3b82f6', '#8b5cf6
 
 const StatsPage = () => {
   const [range, setRange] = useState('week');
-  const currentUser = useAuthStore((s) => s.user);
-  const canViewAgentStats = currentUser?.role !== 'agent';
+  const canViewAgentStats = usePermission('stats.view_agents');
 
   const { data: stats, isLoading } = useQuery({
     queryKey: ['dashboard-stats', range],

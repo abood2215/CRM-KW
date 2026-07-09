@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { X, Loader2, Eye, EyeOff } from 'lucide-react';
-import { users as usersApi } from '../../../api';
+import { users as usersApi, roles as rolesApi } from '../../../api';
 import { useModalA11y } from '../../../hooks/useModalA11y';
 
-const emptyForm = { name: '', email: '', password: '', role: 'agent', phone: '', is_active: true };
+const emptyForm = { name: '', email: '', password: '', role_id: '', phone: '', is_active: true };
 
 const UserFormModal = ({ open, onClose, user }) => {
   const queryClient = useQueryClient();
@@ -14,18 +14,31 @@ const UserFormModal = ({ open, onClose, user }) => {
   const [showPassword, setShowPassword] = useState(false);
   const isEdit = !!user;
 
+  const { data: roleList = [] } = useQuery({
+    queryKey: ['roles'],
+    queryFn: rolesApi.getRoles,
+    enabled: open,
+  });
+
   useEffect(() => {
     if (open) {
       setForm(user ? {
         name: user.name,
         email: user.email,
         password: '',
-        role: user.role,
+        role_id: user.role?.id ?? '',
         phone: user.phone ?? '',
         is_active: user.is_active ?? true,
       } : emptyForm);
     }
   }, [open, user]);
+
+  useEffect(() => {
+    if (open && !isEdit && !form.role_id && roleList.length > 0) {
+      const defaultRole = roleList.find((r) => r.slug === 'agent') ?? roleList[0];
+      setForm((f) => ({ ...f, role_id: defaultRole.id }));
+    }
+  }, [open, isEdit, roleList, form.role_id]);
 
   const mutation = useMutation({
     mutationFn: () => {
@@ -88,11 +101,11 @@ const UserFormModal = ({ open, onClose, user }) => {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-black text-slate-600 mb-1.5">الصلاحية *</label>
-              <select value={form.role} onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))}
+              <select value={form.role_id} onChange={(e) => setForm((f) => ({ ...f, role_id: Number(e.target.value) }))}
                 className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm">
-                <option value="agent">موظف</option>
-                <option value="manager">مشرف</option>
-                <option value="admin">مدير نظام</option>
+                {roleList.map((r) => (
+                  <option key={r.id} value={r.id}>{r.name}</option>
+                ))}
               </select>
             </div>
             <div>

@@ -78,7 +78,7 @@ class UserController extends Controller
             ->map(fn ($user) => [
                 'id' => $user->id,
                 'name' => $user->name,
-                'role' => $user->role->value,
+                'role' => $user->role->slug,
                 'avatar' => $user->avatar,
                 'is_online' => $user->isOnline(),
                 'last_seen_at' => $user->last_seen_at?->toISOString(),
