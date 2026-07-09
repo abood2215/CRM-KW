@@ -33,6 +33,11 @@ export function useChatPane(conversationId) {
     const channel = echo.channel(`conversations.${conversationId}`);
     const onNewMessage = () => {
       queryClient.invalidateQueries({ queryKey: ['messages', conversationId] });
+      // Re-fetching ['conversation', id] re-hits the `show` endpoint, which resets
+      // unread_count server-side — without this, a message arriving while this
+      // conversation is already open bumps the unread badge and it never clears.
+      queryClient.invalidateQueries({ queryKey: ['conversation', conversationId] });
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
     };
     const onStatusUpdate = () => {
       queryClient.invalidateQueries({ queryKey: ['messages', conversationId] });
