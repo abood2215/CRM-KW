@@ -40,7 +40,7 @@ const MessageBubble = ({ message }) => {
       <div className="relative max-w-[70%]">
         <div
           className={cn(
-            'rounded-2xl px-4 py-2.5 text-sm',
+            'rounded-2xl px-4 py-2.5 text-sm shadow-sm',
             isOut ? 'bg-indigo-600 text-white rounded-bl-sm' : 'bg-white border border-slate-100 text-slate-800 rounded-br-sm'
           )}
         >
@@ -68,7 +68,7 @@ const MessageBubble = ({ message }) => {
               <Download size={14} className="flex-shrink-0" />
             </a>
           ) : (
-            <p className="whitespace-pre-wrap break-words">{message.content}</p>
+            <p className="whitespace-pre-wrap break-words leading-relaxed">{message.content}</p>
           )}
           <div className={cn('flex items-center gap-1 mt-1 text-[10px]', isOut ? 'text-indigo-200 justify-end' : 'text-slate-400')}>
             <span>{message.sent_at ? new Date(message.sent_at).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }) : ''}</span>

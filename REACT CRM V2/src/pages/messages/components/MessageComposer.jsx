@@ -73,21 +73,28 @@ const MessageComposer = ({ onSend, isSending, onOpenTemplatePicker }) => {
           ملاحظة داخلية (لن تُرسل للعميل)
         </div>
       )}
-      <div className="flex items-end gap-2 max-w-3xl mx-auto">
-        <div className="flex gap-1">
+      <div
+        className={cn(
+          'max-w-3xl mx-auto flex items-end gap-1.5 rounded-[1.5rem] border p-2 transition-all',
+          isPrivate
+            ? 'border-amber-200 bg-amber-50/50'
+            : 'border-slate-200 bg-slate-50 focus-within:border-indigo-300 focus-within:bg-white focus-within:ring-4 focus-within:ring-indigo-500/10'
+        )}
+      >
+        <div className="flex gap-0.5 flex-shrink-0">
           <button
             type="button"
             onClick={() => setIsPrivate((p) => !p)}
-            className={cn('w-9 h-9 rounded-xl flex items-center justify-center', isPrivate ? 'bg-amber-100 text-amber-600' : 'text-slate-400 hover:bg-slate-50')}
+            className={cn('w-9 h-9 rounded-xl flex items-center justify-center transition-colors', isPrivate ? 'bg-amber-100 text-amber-600' : 'text-slate-400 hover:bg-slate-200/60 hover:text-slate-600')}
             title="ملاحظة داخلية"
           >
             <Lock size={16} />
           </button>
-          <button type="button" onClick={onOpenTemplatePicker} className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-50" title="إرسال قالب">
+          <button type="button" onClick={onOpenTemplatePicker} className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-200/60 hover:text-slate-600 transition-colors" title="إرسال قالب">
             <FileText size={16} />
           </button>
           <div className="relative">
-            <button type="button" onClick={() => setShowCanned((s) => !s)} className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-50" title="ردود جاهزة">
+            <button type="button" onClick={() => setShowCanned((s) => !s)} className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-200/60 hover:text-slate-600 transition-colors" title="ردود جاهزة">
               <Zap size={16} />
             </button>
             {showCanned && (
@@ -152,7 +159,7 @@ const MessageComposer = ({ onSend, isSending, onOpenTemplatePicker }) => {
             )}
           </div>
           <div className="relative">
-            <button type="button" onClick={() => setShowEmoji((s) => !s)} className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-50" title="إيموجي">
+            <button type="button" onClick={() => setShowEmoji((s) => !s)} className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-200/60 hover:text-slate-600 transition-colors" title="إيموجي">
               <Smile size={16} />
             </button>
             {showEmoji && (
@@ -165,7 +172,7 @@ const MessageComposer = ({ onSend, isSending, onOpenTemplatePicker }) => {
               </div>
             )}
           </div>
-          <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading} className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-50" title="إرفاق صورة">
+          <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading} className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-200/60 hover:text-slate-600 transition-colors" title="إرفاق صورة">
             {uploading ? <Loader2 size={16} className="animate-spin" /> : <Paperclip size={16} />}
           </button>
           <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
@@ -177,13 +184,13 @@ const MessageComposer = ({ onSend, isSending, onOpenTemplatePicker }) => {
           onKeyDown={handleKeyDown}
           rows={1}
           placeholder={isPrivate ? 'اكتب ملاحظة داخلية...' : 'اكتب رسالة...'}
-          className="flex-1 resize-none max-h-32 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+          className="flex-1 resize-none max-h-32 bg-transparent border-none px-1.5 py-2.5 text-sm focus:outline-none focus:ring-0"
         />
 
         <button
           onClick={handleSend}
           disabled={isSending || !text.trim()}
-          className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center hover:bg-indigo-700 disabled:opacity-50 flex-shrink-0"
+          className="w-10 h-10 rounded-full bg-indigo-600 text-white flex items-center justify-center hover:bg-indigo-700 active:scale-95 disabled:opacity-40 disabled:active:scale-100 transition-all flex-shrink-0"
         >
           {isSending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
         </button>

@@ -1,10 +1,35 @@
 import React from 'react';
 import { Search, Plus, Loader2, MessageSquare } from 'lucide-react';
+import { isToday, isYesterday, format } from 'date-fns';
+import { ar } from 'date-fns/locale';
 import { cn } from '../../../utils/cn';
 import ConversationListItem from './ConversationListItem';
 
+const dayLabel = (dateString) => {
+  if (!dateString) return 'أقدم';
+  const date = new Date(dateString);
+  if (isToday(date)) return 'اليوم';
+  if (isYesterday(date)) return 'أمس';
+  return format(date, 'd MMMM', { locale: ar });
+};
+
+const groupByDay = (conversations) => {
+  const groups = [];
+  for (const c of conversations) {
+    const label = dayLabel(c.last_message_at);
+    const lastGroup = groups[groups.length - 1];
+    if (lastGroup?.label === label) {
+      lastGroup.items.push(c);
+    } else {
+      groups.push({ label, items: [c] });
+    }
+  }
+  return groups;
+};
+
 const ConversationList = ({ list, selectedId, onSelect, onNewConversation, className }) => {
   const { conversations, meta, isLoading, status, setStatus, search, setSearch, page, setPage, statusTabs } = list;
+  const groups = groupByDay(conversations);
 
   return (
     <div className={cn('w-full lg:max-w-sm flex-col border-l border-slate-100 bg-white h-full', className)}>
@@ -63,8 +88,13 @@ const ConversationList = ({ list, selectedId, onSelect, onNewConversation, class
             )}
           </div>
         ) : (
-          conversations.map((c) => (
-            <ConversationListItem key={c.id} conversation={c} isActive={c.id === selectedId} onClick={() => onSelect(c)} />
+          groups.map((group) => (
+            <div key={group.label}>
+              <p className="sticky top-0 z-[1] px-4 pt-3 pb-1.5 text-[11px] font-black text-slate-400 bg-white/95 backdrop-blur-sm">{group.label}</p>
+              {group.items.map((c) => (
+                <ConversationListItem key={c.id} conversation={c} isActive={c.id === selectedId} onClick={() => onSelect(c)} />
+              ))}
+            </div>
           ))
         )}
       </div>

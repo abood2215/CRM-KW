@@ -11,11 +11,17 @@ const ConversationListItem = ({ conversation, isActive, onClick }) => {
     <button
       onClick={onClick}
       className={cn(
-        'w-full text-right p-4 border-b border-slate-50 hover:bg-slate-50 transition-colors flex gap-3',
-        isActive && 'bg-indigo-50 hover:bg-indigo-50'
+        'relative w-full text-right px-4 py-3.5 border-b border-slate-50 hover:bg-slate-50/80 transition-colors flex gap-3',
+        isActive && 'bg-indigo-50/70 hover:bg-indigo-50/70'
       )}
     >
-      <div className="w-11 h-11 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-black flex-shrink-0">
+      {hasUnread && <span className="absolute right-0 top-2 bottom-2 w-1 rounded-full bg-indigo-500" />}
+      <div
+        className={cn(
+          'w-11 h-11 rounded-full flex items-center justify-center font-black flex-shrink-0 text-sm transition-colors',
+          isActive ? 'bg-indigo-600 text-white' : 'bg-indigo-100 text-indigo-600'
+        )}
+      >
         {conversation.contact?.name?.[0] ?? '#'}
       </div>
       <div className="flex-1 min-w-0">
