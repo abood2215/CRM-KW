@@ -26,13 +26,20 @@ class MessageStatusUpdateService
 
         $message = Message::where('whatsapp_message_id', $waMessageId)->first();
         if ($message) {
-            $message->update(['status' => $status]);
+            $update = ['status' => $status];
+            if ($status === 'failed') {
+                $errorCode = $statusData['errors'][0]['code'] ?? null;
+                $errorTitle = $statusData['errors'][0]['title'] ?? null;
+                $update['error_message'] = $this->resolveErrorLabel($errorCode, $errorTitle);
+            }
+            $message->update($update);
             event(new MessageStatusUpdatedEvent($message));
 
             $conversation = $message->conversation()->first();
             if ($status === 'failed') {
-                // A message that never actually reached the customer shouldn't linger as the
-                // conversation's visible last-message preview, misleading agents into thinking it landed.
+                // The failed message itself stays visible in the thread (with its error_message) —
+                // this only keeps it from lingering as the conversation LIST's preview text, which
+                // would misleadingly suggest it was delivered.
                 $this->refreshConversationPreview($conversation);
             }
 
@@ -88,7 +95,6 @@ class MessageStatusUpdateService
         }
 
         $isPermanentBlock = $this->blacklistPolicy->isPermanentBlock($errorCode);
-        $isSessionExpiry = $errorCode === 131047;
 
         $contact = $recipient->contact;
         if ($contact) {
@@ -109,14 +115,20 @@ class MessageStatusUpdateService
             return;
         }
 
-        $errorLabel = $isSessionExpiry
-            ? 'انتهت نافذة 24 ساعة — استخدم قالب Template'
-            : ($errorTitle ?? 'فشل التوصيل');
-
         $recipient->update([
             'status' => 'failed',
-            'error_message' => "[{$errorCode}] {$errorLabel}",
+            'error_message' => "[{$errorCode}] ".$this->resolveErrorLabel($errorCode, $errorTitle),
         ]);
         $campaign?->increment('failed_count');
+    }
+
+    /** Meta's 24h customer-service-window rejection (code 131047) gets a plain-language, actionable label. */
+    private function resolveErrorLabel(?int $errorCode, ?string $errorTitle): string
+    {
+        if ($errorCode === 131047) {
+            return 'انتهت نافذة 24 ساعة — استخدم قالب Template';
+        }
+
+        return $errorTitle ?? 'فشل التوصيل';
     }
 }

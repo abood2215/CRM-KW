@@ -21,6 +21,7 @@ class MessageResource extends JsonResource
             'is_private' => $this->is_private,
             'sender_name' => $this->sender_name,
             'status' => $this->status,
+            'error_message' => $this->error_message,
             'sent_at' => $this->sent_at?->toISOString(),
             'created_at' => $this->created_at->toISOString(),
         ];

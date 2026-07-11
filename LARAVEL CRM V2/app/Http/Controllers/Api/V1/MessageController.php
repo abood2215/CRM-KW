@@ -27,10 +27,13 @@ class MessageController extends Controller
     {
         $this->authorize('view', $conversation);
 
-        // A message that never actually reached the customer (async delivery failure) shouldn't
-        // appear in the thread — it would mislead the agent into thinking it was delivered.
+        // Failed messages used to be filtered out here entirely — the intent was to
+        // avoid misleading the agent into thinking a failed send was delivered, but the
+        // actual effect was worse: the message just vanished with zero explanation the
+        // moment its delivery-status webhook came back "failed" (e.g. outside WhatsApp's
+        // 24h customer-service window). The frontend already renders a "فشل الإرسال"
+        // badge for this status — it just never got a chance to show.
         $messages = $conversation->messages()
-            ->where(fn ($q) => $q->whereNull('status')->orWhere('status', '!=', 'failed'))
             ->orderBy('sent_at', 'asc')
             ->paginate($request->per_page ?? 50);
 

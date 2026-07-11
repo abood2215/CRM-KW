@@ -12,6 +12,7 @@ const STATUS_META = {
 const MessageBubble = ({ message }) => {
   const isOut = message.direction === 'out';
   const statusMeta = STATUS_META[message.status];
+  const statusLabel = message.status === 'failed' && message.error_message ? message.error_message : statusMeta?.label;
 
   if (message.is_private) {
     return (
@@ -72,9 +73,16 @@ const MessageBubble = ({ message }) => {
           )}
           <div className={cn('flex items-center gap-1 mt-1 text-[10px]', isOut ? 'text-indigo-200 justify-end' : 'text-slate-400')}>
             <span>{message.sent_at ? new Date(message.sent_at).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }) : ''}</span>
-            {isOut && statusMeta && <span title={statusMeta.label} aria-label={statusMeta.label}>{statusMeta.icon}</span>}
+            {isOut && statusMeta && <span title={statusLabel} aria-label={statusLabel}>{statusMeta.icon}</span>}
           </div>
         </div>
+
+        {/* A hover tooltip alone is easy to miss — a failed send needs to be obvious at a glance. */}
+        {isOut && message.status === 'failed' && (
+          <p className="text-[11px] font-bold text-rose-500 mt-1">
+            {message.error_message ?? 'فشل الإرسال'}
+          </p>
+        )}
 
         {message.reaction_emoji && (
           <span

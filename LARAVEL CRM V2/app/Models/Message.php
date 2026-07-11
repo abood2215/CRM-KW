@@ -21,6 +21,7 @@ class Message extends Model
         'is_private',
         'sender_name',
         'status',
+        'error_message',
         'sent_at',
     ];
 
