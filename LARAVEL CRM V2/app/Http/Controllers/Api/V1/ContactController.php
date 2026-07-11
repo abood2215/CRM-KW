@@ -278,8 +278,10 @@ class ContactController extends Controller
         }, 200, $headers);
     }
 
-    public function optOut(Contact $contact): JsonResponse
+    public function optOut(Request $request, Contact $contact): JsonResponse
     {
+        $this->authorize('update', $contact);
+
         $contact->optOut();
 
         return response()->json([
@@ -288,8 +290,10 @@ class ContactController extends Controller
         ]);
     }
 
-    public function blacklist(Contact $contact): JsonResponse
+    public function blacklist(Request $request, Contact $contact): JsonResponse
     {
+        $this->authorize('update', $contact);
+
         $contact->markBlacklisted();
 
         return response()->json([
@@ -298,8 +302,10 @@ class ContactController extends Controller
         ]);
     }
 
-    public function unblacklist(Contact $contact): JsonResponse
+    public function unblacklist(Request $request, Contact $contact): JsonResponse
     {
+        $this->authorize('update', $contact);
+
         $contact->clearBlacklist();
 
         return response()->json([
@@ -327,8 +333,15 @@ class ContactController extends Controller
         return response()->json(['message' => "تم حظر {$count} جهة اتصال.", 'updated' => $count]);
     }
 
-    public function destroyAll(): JsonResponse
+    public function destroyAll(Request $request): JsonResponse
     {
+        // Irreversibly wipes every contact company-wide — restricted to the same
+        // permission as user management, since nothing less than admin-level trust
+        // should be able to truncate this table.
+        if (! $request->user()->hasPermission('users.manage')) {
+            abort(403);
+        }
+
         $count = Contact::count();
 
         DB::statement('SET FOREIGN_KEY_CHECKS=0');

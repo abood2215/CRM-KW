@@ -6,6 +6,7 @@ import { Plus, Search, Upload, Download, Trash2, ShieldAlert, Users, ShieldOff, 
 import { cn } from '../../utils/cn';
 import { contacts as contactsApi } from '../../api';
 import { useConfirm } from '../../hooks/useConfirm';
+import { usePermission } from '../../hooks/usePermission';
 import AddContactModal from '../../components/AddContactModal';
 import ImportContactsModal from '../../components/ImportContactsModal';
 import ContactsTable from './components/ContactsTable';
@@ -14,6 +15,7 @@ import DeleteAllContactsModal from './components/DeleteAllContactsModal';
 const ContactsPage = () => {
   const queryClient = useQueryClient();
   const { confirm, dialog: confirmDialog } = useConfirm();
+  const canDestroyAll = usePermission('users.manage');
   const [tab, setTab] = useState('all');
   const [search, setSearch] = useState('');
   const [optInFilter, setOptInFilter] = useState('');
@@ -114,7 +116,7 @@ const ContactsPage = () => {
             <Download size={16} />
             تصدير CSV
           </button>
-          {(meta?.total ?? 0) > 0 && tab === 'all' && (
+          {canDestroyAll && (meta?.total ?? 0) > 0 && tab === 'all' && (
             <button onClick={() => setDeleteAllOpen(true)} className="h-10 px-4 border border-rose-200 rounded-xl text-rose-600 font-bold text-sm flex items-center gap-2 hover:bg-rose-50 transition-all">
               <Trash2 size={16} />
               مسح الكل

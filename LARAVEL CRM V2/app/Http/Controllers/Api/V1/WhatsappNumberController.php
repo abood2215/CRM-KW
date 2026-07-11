@@ -84,6 +84,8 @@ class WhatsappNumberController extends Controller
 
     public function syncTemplates(WhatsappNumber $whatsappNumber): JsonResponse
     {
+        $this->authorize('update', $whatsappNumber);
+
         if (! $whatsappNumber->access_token || ! $whatsappNumber->phone_number_id) {
             return response()->json(['message' => 'هذا الرقم لا يدعم Cloud API. أضف access_token و phone_number_id.'], 422);
         }

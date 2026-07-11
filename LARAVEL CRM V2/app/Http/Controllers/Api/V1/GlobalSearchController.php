@@ -7,6 +7,7 @@ use App\Models\Campaign;
 use App\Models\Contact;
 use App\Models\Conversation;
 use App\Policies\ContactPolicy;
+use App\Policies\ConversationPolicy;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -28,7 +29,7 @@ class GlobalSearchController extends Controller
             ->get(['id', 'name', 'phone'])
             ->map(fn (Contact $c) => ['id' => $c->id, 'title' => $c->name, 'subtitle' => $c->phone]);
 
-        $conversations = Conversation::with('contact:id,name,phone')
+        $conversations = ConversationPolicy::scopeVisibleTo(Conversation::with('contact:id,name,phone'), $request->user())
             ->whereHas('contact', fn ($q) => $q->where('name', 'like', "%{$term}%")->orWhere('phone', 'like', "%{$term}%"))
             ->limit(self::LIMIT)
             ->get()
