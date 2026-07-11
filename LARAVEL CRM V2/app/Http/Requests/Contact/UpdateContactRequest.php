@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Contact;
 
+use App\ValueObjects\PhoneNumber;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -10,6 +11,15 @@ class UpdateContactRequest extends FormRequest
     public function authorize(): bool
     {
         return true;
+    }
+
+    protected function prepareForValidation(): void
+    {
+        // See StoreContactRequest — the `unique` check must compare the normalized
+        // value, since that's what's actually stored in `contacts.phone`.
+        if ($this->has('phone')) {
+            $this->merge(['phone' => PhoneNumber::normalize($this->input('phone'))]);
+        }
     }
 
     public function rules(): array

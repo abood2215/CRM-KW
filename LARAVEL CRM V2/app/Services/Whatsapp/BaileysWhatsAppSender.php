@@ -44,12 +44,12 @@ class BaileysWhatsAppSender implements WhatsAppSenderInterface
 
     public function getStatus(): array
     {
-        return $this->request()->get("/api/{$this->sessionName}/status")->json() ?? [];
+        return $this->request()->get("/api/{$this->sessionName}/status")->throw()->json() ?? [];
     }
 
     public function getQr(): array
     {
-        return $this->request()->get("/api/{$this->sessionName}/qr")->json() ?? [];
+        return $this->request()->get("/api/{$this->sessionName}/qr")->throw()->json() ?? [];
     }
 
     private function request()

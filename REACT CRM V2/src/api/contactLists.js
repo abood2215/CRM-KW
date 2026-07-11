@@ -2,7 +2,7 @@ import client from './client';
 
 export const getContactLists = () => client.get('/contact-lists').then((res) => res.data.contact_lists);
 
-export const getContactList = (id) => client.get(`/contact-lists/${id}`).then((res) => res.data.contact_list);
+export const getContactList = (id, params) => client.get(`/contact-lists/${id}`, { params }).then((res) => res.data);
 
 export const createContactList = (data) => client.post('/contact-lists', data).then((res) => res.data);
 

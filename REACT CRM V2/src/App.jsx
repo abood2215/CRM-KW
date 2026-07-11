@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, QueryErrorResetBoundary } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
 import ErrorBoundary from './components/ErrorBoundary';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -43,7 +43,9 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <Toaster position="top-center" />
       <BrowserRouter>
-        <ErrorBoundary>
+        <QueryErrorResetBoundary>
+          {({ reset }) => (
+        <ErrorBoundary onReset={reset}>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
@@ -74,6 +76,8 @@ function App() {
             </Route>
           </Routes>
         </ErrorBoundary>
+          )}
+        </QueryErrorResetBoundary>
       </BrowserRouter>
     </QueryClientProvider>
   );

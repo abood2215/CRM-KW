@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useConversationList } from './hooks/useConversationList';
 import ConversationList from './components/ConversationList';
 import ChatPane from './components/ChatPane';
@@ -6,7 +7,13 @@ import NewConversationModal from './components/NewConversationModal';
 
 const MessagesPage = () => {
   const list = useConversationList();
-  const [selectedId, setSelectedId] = useState(null);
+  const [searchParams] = useSearchParams();
+  // Deep-link support (e.g. from the command palette's conversation results) — only
+  // read once on mount, the URL isn't kept in sync with later manual selections.
+  const [selectedId, setSelectedId] = useState(() => {
+    const fromUrl = Number(searchParams.get('conversation'));
+    return fromUrl > 0 ? fromUrl : null;
+  });
   const [newConvOpen, setNewConvOpen] = useState(false);
 
   return (

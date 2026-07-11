@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Contact;
 
+use App\ValueObjects\PhoneNumber;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreContactRequest extends FormRequest
@@ -9,6 +10,17 @@ class StoreContactRequest extends FormRequest
     public function authorize(): bool
     {
         return true;
+    }
+
+    protected function prepareForValidation(): void
+    {
+        // The `contacts.phone` column stores the normalized value (via Contact's phone
+        // mutator) — normalizing here too keeps the `unique` check comparing like for
+        // like, instead of a raw input format slipping past validation only to hit the
+        // DB unique constraint directly as an uncaught QueryException.
+        if ($this->has('phone')) {
+            $this->merge(['phone' => PhoneNumber::normalize($this->input('phone'))]);
+        }
     }
 
     public function rules(): array

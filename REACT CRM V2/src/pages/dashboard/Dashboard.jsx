@@ -6,10 +6,11 @@ import { motion } from 'framer-motion';
 import { format } from 'date-fns';
 import { ar } from 'date-fns/locale';
 import toast from 'react-hot-toast';
-import { Loader2, Users, CheckSquare, MessageSquare, Megaphone, UserPlus, ListChecks, CalendarClock, Circle } from 'lucide-react';
+import { Loader2, Users, CheckSquare, MessageSquare, Megaphone, UserPlus, ListChecks, CalendarClock, Circle, AlertTriangle } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 import { stats as statsApi, tasks as tasksApi } from '../../api';
 import { cn } from '../../utils/cn';
+import { formatResponseTime } from '../../utils/format';
 import AddContactModal from '../../components/AddContactModal';
 import AddTaskModal from '../../components/AddTaskModal';
 import CreateCampaignModal from '../../components/CreateCampaignModal';
@@ -32,7 +33,7 @@ const Dashboard = () => {
   const [range, setRange] = useState('week');
   const [activeModal, setActiveModal] = useState(null);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ['dashboard-stats', range],
     queryFn: () => statsApi.getDashboardStats(range),
   });
@@ -92,7 +93,12 @@ const Dashboard = () => {
         ))}
       </div>
 
-      {isLoading ? (
+      {isError ? (
+        <div className="flex flex-col items-center gap-2 py-20 text-center">
+          <AlertTriangle className="text-rose-400" size={28} />
+          <p className="text-slate-500 text-sm font-bold">تعذّر تحميل إحصائيات لوحة التحكم — حاول تحديث الصفحة.</p>
+        </div>
+      ) : isLoading ? (
         <div className="flex justify-center py-20"><Loader2 className="animate-spin text-indigo-600" size={28} /></div>
       ) : (
         <>
@@ -156,7 +162,7 @@ const Dashboard = () => {
             {[
               ['معدل الردود على الحملات', `${data.reply_rate}%`],
               ['معدل الحجوزات', `${data.booking_rate ?? 0}%`],
-              ['متوسط سرعة الرد', data.avg_response_minutes ? `${data.avg_response_minutes} دقيقة` : '—'],
+              ['متوسط سرعة الرد', formatResponseTime(data.avg_response_minutes)],
             ].map(([label, value]) => (
               <div key={label} className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm text-center">
                 <p className="text-xl font-black text-slate-800">{value}</p>

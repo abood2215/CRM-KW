@@ -5,6 +5,7 @@ import { Loader2, FileText, Plus, Pencil, Trash2, RefreshCw, Search } from 'luci
 import { templates as templatesApi, whatsappNumbers as whatsappNumbersApi } from '../../api';
 import { cn } from '../../utils/cn';
 import { useConfirm } from '../../hooks/useConfirm';
+import { usePermission } from '../../hooks/usePermission';
 import TemplateFormModal from './components/TemplateFormModal';
 
 const STATUS_COLORS = {
@@ -22,6 +23,7 @@ const CATEGORY_LABELS = {
 
 const TemplatesPage = () => {
   const queryClient = useQueryClient();
+  const canManage = usePermission('whatsapp_templates.manage');
   const { confirm, dialog: confirmDialog } = useConfirm();
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('');
@@ -67,29 +69,31 @@ const TemplatesPage = () => {
           <h1 className="text-xl lg:text-2xl font-black text-slate-800">قوالب الرسائل</h1>
           <p className="text-slate-500 mt-1 font-medium text-sm">قوالب واتساب المعتمدة من Meta لكل رقم.</p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <select
-            value={numberId}
-            onChange={(e) => setNumberId(e.target.value)}
-            disabled={syncMutation.isPending}
-            className="h-11 px-4 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-600 min-w-0 max-w-full"
-          >
-            <option value="">مزامنة قوالب رقم...</option>
-            {numbers.map((n) => <option key={n.id} value={n.id}>{n.name}</option>)}
-          </select>
-          <button
-            onClick={() => numberId && syncMutation.mutate(numberId)}
-            disabled={!numberId || syncMutation.isPending}
-            className="h-11 px-4 bg-white border border-slate-200 text-slate-600 font-bold rounded-xl flex items-center gap-2 text-sm disabled:opacity-40 hover:bg-slate-50"
-          >
-            {syncMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
-            <span>مزامنة</span>
-          </button>
-          <button onClick={openCreate} className="h-11 px-6 bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:bg-indigo-700 transition-all flex items-center gap-2 text-sm">
-            <Plus size={16} />
-            <span>قالب جديد</span>
-          </button>
-        </div>
+        {canManage && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <select
+              value={numberId}
+              onChange={(e) => setNumberId(e.target.value)}
+              disabled={syncMutation.isPending}
+              className="h-11 px-4 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-600 min-w-0 max-w-full"
+            >
+              <option value="">مزامنة قوالب رقم...</option>
+              {numbers.map((n) => <option key={n.id} value={n.id}>{n.name}</option>)}
+            </select>
+            <button
+              onClick={() => numberId && syncMutation.mutate(numberId)}
+              disabled={!numberId || syncMutation.isPending}
+              className="h-11 px-4 bg-white border border-slate-200 text-slate-600 font-bold rounded-xl flex items-center gap-2 text-sm disabled:opacity-40 hover:bg-slate-50"
+            >
+              {syncMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
+              <span>مزامنة</span>
+            </button>
+            <button onClick={openCreate} className="h-11 px-6 bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:bg-indigo-700 transition-all flex items-center gap-2 text-sm">
+              <Plus size={16} />
+              <span>قالب جديد</span>
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="flex items-center gap-3 flex-wrap">
@@ -127,15 +131,19 @@ const TemplatesPage = () => {
                   <span className={cn('text-[10px] font-black px-2 py-1 rounded-lg uppercase', STATUS_COLORS[t.status] ?? 'bg-slate-100 text-slate-500')}>
                     {t.status}
                   </span>
-                  <button onClick={() => openEdit(t)} className="p-1.5 text-slate-300 hover:text-indigo-500">
-                    <Pencil size={14} />
-                  </button>
-                  <button
-                    onClick={async () => { if (await confirm('حذف هذا القالب؟')) deleteMutation.mutate(t.id); }}
-                    className="p-1.5 text-slate-300 hover:text-rose-500"
-                  >
-                    <Trash2 size={14} />
-                  </button>
+                  {canManage && (
+                    <>
+                      <button onClick={() => openEdit(t)} className="p-1.5 text-slate-300 hover:text-indigo-500">
+                        <Pencil size={14} />
+                      </button>
+                      <button
+                        onClick={async () => { if (await confirm('حذف هذا القالب؟')) deleteMutation.mutate(t.id); }}
+                        className="p-1.5 text-slate-300 hover:text-rose-500"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
               <p className="text-xs text-slate-500 leading-relaxed line-clamp-3">{t.body_text}</p>

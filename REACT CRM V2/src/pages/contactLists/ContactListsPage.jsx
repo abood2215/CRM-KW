@@ -4,11 +4,15 @@ import toast from 'react-hot-toast';
 import { Plus, Trash2, Pencil, Loader2, ListChecks, X } from 'lucide-react';
 import { contactLists as contactListsApi } from '../../api';
 import { useConfirm } from '../../hooks/useConfirm';
+import { usePermission } from '../../hooks/usePermission';
+import { useAuthStore } from '../../store/useAuthStore';
 import ImportContactsModal from '../../components/ImportContactsModal';
 import ListContactsModal from './components/ListContactsModal';
 
 const ContactListsPage = () => {
   const queryClient = useQueryClient();
+  const currentUser = useAuthStore((s) => s.user);
+  const canManageOthers = usePermission('contact_lists.manage_others');
   const { confirm, dialog: confirmDialog } = useConfirm();
   const [addOpen, setAddOpen] = useState(false);
   const [importListId, setImportListId] = useState(null);
@@ -38,6 +42,7 @@ const ContactListsPage = () => {
   const deleteMutation = useMutation({
     mutationFn: (id) => contactListsApi.deleteContactList(id),
     onSuccess: () => { invalidate(); toast.success('تم حذف القائمة'); },
+    onError: (e) => toast.error(e?.response?.data?.message || 'فشل حذف القائمة'),
   });
 
   const openEdit = (l) => { setEditList(l); setEditName(l.name); };
@@ -64,25 +69,30 @@ const ContactListsPage = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {lists.map((l) => (
+          {lists.map((l) => {
+            const canManageThis = canManageOthers || l.user?.id === currentUser?.id;
+            return (
             <div key={l.id} className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
               <div className="flex items-start justify-between mb-3">
                 <h3 className="font-black text-slate-800 cursor-pointer hover:text-indigo-600" onClick={() => setViewList(l)}>{l.name}</h3>
-                <div className="flex items-center gap-1">
-                  <button onClick={() => openEdit(l)} className="p-1.5 text-slate-300 hover:text-indigo-500">
-                    <Pencil size={14} />
-                  </button>
-                  <button onClick={async () => { if (await confirm('حذف هذه القائمة؟')) deleteMutation.mutate(l.id); }} className="p-1.5 text-slate-300 hover:text-rose-500">
-                    <Trash2 size={15} />
-                  </button>
-                </div>
+                {canManageThis && (
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => openEdit(l)} className="p-1.5 text-slate-300 hover:text-indigo-500">
+                      <Pencil size={14} />
+                    </button>
+                    <button onClick={async () => { if (await confirm('حذف هذه القائمة؟')) deleteMutation.mutate(l.id); }} className="p-1.5 text-slate-300 hover:text-rose-500">
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                )}
               </div>
               <p className="text-2xl font-black text-indigo-600 mb-3 cursor-pointer" onClick={() => setViewList(l)}>{l.count}</p>
               <button onClick={() => setImportListId(l.id)} className="w-full h-9 rounded-lg border border-slate-200 text-slate-600 text-xs font-bold hover:bg-slate-50">
                 استيراد جهات اتصال لهذه القائمة
               </button>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

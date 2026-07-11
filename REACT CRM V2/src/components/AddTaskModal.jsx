@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { X, Loader2 } from 'lucide-react';
+import { X, Loader2, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { contacts, tasks } from '../api';
@@ -19,12 +19,40 @@ const AddTaskModal = ({ open, onClose }) => {
   const queryClient = useQueryClient();
   const ref = useModalA11y(open, onClose);
   const [form, setForm] = useState(emptyForm);
+  const [contactQuery, setContactQuery] = useState('');
+  const [contactDropdownOpen, setContactDropdownOpen] = useState(false);
+  const [selectedContact, setSelectedContact] = useState(null);
+  const contactPickerRef = useRef(null);
 
-  const { data: contactsResp } = useQuery({
-    queryKey: ['contacts-select'],
-    queryFn: () => contacts.getContacts({ per_page: 100 }).then((res) => res.data || []),
-    enabled: open,
+  // Searches the whole contact table instead of the previous hardcoded newest-100
+  // list, which made contacts created earlier unreachable when linking a task.
+  const { data: contactsResp, isFetching: contactsFetching } = useQuery({
+    queryKey: ['contacts-select', contactQuery],
+    queryFn: () => contacts.getContacts({ search: contactQuery || undefined, per_page: 20 }).then((res) => res.data || []),
+    enabled: open && contactDropdownOpen,
   });
+
+  useEffect(() => {
+    if (!contactDropdownOpen) return undefined;
+    const handleClickOutside = (e) => {
+      if (contactPickerRef.current && !contactPickerRef.current.contains(e.target)) setContactDropdownOpen(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [contactDropdownOpen]);
+
+  const selectContact = (contact) => {
+    setSelectedContact(contact);
+    setForm((f) => ({ ...f, contact_id: contact.id }));
+    setContactQuery(contact.name);
+    setContactDropdownOpen(false);
+  };
+
+  const clearContact = () => {
+    setSelectedContact(null);
+    setForm((f) => ({ ...f, contact_id: '' }));
+    setContactQuery('');
+  };
 
   const mutation = useMutation({
     mutationFn: (data) =>
@@ -38,6 +66,7 @@ const AddTaskModal = ({ open, onClose }) => {
       toast.success('تم إنشاء المهمة بنجاح');
       onClose();
       setForm(emptyForm);
+      clearContact();
     },
     onError: (e) => toast.error(e?.response?.data?.message || 'فشل إنشاء المهمة'),
   });
@@ -115,15 +144,55 @@ const AddTaskModal = ({ open, onClose }) => {
                     className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
                   />
                 </div>
-                <div>
+                <div className="relative" ref={contactPickerRef}>
                   <label className="block text-xs font-black text-slate-600 mb-1.5">جهة اتصال (اختياري)</label>
-                  <select
-                    value={form.contact_id} onChange={(e) => setForm((f) => ({ ...f, contact_id: e.target.value }))}
-                    className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                  >
-                    <option value="">بدون جهة اتصال</option>
-                    {contactsResp?.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
+                  <div className="relative">
+                    <Search size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="text"
+                      value={contactQuery}
+                      onFocus={() => setContactDropdownOpen(true)}
+                      onChange={(e) => {
+                        setContactQuery(e.target.value);
+                        setContactDropdownOpen(true);
+                        if (form.contact_id) setForm((f) => ({ ...f, contact_id: '' }));
+                        setSelectedContact(null);
+                      }}
+                      placeholder="ابحث بالاسم أو الرقم..."
+                      className="w-full h-11 pr-9 pl-8 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                    />
+                    {(selectedContact || contactQuery) && (
+                      <button
+                        type="button"
+                        onClick={clearContact}
+                        className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500"
+                      >
+                        <X size={14} />
+                      </button>
+                    )}
+                  </div>
+
+                  {contactDropdownOpen && (
+                    <div className="absolute z-10 mt-1 w-full max-h-56 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-lg">
+                      {contactsFetching ? (
+                        <div className="flex justify-center py-4"><Loader2 size={16} className="animate-spin text-indigo-600" /></div>
+                      ) : contactsResp?.length ? (
+                        contactsResp.map((c) => (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onClick={() => selectContact(c)}
+                            className="w-full text-right px-4 py-2.5 text-sm hover:bg-indigo-50 transition-colors"
+                          >
+                            <span className="font-bold text-slate-800">{c.name}</span>
+                            <span className="block text-xs text-slate-400">{c.phone}</span>
+                          </button>
+                        ))
+                      ) : (
+                        <p className="text-center text-xs text-slate-400 py-4">لا توجد نتائج</p>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 

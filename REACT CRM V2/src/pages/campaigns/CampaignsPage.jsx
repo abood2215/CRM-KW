@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 import { ar } from 'date-fns/locale';
-import { Megaphone, Plus, Pause, Play, Trash2, CheckCircle2, Clock, Loader2, BarChart3, Phone } from 'lucide-react';
+import { Megaphone, Plus, Pause, Play, Trash2, CheckCircle2, Clock, Loader2, BarChart3, Phone, AlertTriangle } from 'lucide-react';
 import { campaigns as campaignsApi } from '../../api';
 import { cn } from '../../utils/cn';
 import { useConfirm } from '../../hooks/useConfirm';
@@ -32,7 +32,7 @@ const CampaignsPage = () => {
   const [activeTab, setActiveTab] = useState('all');
   const [createOpen, setCreateOpen] = useState(false);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ['campaigns', activeTab],
     queryFn: () => campaignsApi.getCampaigns({ status: activeTab !== 'all' ? activeTab : undefined }),
   });
@@ -95,7 +95,12 @@ const CampaignsPage = () => {
           </div>
 
           <div className="flex-1 p-6">
-            {isLoading ? (
+            {isError ? (
+              <div className="flex flex-col items-center justify-center py-20 text-center">
+                <AlertTriangle className="text-rose-400 mb-3" size={28} />
+                <p className="text-slate-500 font-bold text-sm">تعذّر تحميل الحملات — حاول تحديث الصفحة.</p>
+              </div>
+            ) : isLoading ? (
               <div className="flex flex-col items-center justify-center py-20">
                 <Loader2 className="animate-spin text-indigo-600 h-10 w-10 mb-4" />
                 <p className="text-slate-500 font-medium">جاري جلب الحملات...</p>

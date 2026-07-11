@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { QRCodeSVG } from 'qrcode.react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
-import { X, Loader2, CheckCircle2 } from 'lucide-react';
+import { X, Loader2, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { whatsappNumbers as whatsappNumbersApi } from '../../../api';
 import { useModalA11y } from '../../../hooks/useModalA11y';
 
@@ -17,15 +17,17 @@ const BaileysQrModal = ({ number, onClose }) => {
     queryFn: () => whatsappNumbersApi.getWhatsappNumberStatus(number.id),
     enabled: open,
     refetchInterval: open ? 3000 : false,
+    retry: false,
   });
   const isConnected = !!statusData?.session_status?.connected;
 
-  const { data: qrData, isLoading: qrLoading } = useQuery({
+  const { data: qrData, isLoading: qrLoading, isError: qrError } = useQuery({
     queryKey: ['whatsapp-number-qr', number?.id],
     queryFn: () => whatsappNumbersApi.getWhatsappNumberQr(number.id),
     enabled: open && !isConnected,
     // Baileys QR codes expire after ~20s — keep pulling a fresh one until connected.
     refetchInterval: open && !isConnected ? 20000 : false,
+    retry: false,
   });
 
   useEffect(() => {
@@ -64,6 +66,11 @@ const BaileysQrModal = ({ number, onClose }) => {
                   </div>
                   <p className="font-bold text-slate-700">تم الربط بنجاح!</p>
                 </>
+              ) : qrError ? (
+                <div className="w-64 flex flex-col items-center gap-2 py-10 text-center">
+                  <AlertTriangle className="text-rose-400" size={28} />
+                  <p className="text-sm font-bold text-slate-500">تعذّر جلب رمز الربط — تحقق من تشغيل خدمة واتساب ويب وأعد المحاولة.</p>
+                </div>
               ) : qrLoading || !qrValue ? (
                 <div className="w-64 h-64 flex items-center justify-center">
                   <Loader2 className="animate-spin text-indigo-600" size={32} />

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { ArrowRight, Loader2, Phone, ShieldOff } from 'lucide-react';
+import { ArrowRight, Loader2, Phone, ShieldOff, AlertTriangle } from 'lucide-react';
 import { campaigns as campaignsApi } from '../../api';
 
 const CampaignReportPage = () => {
@@ -10,7 +10,7 @@ const CampaignReportPage = () => {
   const [page, setPage] = useState(1);
   const queryClient = useQueryClient();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ['campaign-report', id, page],
     queryFn: () => campaignsApi.getCampaignReport(id, { per_page: 25, page }),
   });
@@ -27,6 +27,16 @@ const CampaignReportPage = () => {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh]">
         <Loader2 className="animate-spin text-indigo-600 h-10 w-10" />
+      </div>
+    );
+  }
+
+  if (isError || !data) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[50vh] gap-2 text-center">
+        <AlertTriangle className="text-rose-400" size={28} />
+        <p className="text-slate-500 text-sm font-bold">تعذّر تحميل تقرير الحملة.</p>
+        <Link to="/campaigns" className="text-sm font-bold text-indigo-600 hover:underline">رجوع للحملات</Link>
       </div>
     );
   }

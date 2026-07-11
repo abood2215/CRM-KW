@@ -12,7 +12,13 @@ export class ErrorBoundary extends React.Component {
     console.error('[ErrorBoundary]', error, info.componentStack);
   }
 
-  reset = () => this.setState({ hasError: false, error: null });
+  // Clearing local state alone isn't enough — the query that threw is still cached
+  // as "errored" by react-query, so a plain re-render throws again immediately.
+  // `onReset` (from QueryErrorResetBoundary) clears that error state first.
+  reset = () => {
+    this.props.onReset?.();
+    this.setState({ hasError: false, error: null });
+  };
 
   render() {
     if (this.state.hasError) {

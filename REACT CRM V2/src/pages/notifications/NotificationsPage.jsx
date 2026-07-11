@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
 import { ar } from 'date-fns/locale';
@@ -6,6 +7,7 @@ import toast from 'react-hot-toast';
 import { Bell, CheckCheck, Trash2, Loader2, Megaphone, PauseCircle } from 'lucide-react';
 import { notifications as notificationsApi } from '../../api';
 import { cn } from '../../utils/cn';
+import { resolveNotificationLink } from '../../utils/notifications';
 
 const TYPE_ICONS = {
   campaign_completed: { icon: Megaphone, cls: 'bg-emerald-50 text-emerald-600' },
@@ -14,6 +16,7 @@ const TYPE_ICONS = {
 
 const NotificationsPage = () => {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const { data, isLoading } = useQuery({
     queryKey: ['notifications'],
@@ -64,7 +67,14 @@ const NotificationsPage = () => {
                 <div className={cn('w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0', typeInfo?.cls ?? 'bg-slate-100 text-slate-400')}>
                   <TypeIcon size={15} />
                 </div>
-                <div className="flex-1 min-w-0" onClick={() => !n.read_at && markReadMutation.mutate(n.id)}>
+                <div
+                  className="flex-1 min-w-0 cursor-pointer"
+                  onClick={() => {
+                    if (!n.read_at) markReadMutation.mutate(n.id);
+                    const link = resolveNotificationLink(n);
+                    if (link) navigate(link);
+                  }}
+                >
                   <p className="font-bold text-sm text-slate-800">{n.title}</p>
                   <p className="text-xs text-slate-500 mt-0.5">{n.message}</p>
                   <p className="text-[10px] text-slate-400 mt-1">{formatDistanceToNow(new Date(n.created_at), { locale: ar, addSuffix: true })}</p>

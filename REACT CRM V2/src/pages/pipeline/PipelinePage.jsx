@@ -67,9 +67,17 @@ const PipelinePage = () => {
 
   const updateStageMutation = useMutation({
     mutationFn: ({ id, pipeline_stage }) => contacts.updateContact(id, { pipeline_stage }),
-    onSuccess: () => {
+    onSuccess: (_data, { pipeline_stage, sourceStage }) => {
       queryClient.invalidateQueries({ queryKey: ['contacts-pipeline'] });
-      setExtra({});
+      // Only the two columns actually affected by the move need their "load more"
+      // pagination reset — clearing every column wiped progress a user had loaded
+      // on unrelated columns for every single drag.
+      setExtra((prev) => {
+        const next = { ...prev };
+        delete next[pipeline_stage];
+        delete next[sourceStage];
+        return next;
+      });
       toast.success('تم تحديث مرحلة جهة الاتصال');
     },
     onError: () => toast.error('فشل تحديث المرحلة'),
@@ -79,7 +87,7 @@ const PipelinePage = () => {
     const { destination, source, draggableId } = result;
     if (!destination) return;
     if (destination.droppableId === source.droppableId && destination.index === source.index) return;
-    updateStageMutation.mutate({ id: parseInt(draggableId, 10), pipeline_stage: destination.droppableId });
+    updateStageMutation.mutate({ id: parseInt(draggableId, 10), pipeline_stage: destination.droppableId, sourceStage: source.droppableId });
   };
 
   const getStageData = (stageId) => pipeline.find((s) => s.stage === stageId);

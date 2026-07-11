@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Loader2, ShieldPlus, Pencil, Trash2, Lock } from 'lucide-react';
+import { Loader2, ShieldPlus, Pencil, Trash2, Lock, AlertTriangle } from 'lucide-react';
 import { roles as rolesApi } from '../../../api';
 import { useConfirm } from '../../../hooks/useConfirm';
 import RoleFormModal from './RoleFormModal';
@@ -12,7 +12,7 @@ const RolesTab = () => {
   const [formOpen, setFormOpen] = useState(false);
   const [editingRole, setEditingRole] = useState(null);
 
-  const { data: roleList = [], isLoading } = useQuery({
+  const { data: roleList = [], isLoading, isError } = useQuery({
     queryKey: ['roles'],
     queryFn: rolesApi.getRoles,
   });
@@ -38,7 +38,12 @@ const RolesTab = () => {
         </button>
       </div>
 
-      {isLoading ? (
+      {isError ? (
+        <div className="py-16 text-center">
+          <AlertTriangle size={28} className="text-rose-400 mx-auto mb-2" />
+          <p className="text-slate-500 text-sm font-bold">تعذّر تحميل الأدوار — حاول تحديث الصفحة.</p>
+        </div>
+      ) : isLoading ? (
         <div className="flex justify-center py-16"><Loader2 className="animate-spin text-indigo-600 h-8 w-8" /></div>
       ) : (
         <div className="divide-y divide-slate-50">

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Loader2, UserPlus, Pencil, Trash2 } from 'lucide-react';
+import { Loader2, UserPlus, Pencil, Trash2, AlertTriangle } from 'lucide-react';
 import { users as usersApi } from '../../../api';
 import { useAuthStore } from '../../../store/useAuthStore';
 import { useConfirm } from '../../../hooks/useConfirm';
@@ -14,7 +14,7 @@ const UsersTab = () => {
   const [formOpen, setFormOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
 
-  const { data: userList = [], isLoading } = useQuery({
+  const { data: userList = [], isLoading, isError } = useQuery({
     queryKey: ['users'],
     queryFn: usersApi.getUsers,
   });
@@ -40,7 +40,12 @@ const UsersTab = () => {
         </button>
       </div>
 
-      {isLoading ? (
+      {isError ? (
+        <div className="py-16 text-center">
+          <AlertTriangle size={28} className="text-rose-400 mx-auto mb-2" />
+          <p className="text-slate-500 text-sm font-bold">تعذّر تحميل قائمة المستخدمين — حاول تحديث الصفحة.</p>
+        </div>
+      ) : isLoading ? (
         <div className="flex justify-center py-16"><Loader2 className="animate-spin text-indigo-600 h-8 w-8" /></div>
       ) : (
         <div className="divide-y divide-slate-50">

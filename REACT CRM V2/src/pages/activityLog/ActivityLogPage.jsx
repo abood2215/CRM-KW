@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
 import { ar } from 'date-fns/locale';
-import { History, Loader2 } from 'lucide-react';
+import { History, Loader2, AlertTriangle } from 'lucide-react';
 import { activityLogs as activityLogsApi } from '../../api';
 
 const SUBJECT_LABELS = {
@@ -20,7 +20,7 @@ const ActivityLogPage = () => {
   const [subjectType, setSubjectType] = useState('');
   const [page, setPage] = useState(1);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ['activity-logs', subjectType, page],
     queryFn: () => activityLogsApi.getActivityLogs({ subject_type: subjectType || undefined, page }),
   });
@@ -55,7 +55,12 @@ const ActivityLogPage = () => {
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-        {isLoading ? (
+        {isError ? (
+          <div className="py-16 text-center">
+            <AlertTriangle size={28} className="text-rose-400 mx-auto mb-2" />
+            <p className="text-slate-500 text-sm font-bold">تعذّر تحميل سجل النشاط — حاول تحديث الصفحة.</p>
+          </div>
+        ) : isLoading ? (
           <div className="flex justify-center py-16"><Loader2 className="animate-spin text-indigo-600" size={24} /></div>
         ) : logs.length === 0 ? (
           <div className="py-16 text-center">

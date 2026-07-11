@@ -16,8 +16,12 @@ class RoleController extends Controller
     /** Permissions that must always stay on the "admin" role so there's always a working recovery account. */
     private const PROTECTED_ADMIN_PERMISSIONS = ['roles.manage', 'users.manage'];
 
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
+        // Creating/editing a user (users.manage) requires picking a role, so the list itself
+        // can't be locked fully behind roles.manage — only role create/update/delete stay there.
+        abort_unless($request->user()->hasPermission('roles.manage') || $request->user()->hasPermission('users.manage'), 403);
+
         $roles = Role::withCount('users')->with('permissions')->orderBy('id')->get();
 
         return response()->json(['roles' => RoleResource::collection($roles)]);

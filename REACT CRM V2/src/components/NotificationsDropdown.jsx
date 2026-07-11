@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { AnimatePresence, motion } from 'framer-motion';
 import { formatDistanceToNow } from 'date-fns';
@@ -7,6 +7,7 @@ import { ar } from 'date-fns/locale';
 import { Bell, CheckCheck, Megaphone, PauseCircle } from 'lucide-react';
 import { notifications as notificationsApi } from '../api';
 import { cn } from '../utils/cn';
+import { resolveNotificationLink } from '../utils/notifications';
 
 const TYPE_ICONS = {
   campaign_completed: { icon: Megaphone, cls: 'bg-emerald-50 text-emerald-600' },
@@ -17,6 +18,7 @@ const NotificationsDropdown = () => {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const { data } = useQuery({
     queryKey: ['notifications'],
@@ -91,7 +93,11 @@ const NotificationsDropdown = () => {
                   return (
                     <button
                       key={n.id}
-                      onClick={() => !n.read_at && markReadMutation.mutate(n.id)}
+                      onClick={() => {
+                        if (!n.read_at) markReadMutation.mutate(n.id);
+                        const link = resolveNotificationLink(n);
+                        if (link) { setOpen(false); navigate(link); }
+                      }}
                       className={cn('w-full flex items-start gap-3 p-3 border-b border-slate-50 last:border-0 text-right hover:bg-slate-50 transition-colors', !n.read_at && 'bg-indigo-50/30')}
                     >
                       <span className={cn('w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0', typeInfo?.cls ?? 'bg-slate-100 text-slate-400')}>

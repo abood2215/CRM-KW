@@ -16,9 +16,13 @@ class NotificationController extends Controller
             ->limit(50)
             ->get();
 
+        // A real COUNT — the in-memory filter over the capped 50 above would undercount
+        // for anyone with more than 50 accumulated unread notifications.
+        $unreadCount = Notification::where('user_id', $request->user()->id)->whereNull('read_at')->count();
+
         return response()->json([
             'notifications' => $notifications,
-            'unread_count' => $notifications->whereNull('read_at')->count(),
+            'unread_count' => $unreadCount,
         ]);
     }
 

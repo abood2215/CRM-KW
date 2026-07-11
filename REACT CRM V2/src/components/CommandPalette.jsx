@@ -7,7 +7,7 @@ import { search as searchApi } from '../api';
 
 const GROUPS = [
   { key: 'contacts', label: 'جهات الاتصال', icon: Users, to: (id) => `/contacts/${id}` },
-  { key: 'conversations', label: 'المحادثات', icon: MessageSquare, to: () => '/messages' },
+  { key: 'conversations', label: 'المحادثات', icon: MessageSquare, to: (id) => `/messages?conversation=${id}` },
   { key: 'campaigns', label: 'الحملات', icon: Megaphone, to: () => '/campaigns' },
 ];
 

@@ -2,18 +2,27 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { AnimatePresence, motion } from 'framer-motion';
 import toast from 'react-hot-toast';
-import { Upload, Trash2, Download, Loader2, FileIcon, HardDrive, Search, X } from 'lucide-react';
+import { Upload, Trash2, Download, Loader2, FileIcon, HardDrive, Search, X, AlertTriangle } from 'lucide-react';
 import { drive as driveApi } from '../../api';
 import { cn } from '../../utils/cn';
 
 const ImageThumbnail = ({ file, onOpen }) => {
-  const { data: url } = useQuery({
+  const { data: url, isError } = useQuery({
     queryKey: ['drive-preview', file.id],
     queryFn: () => driveApi.getFilePreviewBlobUrl(file.id),
     staleTime: Infinity,
+    retry: false,
   });
 
   useEffect(() => () => { if (url) URL.revokeObjectURL(url); }, [url]);
+
+  if (isError) {
+    return (
+      <div className="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center flex-shrink-0">
+        <AlertTriangle size={14} className="text-rose-400" />
+      </div>
+    );
+  }
 
   if (!url) {
     return <div className="w-10 h-10 rounded-xl bg-slate-100 flex-shrink-0 animate-pulse" />;
@@ -69,7 +78,7 @@ const DrivePage = () => {
   const [page, setPage] = useState(1);
   const [previewUrl, setPreviewUrl] = useState(null);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ['drive', search, category, page],
     queryFn: () => driveApi.getFiles({ search: search || undefined, category: category || undefined, page }),
   });
@@ -132,7 +141,12 @@ const DrivePage = () => {
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-        {isLoading ? (
+        {isError ? (
+          <div className="py-16 text-center">
+            <AlertTriangle size={28} className="text-rose-400 mx-auto mb-2" />
+            <p className="text-slate-500 text-sm font-bold">تعذّر تحميل الملفات — حاول تحديث الصفحة.</p>
+          </div>
+        ) : isLoading ? (
           <div className="flex justify-center py-16"><Loader2 className="animate-spin text-indigo-600" size={24} /></div>
         ) : files.length === 0 ? (
           <div className="py-16 text-center">
@@ -156,7 +170,12 @@ const DrivePage = () => {
                 </div>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
-                <button onClick={() => driveApi.downloadFile(f.id, f.original_name)} className="p-2 text-slate-400 hover:text-indigo-600 rounded-lg"><Download size={15} /></button>
+                <button
+                  onClick={() => driveApi.downloadFile(f.id, f.original_name).catch(() => toast.error('فشل تحميل الملف'))}
+                  className="p-2 text-slate-400 hover:text-indigo-600 rounded-lg"
+                >
+                  <Download size={15} />
+                </button>
                 <button onClick={() => deleteMutation.mutate(f.id)} className="p-2 text-slate-400 hover:text-rose-600 rounded-lg"><Trash2 size={15} /></button>
               </div>
             </div>

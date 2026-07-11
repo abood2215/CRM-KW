@@ -1,23 +1,29 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { X, Search, Loader2, Users, Phone } from 'lucide-react';
+import { X, Search, Loader2, Users, Phone, AlertTriangle } from 'lucide-react';
 import { contactLists as contactListsApi } from '../../../api';
 import { useModalA11y } from '../../../hooks/useModalA11y';
 
 const ListContactsModal = ({ list, onClose }) => {
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
   const ref = useModalA11y(!!list, onClose);
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['contact-list', list?.id],
-    queryFn: () => contactListsApi.getContactList(list.id),
+  useEffect(() => {
+    setSearch('');
+    setPage(1);
+  }, [list?.id]);
+
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['contact-list', list?.id, search, page],
+    queryFn: () => contactListsApi.getContactList(list.id, { search: search || undefined, page }),
     enabled: !!list,
   });
 
   if (!list) return null;
 
   const members = data?.contacts ?? [];
-  const filtered = members.filter((c) => !search || c.name?.includes(search) || c.phone?.includes(search));
+  const meta = data?.meta;
 
   return (
     <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -38,7 +44,7 @@ const ListContactsModal = ({ list, onClose }) => {
             <input
               type="text"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
               placeholder="بحث بالاسم أو الرقم..."
               className="w-full h-10 pr-9 pl-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
             />
@@ -46,11 +52,16 @@ const ListContactsModal = ({ list, onClose }) => {
         </div>
 
         <div className="overflow-y-auto flex-1 px-4 py-2">
-          {isLoading ? (
+          {isError ? (
+            <div className="text-center py-16">
+              <AlertTriangle size={28} className="text-rose-400 mx-auto mb-3" />
+              <p className="text-slate-500 font-bold text-sm">تعذّر تحميل جهات الاتصال.</p>
+            </div>
+          ) : isLoading ? (
             <div className="flex justify-center py-16">
               <Loader2 className="animate-spin text-indigo-600 h-7 w-7" />
             </div>
-          ) : filtered.length === 0 ? (
+          ) : members.length === 0 ? (
             <div className="text-center py-16">
               <Users size={28} className="text-slate-200 mx-auto mb-3" />
               <p className="text-slate-400 font-bold text-sm">لا توجد جهات اتصال</p>
@@ -65,7 +76,7 @@ const ListContactsModal = ({ list, onClose }) => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {filtered.map((c) => (
+                {members.map((c) => (
                   <tr key={c.id} className="hover:bg-slate-50/50 transition-colors">
                     <td className="py-3 px-4 font-bold text-slate-800">{c.name || '—'}</td>
                     <td className="py-3 px-4 font-mono text-slate-600">
@@ -88,7 +99,28 @@ const ListContactsModal = ({ list, onClose }) => {
           )}
         </div>
 
-        <div className="px-8 py-4 border-t border-slate-100 shrink-0">
+        <div className="px-8 py-4 border-t border-slate-100 shrink-0 space-y-3">
+          {meta && meta.last_page > 1 && (
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-slate-400 font-medium">صفحة {meta.current_page} من {meta.last_page}</span>
+              <div className="flex gap-2">
+                <button
+                  disabled={page <= 1}
+                  onClick={() => setPage((p) => p - 1)}
+                  className="h-8 px-3 border border-slate-200 rounded-lg font-bold disabled:opacity-40 hover:bg-slate-50"
+                >
+                  السابق
+                </button>
+                <button
+                  disabled={page >= meta.last_page}
+                  onClick={() => setPage((p) => p + 1)}
+                  className="h-8 px-3 border border-slate-200 rounded-lg font-bold disabled:opacity-40 hover:bg-slate-50"
+                >
+                  التالي
+                </button>
+              </div>
+            </div>
+          )}
           <button onClick={onClose} className="w-full h-10 border border-slate-200 rounded-xl font-bold text-slate-600 hover:bg-slate-50 text-sm transition-all">
             إغلاق
           </button>

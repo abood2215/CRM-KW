@@ -11,6 +11,7 @@ use App\Http\Requests\Contact\UpdateContactRequest;
 use App\Http\Resources\ContactResource;
 use App\Models\ActivityLog;
 use App\Models\Contact;
+use App\Models\ContactList;
 use App\Policies\ContactPolicy;
 use App\Services\Contacts\ContactImportService;
 use App\Services\Contacts\ContactService;
@@ -283,6 +284,7 @@ class ContactController extends Controller
         $this->authorize('update', $contact);
 
         $contact->optOut();
+        event(new ContactUpdatedEvent($contact->id));
 
         return response()->json([
             'contact' => new ContactResource($contact->fresh()),
@@ -295,6 +297,7 @@ class ContactController extends Controller
         $this->authorize('update', $contact);
 
         $contact->markBlacklisted();
+        event(new ContactUpdatedEvent($contact->id));
 
         return response()->json([
             'contact' => new ContactResource($contact->fresh()),
@@ -307,6 +310,7 @@ class ContactController extends Controller
         $this->authorize('update', $contact);
 
         $contact->clearBlacklist();
+        event(new ContactUpdatedEvent($contact->id));
 
         return response()->json([
             'contact' => new ContactResource($contact->fresh()),
@@ -318,8 +322,20 @@ class ContactController extends Controller
     {
         $ids = $request->input('ids', []);
         $query = ContactPolicy::scopeVisibleTo(Contact::whereIn('id', $ids), $request->user());
-        $count = $query->count();
-        $query->delete();
+        $visibleIds = $query->pluck('id');
+        $count = $visibleIds->count();
+
+        // Same reasoning as ContactService::delete() — capture affected lists before the
+        // cascade removes contact_list_items, so their counts can be resynced afterward.
+        $affectedListIds = DB::table('contact_list_items')->whereIn('contact_id', $visibleIds)->pluck('contact_list_id')->unique();
+
+        Contact::whereIn('id', $visibleIds)->delete();
+
+        ContactList::whereIn('id', $affectedListIds)->get()->each->syncCount();
+
+        foreach ($visibleIds as $id) {
+            event(new ContactUpdatedEvent($id));
+        }
 
         return response()->json(['message' => "تم حذف {$count} جهة اتصال.", 'deleted' => $count]);
     }
@@ -327,8 +343,12 @@ class ContactController extends Controller
     public function bulkBlacklist(Request $request): JsonResponse
     {
         $ids = $request->input('ids', []);
-        $count = ContactPolicy::scopeVisibleTo(Contact::whereIn('id', $ids), $request->user())
-            ->update(['is_blacklisted' => true]);
+        $visibleIds = ContactPolicy::scopeVisibleTo(Contact::whereIn('id', $ids), $request->user())->pluck('id');
+        $count = Contact::whereIn('id', $visibleIds)->update(['is_blacklisted' => true]);
+
+        foreach ($visibleIds as $id) {
+            event(new ContactUpdatedEvent($id));
+        }
 
         return response()->json(['message' => "تم حظر {$count} جهة اتصال.", 'updated' => $count]);
     }
@@ -349,6 +369,11 @@ class ContactController extends Controller
         Contact::truncate();
         DB::statement('SET FOREIGN_KEY_CHECKS=1');
         DB::table('contact_lists')->update(['count' => 0]);
+
+        // No per-contact ContactUpdatedEvent here — a full wipe is a distinct, rarer
+        // action than individual edits, and firing thousands of individual events would
+        // just flood the broadcast channel. Board listeners get the "gone" case at
+        // their next request cycle; other pages don't render deleted contacts by id.
 
         return response()->json(['message' => "تم حذف {$count} جهة اتصال.", 'deleted' => $count]);
     }

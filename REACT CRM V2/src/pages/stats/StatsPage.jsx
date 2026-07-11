@@ -9,6 +9,7 @@ import toast from 'react-hot-toast';
 import { stats as statsApi } from '../../api';
 import { usePermission } from '../../hooks/usePermission';
 import { cn } from '../../utils/cn';
+import { formatResponseTime } from '../../utils/format';
 
 const QUALITY_LABELS = {
   GREEN: { label: 'جيدة', cls: 'bg-emerald-50 text-emerald-600' },
@@ -29,13 +30,6 @@ const SOURCE_COLORS = {
   google: '#3b82f6',
 };
 const PALETTE = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#3b82f6', '#8b5cf6'];
-
-const formatResponseTime = (minutes) => {
-  if (minutes == null) return '—';
-  if (minutes < 60) return `${minutes} دقيقة`;
-  if (minutes < 1440) return `${(minutes / 60).toFixed(1)} ساعة`;
-  return `${(minutes / 1440).toFixed(1)} يوم`;
-};
 
 const StatsPage = () => {
   const [range, setRange] = useState('week');

@@ -3,6 +3,7 @@
 namespace App\Services\Contacts;
 
 use App\Models\Contact;
+use App\Models\ContactList;
 use App\Models\User;
 use App\Services\Activity\ActivityLogger;
 
@@ -38,6 +39,13 @@ class ContactService
     {
         ActivityLogger::record($contact, 'delete', "حذف جهة اتصال: {$contact->name}");
 
+        // Grab affected lists before deleting — contact_list_items cascades at the DB
+        // level, so the membership needed to know which lists to re-count disappears
+        // the moment the contact row goes.
+        $listIds = $contact->lists()->pluck('contact_lists.id');
+
         $contact->delete();
+
+        ContactList::whereIn('id', $listIds)->get()->each->syncCount();
     }
 }

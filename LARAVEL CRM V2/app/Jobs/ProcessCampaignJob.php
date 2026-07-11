@@ -55,9 +55,18 @@ class ProcessCampaignJob implements ShouldQueue
             return;
         }
 
-        if (! $number->canSend()) {
+        if ($number->status !== 'connected') {
             Log::warning("[Campaign #{$campaign->id}] الرقم {$number->phone} غير متصل");
             $this->pause($campaign, "الحملة \"{$campaign->name}\" موقوفة: الرقم {$number->phone} غير متصل بالواتساب.");
+
+            return;
+        }
+
+        if ($number->sent_today >= $number->daily_limit) {
+            Log::warning("[Campaign #{$campaign->id}] الرقم {$number->phone} بلغ الحد اليومي ({$number->daily_limit})");
+            // Not a permanent pause reason like the other cases — sent_today resets daily via
+            // ResetDailyLimitJob, so re-dispatch later instead of leaving the campaign paused forever.
+            self::dispatch($this->campaignId)->delay(now()->addHour());
 
             return;
         }

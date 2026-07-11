@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\ContactList\StoreContactListRequest;
 use App\Http\Requests\ContactList\UpdateContactListRequest;
 use App\Http\Resources\ContactListResource;
+use App\Http\Resources\ContactResource;
 use App\Models\Contact;
 use App\Models\ContactList;
 use App\Services\Activity\ActivityLogger;
@@ -35,11 +36,33 @@ class ContactListController extends Controller
         ], 201);
     }
 
-    public function show(ContactList $contactList): JsonResponse
+    public function show(Request $request, ContactList $contactList): JsonResponse
     {
-        $contactList->load(['contacts', 'user']);
+        $contactList->load('user')->loadCount('contacts');
 
-        return response()->json(['contact_list' => new ContactListResource($contactList)]);
+        // Members are paginated separately from the list itself — the old unbounded
+        // `contacts` eager-load returned every member contact in one response, which
+        // doesn't scale for lists with thousands of contacts.
+        $perPage = min((int) ($request->per_page ?? 50), 200);
+        $query = $contactList->contacts();
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(fn ($q) => $q->where('contacts.name', 'like', "%{$search}%")->orWhere('contacts.phone', 'like', "%{$search}%"));
+        }
+
+        $contacts = $query->orderBy('contacts.name')->paginate($perPage);
+
+        return response()->json([
+            'contact_list' => new ContactListResource($contactList),
+            'contacts' => ContactResource::collection($contacts),
+            'meta' => [
+                'current_page' => $contacts->currentPage(),
+                'last_page' => $contacts->lastPage(),
+                'per_page' => $contacts->perPage(),
+                'total' => $contacts->total(),
+            ],
+        ]);
     }
 
     public function update(UpdateContactListRequest $request, ContactList $contactList): JsonResponse

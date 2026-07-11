@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Outlet, useNavigate, useLocation, NavLink } from 'react-router-dom';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, QueryErrorResetBoundary } from '@tanstack/react-query';
 import { AnimatePresence, motion } from 'framer-motion';
 import { LogOut, LayoutDashboard, Kanban, Users, CheckSquare, ListChecks, Phone, FileText, Megaphone, MessageSquare, Bell, Settings, HardDrive, BarChart3, Menu, X, Search, History } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -61,7 +61,7 @@ const NAV_GROUPS = [
       { to: '/stats', label: 'التقارير', icon: BarChart3, color: 'orange' },
       { to: '/notifications', label: 'الإشعارات', icon: Bell, color: 'red', badge: 'notifications' },
       { to: '/drive', label: 'الملفات', icon: HardDrive, color: 'teal' },
-      { to: '/activity-log', label: 'سجل النشاط', icon: History, color: 'blue' },
+      { to: '/activity-log', label: 'سجل النشاط', icon: History, color: 'blue', permission: 'activity_log.view' },
       { to: '/settings', label: 'الإعدادات', icon: Settings, color: 'gray' },
     ],
   },
@@ -96,18 +96,23 @@ const NavItem = ({ to, label, icon: Icon, end, unreadCount, color, onClick }) =>
   );
 };
 
-const NavGroups = ({ unreadCount, onItemClick }) => (
+const NavGroups = ({ unreadCount, onItemClick, permissions }) => (
   <>
-    {NAV_GROUPS.map((group) => (
-      <div key={group.label}>
-        <p className="px-3 mb-1.5 text-[11px] font-black uppercase tracking-wider text-slate-400">{group.label}</p>
-        <div className="space-y-1">
-          {group.items.map((item) => (
-            <NavItem key={item.to} {...item} unreadCount={item.badge === 'notifications' ? unreadCount : 0} onClick={onItemClick} />
-          ))}
+    {NAV_GROUPS.map((group) => {
+      const items = group.items.filter((item) => !item.permission || permissions.includes(item.permission));
+      if (items.length === 0) return null;
+
+      return (
+        <div key={group.label}>
+          <p className="px-3 mb-1.5 text-[11px] font-black uppercase tracking-wider text-slate-400">{group.label}</p>
+          <div className="space-y-1">
+            {items.map((item) => (
+              <NavItem key={item.to} {...item} unreadCount={item.badge === 'notifications' ? unreadCount : 0} onClick={onItemClick} />
+            ))}
+          </div>
         </div>
-      </div>
-    ))}
+      );
+    })}
   </>
 );
 
@@ -179,6 +184,7 @@ const MainLayout = () => {
 
   const initial = user?.name?.trim()?.charAt(0)?.toUpperCase() ?? '؟';
   const roleLabel = user?.role?.name;
+  const permissions = user?.permissions ?? [];
 
   return (
     <div className="min-h-screen flex bg-slate-50">
@@ -194,7 +200,7 @@ const MainLayout = () => {
         </div>
 
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
-          <NavGroups unreadCount={unreadCount} />
+          <NavGroups unreadCount={unreadCount} permissions={permissions} />
         </nav>
 
         <div className="p-4 border-t border-slate-100 flex-shrink-0">
@@ -244,9 +250,13 @@ const MainLayout = () => {
         </header>
 
         <main className="flex-1 p-4 lg:p-6">
-          <ErrorBoundary key={location.pathname}>
-            <Outlet />
-          </ErrorBoundary>
+          <QueryErrorResetBoundary>
+            {({ reset }) => (
+              <ErrorBoundary key={location.pathname} onReset={reset}>
+                <Outlet />
+              </ErrorBoundary>
+            )}
+          </QueryErrorResetBoundary>
         </main>
       </div>
 
@@ -289,7 +299,7 @@ const MainLayout = () => {
               </div>
 
               <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
-                <NavGroups unreadCount={unreadCount} onItemClick={() => setDrawerOpen(false)} />
+                <NavGroups unreadCount={unreadCount} permissions={permissions} onItemClick={() => setDrawerOpen(false)} />
               </nav>
 
               <div className="p-4 border-t border-slate-100 flex-shrink-0">

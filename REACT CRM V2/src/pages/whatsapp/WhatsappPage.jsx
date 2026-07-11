@@ -6,6 +6,7 @@ import { whatsappNumbers as whatsappNumbersApi } from '../../api';
 import { cn } from '../../utils/cn';
 import { useConfirm } from '../../hooks/useConfirm';
 import { useModalA11y } from '../../hooks/useModalA11y';
+import { usePermission } from '../../hooks/usePermission';
 import BaileysQrModal from './components/BaileysQrModal';
 
 const emptyForm = {
@@ -21,6 +22,7 @@ const emptyForm = {
 
 const WhatsappPage = () => {
   const queryClient = useQueryClient();
+  const canManage = usePermission('whatsapp_numbers.manage');
   const { confirm, dialog: confirmDialog } = useConfirm();
   const [addOpen, setAddOpen] = useState(false);
   const [editingNumber, setEditingNumber] = useState(null);
@@ -97,10 +99,12 @@ const WhatsappPage = () => {
           <h1 className="text-xl lg:text-2xl font-black text-slate-800">أرقام واتساب</h1>
           <p className="text-slate-500 mt-1 font-medium text-sm">إدارة أرقام الإرسال (Cloud API أو واتساب ويب).</p>
         </div>
-        <button onClick={() => setAddOpen(true)} className="h-11 px-6 bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:bg-indigo-700 transition-all flex items-center gap-2 text-sm self-start sm:self-auto">
-          <Plus size={16} />
-          <span>رقم جديد</span>
-        </button>
+        {canManage && (
+          <button onClick={() => setAddOpen(true)} className="h-11 px-6 bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:bg-indigo-700 transition-all flex items-center gap-2 text-sm self-start sm:self-auto">
+            <Plus size={16} />
+            <span>رقم جديد</span>
+          </button>
+        )}
       </div>
 
       {isLoading ? (
@@ -122,37 +126,39 @@ const WhatsappPage = () => {
                 <span>{n.api_type === 'cloud' ? 'Cloud API' : 'واتساب ويب'}</span>
                 <span>{n.sent_today} / {n.daily_limit} اليوم</span>
               </div>
-              <div className="flex gap-2">
-                {n.api_type === 'cloud' ? (
-                  <button onClick={() => syncMutation.mutate(n.id)} className="flex-1 h-9 rounded-lg border border-slate-200 text-slate-600 text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-slate-50">
-                    <RefreshCw size={13} />
-                    مزامنة القوالب
-                  </button>
-                ) : (
+              {canManage && (
+                <div className="flex gap-2">
+                  {n.api_type === 'cloud' ? (
+                    <button onClick={() => syncMutation.mutate(n.id)} className="flex-1 h-9 rounded-lg border border-slate-200 text-slate-600 text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-slate-50">
+                      <RefreshCw size={13} />
+                      مزامنة القوالب
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => setQrNumber(n)}
+                      className={cn(
+                        'flex-1 h-9 rounded-lg border text-xs font-bold flex items-center justify-center gap-1.5',
+                        n.can_send ? 'border-slate-200 text-slate-600 hover:bg-slate-50' : 'border-indigo-200 text-indigo-600 bg-indigo-50 hover:bg-indigo-100'
+                      )}
+                    >
+                      <QrCode size={13} />
+                      {n.can_send ? 'إعادة الربط' : 'ربط عبر QR'}
+                    </button>
+                  )}
                   <button
-                    onClick={() => setQrNumber(n)}
-                    className={cn(
-                      'flex-1 h-9 rounded-lg border text-xs font-bold flex items-center justify-center gap-1.5',
-                      n.can_send ? 'border-slate-200 text-slate-600 hover:bg-slate-50' : 'border-indigo-200 text-indigo-600 bg-indigo-50 hover:bg-indigo-100'
-                    )}
+                    onClick={() => setEditingNumber(n)}
+                    className="h-9 w-9 rounded-lg border border-slate-200 text-slate-400 hover:text-indigo-600 hover:border-indigo-200 flex items-center justify-center"
                   >
-                    <QrCode size={13} />
-                    {n.can_send ? 'إعادة الربط' : 'ربط عبر QR'}
+                    <Pencil size={14} />
                   </button>
-                )}
-                <button
-                  onClick={() => setEditingNumber(n)}
-                  className="h-9 w-9 rounded-lg border border-slate-200 text-slate-400 hover:text-indigo-600 hover:border-indigo-200 flex items-center justify-center"
-                >
-                  <Pencil size={14} />
-                </button>
-                <button
-                  onClick={() => handleDelete(n.id)}
-                  className="h-9 w-9 rounded-lg border border-slate-200 text-slate-400 hover:text-rose-600 hover:border-rose-200 flex items-center justify-center"
-                >
-                  <Trash2 size={14} />
-                </button>
-              </div>
+                  <button
+                    onClick={() => handleDelete(n.id)}
+                    className="h-9 w-9 rounded-lg border border-slate-200 text-slate-400 hover:text-rose-600 hover:border-rose-200 flex items-center justify-center"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              )}
             </div>
           ))}
         </div>

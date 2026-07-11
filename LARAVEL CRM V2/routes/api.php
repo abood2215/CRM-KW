@@ -129,8 +129,12 @@ Route::middleware(['auth:sanctum', 'update.last.seen', 'throttle:60,1'])->group(
         Route::put('/auto-replies', [SettingsController::class, 'updateAutoReplies']);
     });
 
+    // Index is reachable by anyone with users.manage too — creating a user requires
+    // picking a role, so the picker can't sit fully behind roles.manage (see RoleController::index).
+    Route::get('/roles', [RoleController::class, 'index']);
+
     Route::middleware("can:permission,'roles.manage'")->group(function () {
-        Route::apiResource('roles', RoleController::class)->except(['show']);
+        Route::apiResource('roles', RoleController::class)->except(['show', 'index']);
         Route::get('/permissions', [PermissionController::class, 'index']);
     });
 });
