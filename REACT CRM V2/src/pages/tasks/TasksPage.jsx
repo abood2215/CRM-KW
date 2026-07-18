@@ -21,6 +21,7 @@ import { tasks as tasksApi } from '../../api';
 import { cn } from '../../utils/cn';
 import { useConfirm } from '../../hooks/useConfirm';
 import { useEcho } from '../../hooks/useEcho';
+import { runWithUndo } from '../../utils/undoableAction';
 import AddTaskModal from '../../components/AddTaskModal';
 
 const priorityColors = {
@@ -37,7 +38,7 @@ const filterItems = [
 
 const TasksPage = () => {
   const queryClient = useQueryClient();
-  const { confirm, dialog: confirmDialog } = useConfirm();
+  const { dialog: confirmDialog } = useConfirm();
   const [filter, setFilter] = useState('pending');
   const [addOpen, setAddOpen] = useState(false);
 
@@ -69,10 +70,7 @@ const TasksPage = () => {
 
   const deleteTaskMutation = useMutation({
     mutationFn: (id) => tasksApi.deleteTask(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      toast.success('تم حذف المهمة');
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tasks'] }),
     onError: () => toast.error('فشل حذف المهمة'),
   });
 
@@ -208,8 +206,8 @@ const TasksPage = () => {
                   </div>
 
                   <button
-                    onClick={async () => {
-                      if (await confirm('هل تريد حذف هذه المهمة؟')) deleteTaskMutation.mutate(task.id);
+                    onClick={() => {
+                      runWithUndo({ message: 'تم حذف المهمة', onConfirm: () => deleteTaskMutation.mutate(task.id) });
                     }}
                     className="p-2 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all flex-shrink-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
                   >

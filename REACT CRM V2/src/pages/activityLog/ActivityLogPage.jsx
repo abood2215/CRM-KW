@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
 import { ar } from 'date-fns/locale';
 import { History, Loader2, AlertTriangle } from 'lucide-react';
-import { activityLogs as activityLogsApi } from '../../api';
+import { activityLogs as activityLogsApi, users as usersApi } from '../../api';
 
 const SUBJECT_LABELS = {
   contact: 'جهة اتصال',
@@ -18,11 +18,17 @@ const SUBJECT_LABELS = {
 
 const ActivityLogPage = () => {
   const [subjectType, setSubjectType] = useState('');
+  const [userId, setUserId] = useState('');
   const [page, setPage] = useState(1);
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['activity-logs', subjectType, page],
-    queryFn: () => activityLogsApi.getActivityLogs({ subject_type: subjectType || undefined, page }),
+    queryKey: ['activity-logs', subjectType, userId, page],
+    queryFn: () => activityLogsApi.getActivityLogs({ subject_type: subjectType || undefined, user_id: userId || undefined, page }),
+  });
+
+  const { data: users = [] } = useQuery({
+    queryKey: ['users-select'],
+    queryFn: usersApi.getUsers,
   });
 
   const logs = data?.data ?? [];
@@ -52,6 +58,14 @@ const ActivityLogPage = () => {
             {SUBJECT_LABELS[type] ?? type}
           </button>
         ))}
+        <select
+          value={userId}
+          onChange={(e) => { setUserId(e.target.value); setPage(1); }}
+          className="h-9 px-3 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600"
+        >
+          <option value="">كل الموظفين</option>
+          {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+        </select>
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">

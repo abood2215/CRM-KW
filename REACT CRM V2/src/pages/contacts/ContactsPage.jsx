@@ -7,6 +7,7 @@ import { cn } from '../../utils/cn';
 import { contacts as contactsApi } from '../../api';
 import { useConfirm } from '../../hooks/useConfirm';
 import { usePermission } from '../../hooks/usePermission';
+import { runWithUndo } from '../../utils/undoableAction';
 import AddContactModal from '../../components/AddContactModal';
 import ImportContactsModal from '../../components/ImportContactsModal';
 import ContactsTable from './components/ContactsTable';
@@ -41,7 +42,7 @@ const ContactsPage = () => {
 
   const deleteMutation = useMutation({
     mutationFn: (id) => contactsApi.deleteContact(id),
-    onSuccess: () => { invalidate(); toast.success('تم الحذف.'); },
+    onSuccess: () => invalidate(),
     onError: () => toast.error('فشل الحذف.'),
   });
 
@@ -69,7 +70,7 @@ const ContactsPage = () => {
 
   const bulkDeleteMutation = useMutation({
     mutationFn: (ids) => contactsApi.bulkDestroyContacts(ids),
-    onSuccess: (res) => { invalidate(); setSelectedIds([]); toast.success(`تم حذف ${res.deleted} جهة اتصال.`); },
+    onSuccess: () => { invalidate(); setSelectedIds([]); },
     onError: () => toast.error('فشل الحذف.'),
   });
 
@@ -98,7 +99,9 @@ const ContactsPage = () => {
     }
   };
 
-  const handleDelete = async (id) => { if (await confirm('حذف هذه الجهة؟')) deleteMutation.mutate(id); };
+  const handleDelete = (id) => {
+    runWithUndo({ message: 'تم حذف جهة الاتصال', onConfirm: () => deleteMutation.mutate(id) });
+  };
 
   return (
     <div className="space-y-6">
@@ -187,7 +190,10 @@ const ContactsPage = () => {
                   حظر المحدد
                 </button>
                 <button
-                  onClick={async () => { if (await confirm(`حذف ${selectedIds.length} جهة اتصال المحددة؟`)) bulkDeleteMutation.mutate(selectedIds); }}
+                  onClick={() => {
+                    const ids = selectedIds;
+                    runWithUndo({ message: `تم حذف ${ids.length} جهة اتصال`, onConfirm: () => bulkDeleteMutation.mutate(ids) });
+                  }}
                   className="h-8 px-3 rounded-lg bg-white border border-rose-200 text-rose-600 text-xs font-bold flex items-center gap-1.5 hover:bg-rose-50 transition-colors"
                 >
                   <Trash2 size={13} />
