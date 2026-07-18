@@ -1,5 +1,5 @@
-import React from 'react';
-import { Check, CheckCheck, AlertCircle, Clock, Lock, FileText, Download, Heart } from 'lucide-react';
+import React, { useState } from 'react';
+import { Check, CheckCheck, AlertCircle, Clock, Lock, FileText, Download, Heart, SmilePlus } from 'lucide-react';
 import { cn } from '../../../utils/cn';
 
 const STATUS_META = {
@@ -10,10 +10,21 @@ const STATUS_META = {
   failed: { icon: <AlertCircle size={13} className="text-rose-400" />, label: 'فشل الإرسال' },
 };
 
-const MessageBubble = ({ message }) => {
+const QUICK_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
+
+const MessageBubble = ({ message, onReact }) => {
+  const [pickerOpen, setPickerOpen] = useState(false);
   const isOut = message.direction === 'out';
   const statusMeta = STATUS_META[message.status];
   const statusLabel = message.status === 'failed' && message.error_message ? message.error_message : statusMeta?.label;
+  // Only offered on the customer's own messages — reacting to your own sent message isn't
+  // the point here, and it needs a real wamid to target via Meta's reaction message type.
+  const canReact = !isOut && !message._optimistic && !!message.whatsapp_message_id && onReact;
+
+  const pickReaction = (emoji) => {
+    onReact(emoji === message.reaction_emoji ? '' : emoji);
+    setPickerOpen(false);
+  };
 
   if (message.is_private) {
     return (
@@ -38,7 +49,39 @@ const MessageBubble = ({ message }) => {
   }
 
   return (
-    <div className={cn('flex mb-2', isOut ? 'justify-start' : 'justify-end', message._optimistic && 'opacity-60')}>
+    <div className={cn('flex mb-2 group items-end gap-1.5', isOut ? 'justify-start' : 'justify-end', message._optimistic && 'opacity-60')}>
+      {canReact && (
+        <div className="relative flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button
+            type="button"
+            onClick={() => setPickerOpen((o) => !o)}
+            className="w-7 h-7 rounded-full bg-white border border-slate-200 text-slate-400 hover:text-teal-600 hover:border-teal-200 flex items-center justify-center shadow-sm"
+            title="تفاعل"
+            aria-label="تفاعل"
+          >
+            <SmilePlus size={14} />
+          </button>
+          {pickerOpen && (
+            <>
+              <div className="fixed inset-0 z-10" onClick={() => setPickerOpen(false)} />
+              <div className="absolute bottom-9 right-0 bg-white border border-slate-200 rounded-full shadow-lg px-2 py-1.5 flex gap-1 z-20">
+                {QUICK_REACTIONS.map((emoji) => (
+                  <button
+                    key={emoji}
+                    onClick={() => pickReaction(emoji)}
+                    className={cn(
+                      'text-base w-7 h-7 flex items-center justify-center rounded-full hover:bg-slate-100 transition-transform hover:scale-110',
+                      message.reaction_emoji === emoji && 'bg-teal-50'
+                    )}
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
       <div className="relative max-w-[70%]">
         <div
           className={cn(
@@ -87,7 +130,7 @@ const MessageBubble = ({ message }) => {
 
         {message.reaction_emoji && (
           <span
-            title={`تفاعل العميل: ${message.reaction_emoji}`}
+            title={isOut ? `تفاعل العميل: ${message.reaction_emoji}` : `تفاعلك: ${message.reaction_emoji}`}
             className={cn(
               'absolute -bottom-2 w-5 h-5 flex items-center justify-center bg-white border border-slate-100 rounded-full text-[11px] shadow-sm',
               isOut ? 'left-1' : 'right-1'

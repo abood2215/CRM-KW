@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Loader2, FileText, Plus, Pencil, Trash2, RefreshCw, Search, BarChart3 } from 'lucide-react';
+import { Loader2, FileText, Plus, Pencil, Trash2, RefreshCw, Search, BarChart3, Copy } from 'lucide-react';
 import { templates as templatesApi, whatsappNumbers as whatsappNumbersApi } from '../../api';
 import { cn } from '../../utils/cn';
 import { useConfirm } from '../../hooks/useConfirm';
@@ -33,6 +33,7 @@ const TemplatesPage = () => {
   const [numberId, setNumberId] = useState('');
   const [formOpen, setFormOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState(null);
+  const [cloningTemplate, setCloningTemplate] = useState(null);
   const [expandedId, setExpandedId] = useState(null);
 
   const { data: templates = [], isLoading } = useQuery({
@@ -63,8 +64,10 @@ const TemplatesPage = () => {
     onError: (e) => toast.error(e?.response?.data?.message || 'فشلت المزامنة'),
   });
 
-  const openCreate = () => { setEditingTemplate(null); setFormOpen(true); };
-  const openEdit = (t) => { setEditingTemplate(t); setFormOpen(true); };
+  const openCreate = () => { setEditingTemplate(null); setCloningTemplate(null); setFormOpen(true); };
+  const openEdit = (t) => { setEditingTemplate(t); setCloningTemplate(null); setFormOpen(true); };
+  const openClone = (t) => { setEditingTemplate(null); setCloningTemplate(t); setFormOpen(true); };
+  const closeForm = () => { setFormOpen(false); setEditingTemplate(null); setCloningTemplate(null); };
 
   return (
     <div className="space-y-6">
@@ -137,6 +140,9 @@ const TemplatesPage = () => {
                   </span>
                   {canManage && (
                     <>
+                      <button onClick={() => openClone(t)} title="نسخ كقالب جديد" className="p-1.5 text-slate-300 hover:text-indigo-500">
+                        <Copy size={14} />
+                      </button>
                       <button onClick={() => openEdit(t)} className="p-1.5 text-slate-300 hover:text-indigo-500">
                         <Pencil size={14} />
                       </button>
@@ -174,7 +180,7 @@ const TemplatesPage = () => {
         </div>
       )}
 
-      <TemplateFormModal open={formOpen} onClose={() => setFormOpen(false)} template={editingTemplate} />
+      <TemplateFormModal open={formOpen} onClose={closeForm} template={editingTemplate} cloneFrom={cloningTemplate} />
       {confirmDialog}
     </div>
   );

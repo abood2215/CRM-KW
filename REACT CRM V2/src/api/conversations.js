@@ -27,6 +27,9 @@ export const assignConversation = (conversationId, userId) =>
 export const sendTyping = (conversationId) =>
   client.post(`/conversations/${conversationId}/typing`).then((res) => res.data);
 
+export const reactToMessage = (conversationId, messageId, emoji) =>
+  client.post(`/conversations/${conversationId}/messages/${messageId}/react`, { emoji }).then((res) => res.data);
+
 export const uploadMessageAttachment = (file) => {
   const formData = new FormData();
   formData.append('file', file);

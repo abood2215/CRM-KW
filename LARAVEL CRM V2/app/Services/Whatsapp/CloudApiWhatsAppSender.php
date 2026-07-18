@@ -110,6 +110,17 @@ class CloudApiWhatsAppSender implements WhatsAppSenderInterface
         }
     }
 
+    public function sendReaction(string $to, string $messageId, string $emoji): array
+    {
+        return $this->send([
+            'messaging_product' => 'whatsapp',
+            'recipient_type' => 'individual',
+            'to' => PhoneNumber::normalize($to),
+            'type' => 'reaction',
+            'reaction' => ['message_id' => $messageId, 'emoji' => $emoji],
+        ]);
+    }
+
     public function sendVideo(string $to, string $videoUrl, ?string $caption = null): array
     {
         $video = ['link' => $videoUrl];

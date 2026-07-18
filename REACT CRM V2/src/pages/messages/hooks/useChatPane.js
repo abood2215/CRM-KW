@@ -171,6 +171,12 @@ export function useChatPane(conversationId) {
     onError: (e) => toast.error(e?.response?.data?.message || 'فشل تعيين المحادثة'),
   });
 
+  const reactMutation = useMutation({
+    mutationFn: ({ messageId, emoji }) => conversationsApi.reactToMessage(conversationId, messageId, emoji),
+    onSuccess: invalidateAll,
+    onError: (e) => toast.error(e?.response?.data?.message || 'فشل إرسال التفاعل'),
+  });
+
   return {
     conversation,
     messages,
@@ -181,6 +187,7 @@ export function useChatPane(conversationId) {
     sendTemplate: sendTemplateMutation.mutate,
     updateStatus: updateStatusMutation.mutate,
     assignConversation: assignMutation.mutate,
+    reactToMessage: (messageId, emoji) => reactMutation.mutate({ messageId, emoji }),
     loadOlderMessages: fetchPreviousPage,
     hasOlderMessages: !!hasPreviousPage,
     isLoadingOlderMessages: isFetchingPreviousPage,

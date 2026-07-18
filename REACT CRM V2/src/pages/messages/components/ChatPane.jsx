@@ -19,7 +19,7 @@ const dateSeparatorLabel = (date) => {
 const ChatPane = ({ conversationId, onBack, className }) => {
   const {
     conversation, messages, isLoading, bottomRef, sendMessage, isSending, sendTemplate, updateStatus, assignConversation,
-    loadOlderMessages, hasOlderMessages, isLoadingOlderMessages, typingUser, notifyTyping,
+    reactToMessage, loadOlderMessages, hasOlderMessages, isLoadingOlderMessages, typingUser, notifyTyping,
   } = useChatPane(conversationId);
   const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
@@ -77,7 +77,7 @@ const ChatPane = ({ conversationId, onBack, className }) => {
                         </span>
                       </div>
                     )}
-                    <MessageBubble message={m} />
+                    <MessageBubble message={m} onReact={(emoji) => reactToMessage(m.id, emoji)} />
                   </React.Fragment>
                 );
               })}

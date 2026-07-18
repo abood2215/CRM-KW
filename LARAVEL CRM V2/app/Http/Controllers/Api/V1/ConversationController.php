@@ -49,8 +49,15 @@ class ConversationController extends Controller
 
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->whereHas('contact', function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")->orWhere('phone', 'like', "%{$search}%");
+            // Matches either the contact (name/phone) or the conversation's own message
+            // content — previously only the contact matched, so finding a conversation by
+            // something the customer actually said meant scrolling the whole list by hand.
+            $query->where(function ($q) use ($search) {
+                $q->whereHas('contact', function ($cq) use ($search) {
+                    $cq->where('name', 'like', "%{$search}%")->orWhere('phone', 'like', "%{$search}%");
+                })->orWhereHas('messages', function ($mq) use ($search) {
+                    $mq->where('type', 'text')->where('is_private', false)->where('content', 'like', "%{$search}%");
+                });
             });
         }
 

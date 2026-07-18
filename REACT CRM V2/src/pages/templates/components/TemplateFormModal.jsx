@@ -5,6 +5,7 @@ import { X, Loader2, Plus, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { templates as templatesApi, whatsappNumbers as whatsappNumbersApi } from '../../../api';
 import { useModalA11y } from '../../../hooks/useModalA11y';
+import TemplateBubblePreview from './TemplateBubblePreview';
 
 const MAX_BUTTONS = 3;
 
@@ -21,7 +22,7 @@ const emptyForm = {
   examples: [],
 };
 
-const TemplateFormModal = ({ open, onClose, template }) => {
+const TemplateFormModal = ({ open, onClose, template, cloneFrom }) => {
   const queryClient = useQueryClient();
   const ref = useModalA11y(open, onClose);
   const [form, setForm] = useState(emptyForm);
@@ -34,21 +35,25 @@ const TemplateFormModal = ({ open, onClose, template }) => {
   });
 
   useEffect(() => {
-    if (open) {
-      setForm(template ? {
-        whatsapp_number_id: template.whatsapp_number_id,
-        name: template.name,
-        language: template.language,
-        category: template.category,
-        header_type: template.header_type,
-        header_content: template.header_content ?? '',
-        body_text: template.body_text,
-        footer_text: template.footer_text ?? '',
-        buttons: (template.buttons ?? []).map((b) => (typeof b === 'string' ? b : b.text ?? '')),
-        examples: [],
-      } : emptyForm);
-    }
-  }, [open, template]);
+    if (!open) return;
+
+    // Editing an existing template keeps its name; cloning one starts from a blank name
+    // (the "name_copy" would just collide-and-retry) but copies everything else as a
+    // starting point — same for a fresh template, source is just `emptyForm`.
+    const source = template ?? cloneFrom;
+    setForm(source ? {
+      whatsapp_number_id: source.whatsapp_number_id,
+      name: template ? source.name : '',
+      language: source.language,
+      category: source.category,
+      header_type: source.header_type,
+      header_content: source.header_content ?? '',
+      body_text: source.body_text,
+      footer_text: source.footer_text ?? '',
+      buttons: (source.buttons ?? []).map((b) => (typeof b === 'string' ? b : b.text ?? '')),
+      examples: [],
+    } : emptyForm);
+  }, [open, template, cloneFrom]);
 
   const mutation = useMutation({
     mutationFn: () => (isEdit ? templatesApi.updateTemplate(template.id, form) : templatesApi.createTemplate(form)),
@@ -80,15 +85,16 @@ const TemplateFormModal = ({ open, onClose, template }) => {
     <AnimatePresence>
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-          <motion.div ref={ref} role="dialog" aria-modal="true" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-white rounded-[2rem] shadow-2xl w-full max-w-lg max-h-[85vh] flex flex-col">
+          <motion.div ref={ref} role="dialog" aria-modal="true" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-white rounded-[2rem] shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col">
             <div className="p-6 border-b border-slate-100 flex items-center justify-between flex-shrink-0">
               <h2 className="text-lg font-black text-slate-800">{isEdit ? 'تعديل القالب' : 'قالب جديد'}</h2>
               <button onClick={onClose} className="p-2 rounded-xl text-slate-400 hover:bg-slate-100"><X size={18} /></button>
             </div>
 
+            <div className="flex flex-col lg:flex-row overflow-hidden flex-1 min-h-0">
             <form
               onSubmit={(e) => { e.preventDefault(); mutation.mutate(); }}
-              className="p-6 space-y-4 overflow-y-auto"
+              className="p-6 space-y-4 overflow-y-auto flex-1 min-w-0"
             >
               {!isEdit && (
                 <div>
@@ -200,6 +206,19 @@ const TemplateFormModal = ({ open, onClose, template }) => {
                 </button>
               </div>
             </form>
+
+            <div className="lg:w-72 flex-shrink-0 border-t lg:border-t-0 lg:border-r border-slate-100 p-6 overflow-y-auto bg-slate-50/50">
+              <p className="text-xs font-black text-slate-500 mb-3">معاينة حية</p>
+              <TemplateBubblePreview
+                headerType={form.header_type}
+                headerContent={form.header_content}
+                bodyText={form.body_text}
+                footerText={form.footer_text}
+                buttons={form.buttons}
+                examples={form.examples}
+              />
+            </div>
+            </div>
           </motion.div>
         </div>
       )}

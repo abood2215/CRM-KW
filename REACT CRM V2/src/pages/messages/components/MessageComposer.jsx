@@ -17,6 +17,8 @@ const MessageComposer = ({ onSend, isSending, onOpenTemplatePicker, onTyping }) 
   const [newCanned, setNewCanned] = useState({ title: '', content: '' });
   const [uploading, setUploading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
+  const dragCounterRef = useRef(0);
   const fileInputRef = useRef(null);
   const toolbarRef = useRef(null);
   const mediaRecorderRef = useRef(null);
@@ -79,10 +81,7 @@ const MessageComposer = ({ onSend, isSending, onOpenTemplatePicker, onTyping }) 
     }
   };
 
-  const handleFile = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
+  const uploadAndSend = async (file) => {
     setUploading(true);
     try {
       const { url, type, original_filename: filename } = await conversationsApi.uploadMessageAttachment(file);
@@ -91,8 +90,52 @@ const MessageComposer = ({ onSend, isSending, onOpenTemplatePicker, onTyping }) 
       toast.error(err?.response?.data?.message || 'فشل رفع الملف');
     } finally {
       setUploading(false);
-      e.target.value = '';
     }
+  };
+
+  const handleFile = async (e) => {
+    const file = e.target.files[0];
+    if (file) await uploadAndSend(file);
+    e.target.value = '';
+  };
+
+  // Lets an agent paste a screenshot straight from the clipboard instead of saving it to
+  // disk first just to reach the file picker.
+  const handlePaste = async (e) => {
+    const item = Array.from(e.clipboardData?.items ?? []).find((it) => it.kind === 'file');
+    if (!item) return;
+
+    e.preventDefault();
+    const file = item.getAsFile();
+    if (file) await uploadAndSend(file);
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+  };
+
+  const handleDragEnter = (e) => {
+    e.preventDefault();
+    dragCounterRef.current += 1;
+    if (e.dataTransfer.types.includes('Files')) setIsDraggingOver(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    dragCounterRef.current -= 1;
+    if (dragCounterRef.current <= 0) {
+      dragCounterRef.current = 0;
+      setIsDraggingOver(false);
+    }
+  };
+
+  const handleDrop = async (e) => {
+    e.preventDefault();
+    dragCounterRef.current = 0;
+    setIsDraggingOver(false);
+
+    const file = e.dataTransfer.files?.[0];
+    if (file) await uploadAndSend(file);
   };
 
   const startRecording = async () => {
@@ -135,7 +178,18 @@ const MessageComposer = ({ onSend, isSending, onOpenTemplatePicker, onTyping }) 
   };
 
   return (
-    <div className="border-t border-slate-100 bg-white p-4 flex-shrink-0">
+    <div
+      className="relative border-t border-slate-100 bg-white p-4 flex-shrink-0"
+      onDragEnter={handleDragEnter}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      {isDraggingOver && (
+        <div className="absolute inset-0 z-30 flex items-center justify-center bg-teal-50/90 border-2 border-dashed border-teal-400 m-2 rounded-2xl pointer-events-none">
+          <p className="text-sm font-bold text-teal-700">أفلت الملف هنا للإرسال</p>
+        </div>
+      )}
       {isPrivate && (
         <div className="flex items-center gap-1.5 text-xs font-bold text-amber-600 mb-2">
           <Lock size={12} />
@@ -273,6 +327,7 @@ const MessageComposer = ({ onSend, isSending, onOpenTemplatePicker, onTyping }) 
           value={text}
           onChange={(e) => { setText(e.target.value); onTyping?.(); }}
           onKeyDown={handleKeyDown}
+          onPaste={handlePaste}
           rows={1}
           placeholder={isPrivate ? 'اكتب ملاحظة داخلية...' : 'اكتب رسالة...'}
           className="flex-1 resize-none max-h-32 bg-transparent border-none px-1.5 py-2.5 text-sm focus:outline-none focus:ring-0"

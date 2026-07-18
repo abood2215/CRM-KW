@@ -2,12 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { Outlet, useNavigate, useLocation, NavLink } from 'react-router-dom';
 import { useQuery, useQueryClient, QueryErrorResetBoundary } from '@tanstack/react-query';
 import { AnimatePresence, motion } from 'framer-motion';
-import { LogOut, LayoutDashboard, Kanban, Users, CheckSquare, ListChecks, Phone, FileText, Megaphone, MessageSquare, Bell, Settings, HardDrive, BarChart3, Menu, X, Search, History } from 'lucide-react';
+import { LogOut, LayoutDashboard, Kanban, Users, CheckSquare, ListChecks, Phone, FileText, Megaphone, MessageSquare, Bell, Settings, HardDrive, BarChart3, Menu, X, Search, History, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../store/useAuthStore';
-import { auth, notifications as notificationsApi } from '../api';
+import { auth, notifications as notificationsApi, whatsappNumbers as whatsappNumbersApi } from '../api';
 import { cn } from '../utils/cn';
 import { useEcho } from '../hooks/useEcho';
+import { playNewMessageChime, showDesktopNotification } from '../utils/newMessageAlert';
 import CommandPalette from '../components/CommandPalette';
 import NotificationsDropdown from '../components/NotificationsDropdown';
 import ErrorBoundary from '../components/ErrorBoundary';
@@ -142,6 +143,14 @@ const MainLayout = () => {
   });
   const unreadCount = notificationsData?.unread_count ?? 0;
 
+  const [qualityBannerDismissed, setQualityBannerDismissed] = useState(false);
+  const { data: whatsappNumbersData } = useQuery({
+    queryKey: ['whatsapp-numbers'],
+    queryFn: whatsappNumbersApi.getWhatsappNumbers,
+    refetchInterval: 5 * 60 * 1000,
+  });
+  const redNumbers = (whatsappNumbersData ?? []).filter((n) => n.quality_rating === 'RED');
+
   useEffect(() => {
     setDrawerOpen(false);
   }, [location.pathname]);
@@ -170,6 +179,26 @@ const MainLayout = () => {
 
     return () => channel.stopListening('.notification', onNotification);
   }, [echo, user, queryClient]);
+
+  // Alerts on an incoming customer message (never our own outbound echo) when the agent
+  // isn't actively looking — tab hidden, or simply not on the messages screen. Someone
+  // staring at the conversation list already sees the badge; this is for everywhere else.
+  useEffect(() => {
+    if (!echo) return undefined;
+
+    const channel = echo.channel('conversations');
+    const onNewMessage = (payload) => {
+      if (payload.direction !== 'in') return;
+      if (document.visibilityState === 'visible' && location.pathname.startsWith('/messages')) return;
+
+      playNewMessageChime();
+      showDesktopNotification(payload.sender_name || 'رسالة جديدة', payload.content || '');
+    };
+
+    channel.listen('.NewMessageEvent', onNewMessage);
+
+    return () => channel.stopListening('.NewMessageEvent', onNewMessage);
+  }, [echo, location.pathname]);
 
   const handleLogout = async () => {
     try {
@@ -248,6 +277,25 @@ const MainLayout = () => {
             <NotificationsDropdown />
           </div>
         </header>
+
+        {redNumbers.length > 0 && !qualityBannerDismissed && (
+          <div className="bg-rose-50 border-b border-rose-100 px-4 lg:px-6 py-2.5 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-rose-700 text-sm font-bold min-w-0">
+              <AlertTriangle size={16} className="flex-shrink-0" />
+              <span className="truncate">
+                جودة {redNumbers.length === 1 ? `رقم "${redNumbers[0].name}"` : `${redNumbers.length} أرقام واتساب`} ضعيفة (RED) — ميتا قد تُقيّد الإرسال.{' '}
+                <NavLink to="/whatsapp" className="underline hover:no-underline">فتح صفحة الأرقام</NavLink>
+              </span>
+            </div>
+            <button
+              onClick={() => setQualityBannerDismissed(true)}
+              className="p-1 rounded-lg text-rose-400 hover:bg-rose-100 flex-shrink-0"
+              aria-label="إخفاء التنبيه"
+            >
+              <X size={15} />
+            </button>
+          </div>
+        )}
 
         <main className="flex-1 p-4 lg:p-6">
           <QueryErrorResetBoundary>

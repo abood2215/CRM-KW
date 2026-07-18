@@ -62,6 +62,11 @@ class BaileysWhatsAppSender implements WhatsAppSenderInterface
         throw new \RuntimeException('إرسال رسائل صوتية غير مدعوم حالياً لأرقام واتساب ويب (Baileys) — استخدم رقم Cloud API.');
     }
 
+    public function sendReaction(string $to, string $messageId, string $emoji): array
+    {
+        throw new \RuntimeException('التفاعل مع الرسائل غير مدعوم حالياً لأرقام واتساب ويب (Baileys) — استخدم رقم Cloud API.');
+    }
+
     public function getStatus(): array
     {
         return $this->request()->get("/api/{$this->sessionName}/status")->throw()->json() ?? [];

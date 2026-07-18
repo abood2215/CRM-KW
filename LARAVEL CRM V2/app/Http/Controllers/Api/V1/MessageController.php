@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Events\ConversationUpdatedEvent;
+use App\Events\MessageStatusUpdatedEvent;
 use App\Events\NewMessageEvent;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\MessageResource;
@@ -135,6 +136,53 @@ class MessageController extends Controller
         event(new ConversationUpdatedEvent($conversation->fresh()));
 
         return response()->json(['message' => new MessageResource($message)], 201);
+    }
+
+    /**
+     * Agent reacting to a message the customer sent (the reverse of InboundMessageService::
+     * handleReaction, which handles the customer reacting to one of ours). Reuses the same
+     * `reaction_emoji` column — a message only ever carries one reaction slot regardless of
+     * which side set it. Meta doesn't webhook back a confirmation for our own outbound
+     * reaction, so this updates the local record immediately rather than waiting on one.
+     */
+    public function react(Request $request, Conversation $conversation, Message $message): JsonResponse
+    {
+        $this->authorize('view', $conversation);
+
+        if ($message->conversation_id !== $conversation->id) {
+            abort(404);
+        }
+
+        $request->validate(['emoji' => 'nullable|string|max:8']);
+
+        if (! $message->whatsapp_message_id) {
+            return response()->json(['message' => 'ما فيك تتفاعل مع رسالة ما وصلت فعلياً عبر واتساب.'], 422);
+        }
+
+        $conversation->load('contact');
+        $contactPhone = $conversation->contact?->phone;
+        if (! $contactPhone) {
+            return response()->json(['message' => 'لا يوجد رقم هاتف للعميل.'], 422);
+        }
+
+        $number = WhatsappNumber::where('api_type', 'cloud')->where('status', 'connected')->first();
+        if (! $number) {
+            return response()->json(['message' => 'لا يوجد رقم واتساب متصل حالياً.'], 422);
+        }
+
+        $emoji = $request->input('emoji', '') ?? '';
+
+        try {
+            $sender = WhatsAppSenderFactory::make($number);
+            $sender->sendReaction($contactPhone, $message->whatsapp_message_id, $emoji);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'فشل إرسال التفاعل: '.$e->getMessage()], 422);
+        }
+
+        $message->update(['reaction_emoji' => $emoji !== '' ? $emoji : null]);
+        event(new MessageStatusUpdatedEvent($message));
+
+        return response()->json(['message' => new MessageResource($message->fresh())]);
     }
 
     public function sendTemplate(Request $request, Conversation $conversation): JsonResponse

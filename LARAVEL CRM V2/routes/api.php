@@ -94,6 +94,7 @@ Route::middleware(['auth:sanctum', 'update.last.seen', 'throttle:60,1'])->group(
     Route::post('/messages/upload-attachment', [MessageController::class, 'uploadAttachment'])->middleware('throttle:20,1');
     Route::post('/conversations/{conversation}/send-template', [MessageController::class, 'sendTemplate'])->middleware('throttle:20,1');
     Route::post('/conversations/{conversation}/notes', [MessageController::class, 'addNote']);
+    Route::post('/conversations/{conversation}/messages/{message}/react', [MessageController::class, 'react'])->middleware('throttle:20,1');
     Route::post('/conversations/{conversation}/typing', [ConversationController::class, 'typing'])->middleware('throttle:30,1');
 
     Route::get('/stats/dashboard', [StatsController::class, 'dashboard']);

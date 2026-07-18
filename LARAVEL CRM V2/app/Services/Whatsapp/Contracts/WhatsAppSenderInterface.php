@@ -20,4 +20,7 @@ interface WhatsAppSenderInterface
     public function sendDocument(string $to, string $documentUrl, ?string $filename = null): array;
 
     public function sendAudio(string $to, string $audioUrl): array;
+
+    /** Empty string `$emoji` removes a previously-sent reaction (mirrors Meta's own convention). */
+    public function sendReaction(string $to, string $messageId, string $emoji): array;
 }
