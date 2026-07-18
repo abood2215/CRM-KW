@@ -18,6 +18,8 @@ class WhatsappNumberResource extends JsonResource
             'business_account_id' => $this->business_account_id,
             'api_type' => $this->api_type,
             'status' => $this->status,
+            'quality_rating' => $this->quality_rating,
+            'quality_checked_at' => $this->quality_checked_at?->toISOString(),
             'daily_limit' => $this->daily_limit,
             'sent_today' => $this->sent_today,
             'can_send' => $this->canSend(),

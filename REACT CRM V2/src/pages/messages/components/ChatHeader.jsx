@@ -1,8 +1,49 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { CheckCircle2, RotateCcw, Megaphone, ChevronRight, UserCircle2, ChevronDown } from 'lucide-react';
+import { CheckCircle2, Clock, MessageCircle, Megaphone, ChevronRight, UserCircle2, ChevronDown, Info } from 'lucide-react';
 import { users as usersApi } from '../../../api';
 import { usePermission } from '../../../hooks/usePermission';
+
+const STATUS_META = {
+  open: { label: 'مفتوحة', icon: <MessageCircle size={13} />, cls: 'text-slate-600' },
+  pending: { label: 'معلّقة', icon: <Clock size={13} />, cls: 'text-amber-600' },
+  resolved: { label: 'منتهية', icon: <CheckCircle2 size={13} />, cls: 'text-emerald-600' },
+};
+
+const StatusPicker = ({ status, onUpdateStatus }) => {
+  const [open, setOpen] = useState(false);
+  const meta = STATUS_META[status] ?? STATUS_META.open;
+
+  return (
+    <div className="relative flex-shrink-0">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 ${meta.cls}`}
+      >
+        {meta.icon}
+        <span className="hidden sm:inline">{meta.label}</span>
+        <ChevronDown size={12} />
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+          <div className="absolute left-0 top-9 w-40 bg-white border border-slate-200 rounded-xl shadow-lg z-20 py-1">
+            {Object.entries(STATUS_META).map(([key, s]) => (
+              <button
+                key={key}
+                onClick={() => { onUpdateStatus(key); setOpen(false); }}
+                className={`w-full text-right px-3 py-2 text-xs font-bold hover:bg-slate-50 flex items-center gap-2 ${key === status ? 'bg-indigo-50/50' : ''} ${s.cls}`}
+              >
+                {s.icon}
+                {s.label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
 
 const AssigneePicker = ({ conversation, onAssign }) => {
   const [open, setOpen] = useState(false);
@@ -59,10 +100,8 @@ const AssigneePicker = ({ conversation, onAssign }) => {
   );
 };
 
-const ChatHeader = ({ conversation, onUpdateStatus, onAssign, onBack }) => {
+const ChatHeader = ({ conversation, onUpdateStatus, onAssign, onBack, onToggleInfo, infoOpen }) => {
   if (!conversation) return null;
-
-  const isResolved = conversation.status === 'resolved';
 
   return (
     <div className="h-16 border-b border-slate-100 flex items-center justify-between px-3 lg:px-5 bg-white flex-shrink-0 gap-2">
@@ -70,7 +109,7 @@ const ChatHeader = ({ conversation, onUpdateStatus, onAssign, onBack }) => {
         {onBack && (
           <button
             onClick={onBack}
-            className="lg:hidden w-9 h-9 -mr-1 rounded-xl flex items-center justify-center text-slate-500 hover:bg-slate-50 flex-shrink-0"
+            className="md:hidden w-9 h-9 -mr-1 rounded-xl flex items-center justify-center text-slate-500 hover:bg-slate-50 flex-shrink-0"
             aria-label="رجوع"
           >
             <ChevronRight size={20} />
@@ -93,13 +132,18 @@ const ChatHeader = ({ conversation, onUpdateStatus, onAssign, onBack }) => {
       <div className="flex items-center gap-2 flex-shrink-0">
         <AssigneePicker conversation={conversation} onAssign={onAssign} />
 
-        <button
-          onClick={() => onUpdateStatus(isResolved ? 'open' : 'resolved')}
-          className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 flex-shrink-0"
-        >
-          {isResolved ? <RotateCcw size={13} /> : <CheckCircle2 size={13} />}
-          <span className="hidden sm:inline">{isResolved ? 'إعادة فتح المحادثة' : 'إنهاء المحادثة'}</span>
-        </button>
+        <StatusPicker status={conversation.status} onUpdateStatus={onUpdateStatus} />
+
+        {onToggleInfo && (
+          <button
+            onClick={onToggleInfo}
+            className={`w-9 h-9 rounded-lg border flex items-center justify-center flex-shrink-0 transition-colors ${infoOpen ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'border-slate-200 text-slate-400 hover:bg-slate-50'}`}
+            title="معلومات جهة الاتصال"
+            aria-label="معلومات جهة الاتصال"
+          >
+            <Info size={15} />
+          </button>
+        )}
       </div>
     </div>
   );

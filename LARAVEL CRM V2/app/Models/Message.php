@@ -12,6 +12,7 @@ class Message extends Model
 
     protected $fillable = [
         'conversation_id',
+        'whatsapp_template_id',
         'chatwoot_message_id',
         'whatsapp_message_id',
         'content',
@@ -36,5 +37,10 @@ class Message extends Model
     public function conversation(): BelongsTo
     {
         return $this->belongsTo(Conversation::class);
+    }
+
+    public function whatsappTemplate(): BelongsTo
+    {
+        return $this->belongsTo(WhatsappTemplate::class);
     }
 }

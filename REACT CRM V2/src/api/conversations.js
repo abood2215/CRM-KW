@@ -23,3 +23,14 @@ export const updateStatus = (conversationId, status) =>
 
 export const assignConversation = (conversationId, userId) =>
   client.put(`/conversations/${conversationId}/assign`, { user_id: userId }).then((res) => res.data);
+
+export const sendTyping = (conversationId) =>
+  client.post(`/conversations/${conversationId}/typing`).then((res) => res.data);
+
+export const uploadMessageAttachment = (file) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  return client
+    .post('/messages/upload-attachment', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+    .then((res) => res.data);
+};

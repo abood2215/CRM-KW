@@ -42,6 +42,26 @@ class BaileysWhatsAppSender implements WhatsAppSenderInterface
         ])->json() ?? [];
     }
 
+    /**
+     * The Baileys sidecar only exposes send-message/send-image today — video/document/audio
+     * sending isn't wired up on that side yet, so this fails loudly instead of guessing at
+     * an endpoint that may not exist and silently breaking Baileys-connected numbers.
+     */
+    public function sendVideo(string $to, string $videoUrl, ?string $caption = null): array
+    {
+        throw new \RuntimeException('إرسال فيديو غير مدعوم حالياً لأرقام واتساب ويب (Baileys) — استخدم رقم Cloud API.');
+    }
+
+    public function sendDocument(string $to, string $documentUrl, ?string $filename = null): array
+    {
+        throw new \RuntimeException('إرسال ملفات غير مدعوم حالياً لأرقام واتساب ويب (Baileys) — استخدم رقم Cloud API.');
+    }
+
+    public function sendAudio(string $to, string $audioUrl): array
+    {
+        throw new \RuntimeException('إرسال رسائل صوتية غير مدعوم حالياً لأرقام واتساب ويب (Baileys) — استخدم رقم Cloud API.');
+    }
+
     public function getStatus(): array
     {
         return $this->request()->get("/api/{$this->sessionName}/status")->throw()->json() ?? [];

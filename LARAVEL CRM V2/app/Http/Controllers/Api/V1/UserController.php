@@ -8,13 +8,28 @@ use App\Http\Requests\User\UpdateUserRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
 class UserController extends Controller
 {
-    public function index(): JsonResponse
+    /**
+     * Used by every agent for pickers (e.g. conversation assignment), so it can't sit fully
+     * behind users.manage — instead it trims to non-sensitive fields for callers without it.
+     */
+    public function index(Request $request): JsonResponse
     {
         $users = User::orderBy('name')->get();
+
+        if (! $request->user()->hasPermission('users.manage')) {
+            return response()->json([
+                'users' => $users->map(fn (User $user) => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'avatar' => $user->avatar,
+                ]),
+            ]);
+        }
 
         return response()->json(['users' => UserResource::collection($users)]);
     }

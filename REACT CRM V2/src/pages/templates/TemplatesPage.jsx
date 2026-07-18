@@ -1,18 +1,21 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Loader2, FileText, Plus, Pencil, Trash2, RefreshCw, Search } from 'lucide-react';
+import { Loader2, FileText, Plus, Pencil, Trash2, RefreshCw, Search, BarChart3 } from 'lucide-react';
 import { templates as templatesApi, whatsappNumbers as whatsappNumbersApi } from '../../api';
 import { cn } from '../../utils/cn';
 import { useConfirm } from '../../hooks/useConfirm';
 import { usePermission } from '../../hooks/usePermission';
 import TemplateFormModal from './components/TemplateFormModal';
+import TemplateAnalyticsPanel from './components/TemplateAnalyticsPanel';
 
 const STATUS_COLORS = {
   approved: 'bg-emerald-50 text-emerald-600',
   active: 'bg-emerald-50 text-emerald-600',
   pending: 'bg-amber-50 text-amber-600',
   rejected: 'bg-rose-50 text-rose-600',
+  paused: 'bg-amber-50 text-amber-600',
+  disabled: 'bg-slate-100 text-slate-500',
 };
 
 const CATEGORY_LABELS = {
@@ -30,6 +33,7 @@ const TemplatesPage = () => {
   const [numberId, setNumberId] = useState('');
   const [formOpen, setFormOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState(null);
+  const [expandedId, setExpandedId] = useState(null);
 
   const { data: templates = [], isLoading } = useQuery({
     queryKey: ['templates', { search, category, numberId }],
@@ -147,10 +151,24 @@ const TemplatesPage = () => {
                 </div>
               </div>
               <p className="text-xs text-slate-500 leading-relaxed line-clamp-3">{t.body_text}</p>
+              {t.status === 'rejected' && t.rejection_reason && (
+                <p className="text-[11px] text-rose-500 font-bold mt-2 leading-relaxed">سبب الرفض: {t.rejection_reason}</p>
+              )}
+              {t.status === 'pending' && (
+                <p className="text-[11px] text-amber-500 font-bold mt-2">بانتظار مراجعة ميتا...</p>
+              )}
               <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-50 text-[11px] font-bold text-slate-400">
                 <span>{CATEGORY_LABELS[t.category] ?? t.category}</span>
                 <span>{t.variables_count} متغير</span>
+                <button
+                  onClick={() => setExpandedId((id) => (id === t.id ? null : t.id))}
+                  className="flex items-center gap-1 text-indigo-500 hover:text-indigo-700"
+                >
+                  <BarChart3 size={12} />
+                  إحصائيات
+                </button>
               </div>
+              {expandedId === t.id && <TemplateAnalyticsPanel templateId={t.id} />}
             </div>
           ))}
         </div>

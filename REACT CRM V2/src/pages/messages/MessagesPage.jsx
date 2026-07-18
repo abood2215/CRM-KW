@@ -23,12 +23,12 @@ const MessagesPage = () => {
         selectedId={selectedId}
         onSelect={(conversation) => setSelectedId(conversation.id)}
         onNewConversation={() => setNewConvOpen(true)}
-        className={selectedId ? 'hidden lg:flex' : 'flex lg:flex'}
+        className={selectedId ? 'hidden md:flex' : 'flex md:flex'}
       />
       <ChatPane
         conversationId={selectedId}
         onBack={() => setSelectedId(null)}
-        className={selectedId ? 'flex lg:flex' : 'hidden lg:flex'}
+        className={selectedId ? 'flex md:flex' : 'hidden md:flex'}
       />
       <NewConversationModal
         open={newConvOpen}

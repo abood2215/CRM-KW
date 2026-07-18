@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { formatDistanceToNow } from 'date-fns';
+import { ar } from 'date-fns/locale';
 import toast from 'react-hot-toast';
 import { Plus, Trash2, Loader2, RefreshCw, X, Pencil, QrCode } from 'lucide-react';
 import { whatsappNumbers as whatsappNumbersApi } from '../../api';
@@ -8,6 +10,13 @@ import { useConfirm } from '../../hooks/useConfirm';
 import { useModalA11y } from '../../hooks/useModalA11y';
 import { usePermission } from '../../hooks/usePermission';
 import BaileysQrModal from './components/BaileysQrModal';
+
+const QUALITY_LABELS = {
+  GREEN: { label: 'جيدة', cls: 'bg-emerald-50 text-emerald-600' },
+  YELLOW: { label: 'متوسطة', cls: 'bg-amber-50 text-amber-600' },
+  RED: { label: 'ضعيفة', cls: 'bg-rose-50 text-rose-600' },
+  UNKNOWN: { label: 'غير معروفة', cls: 'bg-slate-100 text-slate-400' },
+};
 
 const emptyForm = {
   name: '',
@@ -122,10 +131,24 @@ const WhatsappPage = () => {
                   {n.can_send ? 'متصل' : 'غير متصل'}
                 </span>
               </div>
-              <div className="flex items-center justify-between text-xs text-slate-400 font-bold mb-4">
+              <div className="flex items-center justify-between text-xs text-slate-400 font-bold mb-2">
                 <span>{n.api_type === 'cloud' ? 'Cloud API' : 'واتساب ويب'}</span>
                 <span>{n.sent_today} / {n.daily_limit} اليوم</span>
               </div>
+              {n.api_type === 'cloud' && (
+                <div className="flex items-center justify-between text-xs mb-4">
+                  {n.quality_rating ? (
+                    <span className={cn('font-black px-2 py-0.5 rounded-lg', QUALITY_LABELS[n.quality_rating]?.cls ?? QUALITY_LABELS.UNKNOWN.cls)}>
+                      جودة الحساب: {QUALITY_LABELS[n.quality_rating]?.label ?? n.quality_rating}
+                    </span>
+                  ) : (
+                    <span className="text-slate-300 font-bold">جودة الحساب: لم تُفحص بعد</span>
+                  )}
+                  {n.quality_checked_at && (
+                    <span className="text-slate-300">{formatDistanceToNow(new Date(n.quality_checked_at), { locale: ar, addSuffix: true })}</span>
+                  )}
+                </div>
+              )}
               {canManage && (
                 <div className="flex gap-2">
                   {n.api_type === 'cloud' ? (

@@ -1,13 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Send, Smile, Paperclip, Lock, Loader2, FileText, Zap, Plus } from 'lucide-react';
+import { Send, Smile, Paperclip, Lock, Loader2, FileText, Zap, Plus, Mic, Square } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { cn } from '../../../utils/cn';
-import { campaigns as campaignsApi, cannedResponses as cannedResponsesApi } from '../../../api';
+import { cannedResponses as cannedResponsesApi, conversations as conversationsApi } from '../../../api';
 
 const COMMON_EMOJIS = ['😀', '😂', '😍', '👍', '🙏', '❤️', '😢', '🎉', '🔥', '✅'];
+const ATTACHMENT_ACCEPT = 'image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt';
 
-const MessageComposer = ({ onSend, isSending, onOpenTemplatePicker }) => {
+const MessageComposer = ({ onSend, isSending, onOpenTemplatePicker, onTyping }) => {
   const queryClient = useQueryClient();
   const [text, setText] = useState('');
   const [isPrivate, setIsPrivate] = useState(false);
@@ -15,8 +16,23 @@ const MessageComposer = ({ onSend, isSending, onOpenTemplatePicker }) => {
   const [addingCanned, setAddingCanned] = useState(false);
   const [newCanned, setNewCanned] = useState({ title: '', content: '' });
   const [uploading, setUploading] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
   const fileInputRef = useRef(null);
   const toolbarRef = useRef(null);
+  const mediaRecorderRef = useRef(null);
+  const recordedChunksRef = useRef([]);
+
+  // Releases the microphone if the agent navigates away mid-recording instead of stopping it.
+  useEffect(() => {
+    return () => {
+      if (mediaRecorderRef.current?.state === 'recording') {
+        mediaRecorderRef.current.ondataavailable = null;
+        mediaRecorderRef.current.onstop = null;
+        mediaRecorderRef.current.stop();
+        mediaRecorderRef.current.stream?.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, []);
 
   // Closes any open popover when clicking outside the toolbar — a full-screen backdrop
   // would also intercept clicks meant for the OTHER trigger buttons in this same row.
@@ -66,18 +82,56 @@ const MessageComposer = ({ onSend, isSending, onOpenTemplatePicker }) => {
   const handleFile = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    if (!file.type.startsWith('image/')) return toast.error('الملفات المدعومة: صور فقط');
 
     setUploading(true);
     try {
-      const { url } = await campaignsApi.uploadCampaignImage(file);
-      onSend({ content: url, isPrivate: false, type: 'image' });
-    } catch {
-      toast.error('فشل رفع الملف');
+      const { url, type, original_filename: filename } = await conversationsApi.uploadMessageAttachment(file);
+      onSend({ content: url, isPrivate: false, type, filename });
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'فشل رفع الملف');
     } finally {
       setUploading(false);
       e.target.value = '';
     }
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      recordedChunksRef.current = [];
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) recordedChunksRef.current.push(e.data);
+      };
+      recorder.onstop = async () => {
+        stream.getTracks().forEach((track) => track.stop());
+        const blob = new Blob(recordedChunksRef.current, { type: recorder.mimeType || 'audio/webm' });
+        const extension = (recorder.mimeType || 'audio/webm').includes('ogg') ? 'ogg' : 'webm';
+        const file = new File([blob], `voice-note.${extension}`, { type: blob.type });
+
+        setUploading(true);
+        try {
+          const { url } = await conversationsApi.uploadMessageAttachment(file);
+          onSend({ content: url, isPrivate: false, type: 'audio' });
+        } catch (err) {
+          toast.error(err?.response?.data?.message || 'فشل رفع التسجيل الصوتي');
+        } finally {
+          setUploading(false);
+        }
+      };
+
+      mediaRecorderRef.current = recorder;
+      recorder.start();
+      setIsRecording(true);
+    } catch {
+      toast.error('تعذّر الوصول للميكروفون — تأكد من صلاحيات المتصفح.');
+    }
+  };
+
+  const stopRecording = () => {
+    mediaRecorderRef.current?.stop();
+    setIsRecording(false);
   };
 
   return (
@@ -197,15 +251,27 @@ const MessageComposer = ({ onSend, isSending, onOpenTemplatePicker }) => {
               </div>
             )}
           </div>
-          <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading} className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-200/60 hover:text-slate-600 transition-colors" title="إرفاق صورة">
+          <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading || isRecording} className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-200/60 hover:text-slate-600 transition-colors disabled:opacity-40" title="إرفاق صورة أو فيديو أو ملف">
             {uploading ? <Loader2 size={16} className="animate-spin" /> : <Paperclip size={16} />}
           </button>
-          <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
+          <input ref={fileInputRef} type="file" accept={ATTACHMENT_ACCEPT} className="hidden" onChange={handleFile} />
+          <button
+            type="button"
+            onClick={isRecording ? stopRecording : startRecording}
+            disabled={uploading}
+            className={cn(
+              'w-9 h-9 rounded-xl flex items-center justify-center transition-colors disabled:opacity-40',
+              isRecording ? 'bg-rose-500 text-white animate-pulse' : 'text-slate-400 hover:bg-slate-200/60 hover:text-slate-600'
+            )}
+            title={isRecording ? 'إيقاف التسجيل وإرسال' : 'تسجيل رسالة صوتية'}
+          >
+            {isRecording ? <Square size={14} /> : <Mic size={16} />}
+          </button>
         </div>
 
         <textarea
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => { setText(e.target.value); onTyping?.(); }}
           onKeyDown={handleKeyDown}
           rows={1}
           placeholder={isPrivate ? 'اكتب ملاحظة داخلية...' : 'اكتب رسالة...'}

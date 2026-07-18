@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Services\Conversations\InboundMessageService;
 use App\Services\Conversations\MessageStatusUpdateService;
+use App\Services\Whatsapp\TemplateStatusUpdateService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -27,15 +28,25 @@ class ProcessWhatsAppWebhookJob implements ShouldQueue
         return [5, 15, 30];
     }
 
-    public function handle(InboundMessageService $inbound, MessageStatusUpdateService $statusUpdates): void
-    {
+    public function handle(
+        InboundMessageService $inbound,
+        MessageStatusUpdateService $statusUpdates,
+        TemplateStatusUpdateService $templateStatusUpdates,
+    ): void {
         foreach ($this->payload['entry'] ?? [] as $entry) {
             foreach ($entry['changes'] ?? [] as $change) {
-                if (($change['field'] ?? '') !== 'messages') {
+                $field = $change['field'] ?? '';
+                $value = $change['value'] ?? [];
+
+                if ($field === 'message_template_status_update') {
+                    $templateStatusUpdates->handle($value);
+
                     continue;
                 }
 
-                $value = $change['value'] ?? [];
+                if ($field !== 'messages') {
+                    continue;
+                }
 
                 foreach ($value['messages'] ?? [] as $message) {
                     $inbound->handle($message, $value);

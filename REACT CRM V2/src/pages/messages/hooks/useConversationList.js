@@ -13,12 +13,24 @@ export function useConversationList() {
   const queryClient = useQueryClient();
   const [status, setStatus] = useState('open');
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [page, setPage] = useState(1);
   const echo = useEcho();
 
+  // The input updates `search` (and the UI) immediately; the actual query only reacts to
+  // `debouncedSearch` — without this, every keystroke fired its own network request.
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, status]);
+
   const { data, isLoading } = useQuery({
-    queryKey: ['conversations', status, search, page],
-    queryFn: () => conversationsApi.getConversations({ status, search: search || undefined, page, per_page: 25 }),
+    queryKey: ['conversations', status, debouncedSearch, page],
+    queryFn: () => conversationsApi.getConversations({ status, search: debouncedSearch || undefined, page, per_page: 25 }),
     placeholderData: (prev) => prev,
   });
 

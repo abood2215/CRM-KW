@@ -10,3 +10,5 @@ export const deleteTemplate = (id) => client.delete(`/templates/${id}`).then((re
 
 export const syncTemplates = (whatsappNumberId) =>
   client.post('/templates/sync', { whatsapp_number_id: whatsappNumberId }).then((res) => res.data);
+
+export const getTemplateAnalytics = (id) => client.get(`/templates/${id}/analytics`).then((res) => res.data.analytics);

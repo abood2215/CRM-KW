@@ -12,10 +12,12 @@ class WhatsappTemplateResource extends JsonResource
         return [
             'id' => $this->id,
             'whatsapp_number_id' => $this->whatsapp_number_id,
+            'meta_template_id' => $this->meta_template_id,
             'name' => $this->name,
             'language' => $this->language,
             'category' => $this->category,
             'status' => $this->status,
+            'rejection_reason' => $this->rejection_reason,
             'header_type' => $this->header_type,
             'header_content' => $this->header_content,
             'body_text' => $this->body_text,

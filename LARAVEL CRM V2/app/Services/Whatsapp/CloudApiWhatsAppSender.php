@@ -78,6 +78,82 @@ class CloudApiWhatsAppSender implements WhatsAppSenderInterface
         ]);
     }
 
+    /**
+     * Submits a new template for Meta review. Not retried — template creation isn't
+     * idempotent-safe to retry blindly (a transient network failure after Meta already
+     * accepted the submission would create a duplicate on retry). Returns Meta's raw
+     * response (id + status 'PENDING') on success; throws with Meta's own message on
+     * rejection (e.g. missing "example" values for a {{n}} placeholder) so the caller
+     * can surface the real reason instead of a generic failure.
+     */
+    public function createTemplate(string $businessAccountId, array $payload): array
+    {
+        $url = "{$this->baseUrl}/{$this->apiVersion}/{$businessAccountId}/message_templates";
+
+        try {
+            $response = Http::withToken($this->accessToken)->timeout(30)->post($url, $payload);
+
+            if ($response->successful()) {
+                return $response->json();
+            }
+
+            $errorMessage = $response->json('error.message') ?? $response->body();
+            Log::warning('[CloudApiWhatsAppSender] createTemplate failed', ['status' => $response->status(), 'body' => $response->json()]);
+
+            throw new \RuntimeException("رفضت ميتا القالب: {$errorMessage}");
+        } catch (\RuntimeException $e) {
+            throw $e;
+        } catch (\Exception $e) {
+            Log::error('[CloudApiWhatsAppSender] createTemplate exception: '.$e->getMessage());
+
+            throw new \RuntimeException('تعذر الاتصال بميتا لإرسال القالب: '.$e->getMessage());
+        }
+    }
+
+    public function sendVideo(string $to, string $videoUrl, ?string $caption = null): array
+    {
+        $video = ['link' => $videoUrl];
+        if ($caption) {
+            $video['caption'] = $caption;
+        }
+
+        return $this->send([
+            'messaging_product' => 'whatsapp',
+            'recipient_type' => 'individual',
+            'to' => PhoneNumber::normalize($to),
+            'type' => 'video',
+            'video' => $video,
+        ]);
+    }
+
+    public function sendDocument(string $to, string $documentUrl, ?string $filename = null): array
+    {
+        $document = ['link' => $documentUrl];
+        if ($filename) {
+            $document['filename'] = $filename;
+        }
+
+        return $this->send([
+            'messaging_product' => 'whatsapp',
+            'recipient_type' => 'individual',
+            'to' => PhoneNumber::normalize($to),
+            'type' => 'document',
+            'document' => $document,
+        ]);
+    }
+
+    /** Meta's audio message type does not support a caption field, unlike image/video/document. */
+    public function sendAudio(string $to, string $audioUrl): array
+    {
+        return $this->send([
+            'messaging_product' => 'whatsapp',
+            'recipient_type' => 'individual',
+            'to' => PhoneNumber::normalize($to),
+            'type' => 'audio',
+            'audio' => ['link' => $audioUrl],
+        ]);
+    }
+
     public function getTemplates(string $businessAccountId): array
     {
         $url = "{$this->baseUrl}/{$this->apiVersion}/{$businessAccountId}/message_templates";

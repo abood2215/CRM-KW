@@ -36,6 +36,8 @@ class WhatsappNumberController extends Controller
 
     public function update(UpdateWhatsappNumberRequest $request, WhatsappNumber $whatsappNumber): JsonResponse
     {
+        $this->authorize('update', $whatsappNumber);
+
         $whatsappNumber->update($request->validated());
         ActivityLogger::record($whatsappNumber, 'update', "تحديث رقم واتساب: {$whatsappNumber->name}");
 

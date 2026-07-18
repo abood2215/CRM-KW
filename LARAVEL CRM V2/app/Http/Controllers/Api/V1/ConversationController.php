@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Events\ConversationUpdatedEvent;
 use App\Events\NewMessageEvent;
+use App\Events\UserTypingEvent;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ConversationResource;
 use App\Http\Resources\MessageResource;
@@ -165,6 +166,16 @@ class ConversationController extends Controller
             'conversation' => new ConversationResource($conversation->fresh()->load(['contact', 'assignedUser'])),
             'message' => 'تم تعيين المحادثة.',
         ]);
+    }
+
+    /** Fire-and-forget — no persistence, just lets other agents viewing this conversation see a live "typing" nudge. */
+    public function typing(Request $request, Conversation $conversation): JsonResponse
+    {
+        $this->authorize('view', $conversation);
+
+        event(new UserTypingEvent($conversation->id, $request->user()->id, $request->user()->name));
+
+        return response()->json(['message' => 'ok']);
     }
 
     private function buildComponents(array $variables): array

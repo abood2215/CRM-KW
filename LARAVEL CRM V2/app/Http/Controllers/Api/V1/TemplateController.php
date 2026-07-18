@@ -4,9 +4,13 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\WhatsappTemplateResource;
+use App\Models\Campaign;
+use App\Models\CampaignRecipient;
+use App\Models\Message;
 use App\Models\WhatsappNumber;
 use App\Models\WhatsappTemplate;
 use App\Services\Activity\ActivityLogger;
+use App\Services\Whatsapp\CloudApiWhatsAppSender;
 use App\Services\Whatsapp\TemplateSyncService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -72,17 +76,86 @@ class TemplateController extends Controller
             'body_text' => 'required|string',
             'footer_text' => 'nullable|string',
             'buttons' => 'nullable|array',
+            'buttons.*' => 'string|max:25',
+            'examples' => 'nullable|array',
+            'examples.*' => 'nullable|string',
         ]);
 
         preg_match_all('/\{\{\d+\}\}/', $data['body_text'], $matches);
         $data['variables_count'] = count($matches[0]);
-        $data['status'] = $data['status'] ?? 'approved';
         $data['header_type'] = $data['header_type'] ?? 'none';
+
+        if (! empty($data['buttons'])) {
+            $data['buttons'] = array_map(fn ($label) => ['type' => 'QUICK_REPLY', 'text' => $label], $data['buttons']);
+        }
+
+        $examples = $data['examples'] ?? [];
+        unset($data['examples']);
+
+        $number = WhatsappNumber::findOrFail($data['whatsapp_number_id']);
+
+        if ($number->isCloud()) {
+            if (! $number->access_token || ! $number->business_account_id) {
+                return response()->json(['message' => 'هذا الرقم لا يدعم Cloud API. أضف access_token و business_account_id أولاً.'], 422);
+            }
+
+            if (! in_array($data['header_type'], ['none', 'text'], true)) {
+                return response()->json(['message' => 'إضافة قالب بترويسة صورة/فيديو/مستند غير مدعومة من داخل التطبيق حالياً — عدّلها لاحقاً من لوحة ميتا.'], 422);
+            }
+
+            if ($data['variables_count'] > 0 && count(array_filter($examples)) < $data['variables_count']) {
+                return response()->json(['message' => 'ميتا تتطلب قيمة "مثال" لكل متغير {{n}} بنص الرسالة قبل إرسالها للمراجعة.'], 422);
+            }
+
+            try {
+                $sender = new CloudApiWhatsAppSender($number->access_token, $number->phone_number_id);
+                $metaResponse = $sender->createTemplate($number->business_account_id, [
+                    'name' => $data['name'],
+                    'language' => $data['language'],
+                    'category' => strtoupper($data['category']),
+                    'components' => $this->buildMetaComponents($data, $examples),
+                ]);
+            } catch (\RuntimeException $e) {
+                return response()->json(['message' => $e->getMessage()], 422);
+            }
+
+            $data['meta_template_id'] = $metaResponse['id'] ?? null;
+            $data['status'] = 'pending';
+        } else {
+            // Baileys numbers have no Meta review process — templates are just local canned messages.
+            $data['status'] = $data['status'] ?? 'approved';
+        }
 
         $template = WhatsappTemplate::create($data);
         ActivityLogger::record($template, 'create', "إضافة قالب واتساب: {$template->name}");
 
         return response()->json(['template' => new WhatsappTemplateResource($template)], 201);
+    }
+
+    /** Builds the Meta message_templates "components" payload from local form fields. */
+    private function buildMetaComponents(array $data, array $examples): array
+    {
+        $components = [];
+
+        if (($data['header_type'] ?? 'none') === 'text' && ! empty($data['header_content'])) {
+            $components[] = ['type' => 'HEADER', 'format' => 'TEXT', 'text' => $data['header_content']];
+        }
+
+        $body = ['type' => 'BODY', 'text' => $data['body_text']];
+        if (($data['variables_count'] ?? 0) > 0) {
+            $body['example'] = ['body_text' => [array_values($examples)]];
+        }
+        $components[] = $body;
+
+        if (! empty($data['footer_text'])) {
+            $components[] = ['type' => 'FOOTER', 'text' => $data['footer_text']];
+        }
+
+        if (! empty($data['buttons'])) {
+            $components[] = ['type' => 'BUTTONS', 'buttons' => $data['buttons']];
+        }
+
+        return $components;
     }
 
     public function update(Request $request, WhatsappTemplate $template): JsonResponse
@@ -102,6 +175,7 @@ class TemplateController extends Controller
             'body_text' => 'sometimes|string',
             'footer_text' => 'nullable|string',
             'buttons' => 'nullable|array',
+            'buttons.*' => 'string|max:25',
         ]);
 
         if (isset($data['body_text'])) {
@@ -109,6 +183,12 @@ class TemplateController extends Controller
             $data['variables_count'] = count($matches[0]);
         }
 
+        if (isset($data['buttons'])) {
+            $data['buttons'] = array_map(fn ($label) => ['type' => 'QUICK_REPLY', 'text' => $label], $data['buttons']);
+        }
+
+        // Note: this only edits the local record — an already-submitted Meta template isn't
+        // re-submitted for re-review here (that requires a separate versioning flow).
         $template->update($data);
         ActivityLogger::record($template, 'update', "تحديث قالب واتساب: {$template->name}");
 
@@ -123,6 +203,42 @@ class TemplateController extends Controller
         $template->delete();
 
         return response()->json(['message' => 'تم حذف القالب.']);
+    }
+
+    /**
+     * Combines two sources of usage since a template can be sent two ways: one-off from
+     * inside a conversation (tracked via messages.whatsapp_template_id) and in bulk via a
+     * campaign (campaigns has no template FK, only a denormalized template_name — matched
+     * here by name + whatsapp_number_id, same as everywhere else this link is made).
+     */
+    public function analytics(WhatsappTemplate $template): JsonResponse
+    {
+        $directCounts = Message::where('whatsapp_template_id', $template->id)
+            ->selectRaw('status, count(*) as count')
+            ->groupBy('status')
+            ->pluck('count', 'status');
+
+        $campaignIds = Campaign::where('whatsapp_number_id', $template->whatsapp_number_id)
+            ->where('template_name', $template->name)
+            ->pluck('id');
+
+        $campaignCounts = CampaignRecipient::whereIn('campaign_id', $campaignIds)
+            ->selectRaw('status, count(*) as count')
+            ->groupBy('status')
+            ->pluck('count', 'status');
+
+        $merge = fn (string $status) => (int) ($directCounts[$status] ?? 0) + (int) ($campaignCounts[$status] ?? 0);
+
+        return response()->json(['analytics' => [
+            'campaigns_count' => $campaignIds->count(),
+            'direct_sends' => (int) $directCounts->sum(),
+            'sent' => $merge('sent'),
+            'delivered' => $merge('delivered'),
+            'read' => $merge('read'),
+            'replied' => $merge('replied'),
+            'failed' => $merge('failed'),
+            'total_uses' => (int) $directCounts->sum() + (int) $campaignCounts->sum(),
+        ]]);
     }
 
     public function sync(Request $request, TemplateSyncService $service): JsonResponse

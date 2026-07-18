@@ -16,6 +16,8 @@ use App\Services\Whatsapp\WhatsAppSenderFactory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class MessageController extends Controller
 {
@@ -33,9 +35,18 @@ class MessageController extends Controller
         // moment its delivery-status webhook came back "failed" (e.g. outside WhatsApp's
         // 24h customer-service window). The frontend already renders a "فشل الإرسال"
         // badge for this status — it just never got a chance to show.
+        $perPage = $request->per_page ?? 50;
+
+        // No `page` defaults to the LAST page (most recent messages) — the frontend never
+        // sent one and always got page 1 = the OLDEST messages once a conversation passed
+        // $perPage total, permanently hiding all newer activity. Older pages are still
+        // reachable by passing an explicit `page` (used by the "load older" control).
+        $page = $request->integer('page') ?: (int) ceil($conversation->messages()->count() / $perPage);
+        $page = max(1, $page);
+
         $messages = $conversation->messages()
             ->orderBy('sent_at', 'asc')
-            ->paginate($request->per_page ?? 50);
+            ->paginate($perPage, ['*'], 'page', $page);
 
         return response()->json([
             'messages' => MessageResource::collection($messages),
@@ -54,7 +65,8 @@ class MessageController extends Controller
 
         $request->validate([
             'content' => 'required|string',
-            'type' => 'sometimes|in:text,image,file',
+            'type' => 'sometimes|in:text,image,video,audio,file',
+            'filename' => 'nullable|string|max:255',
             'is_private' => 'sometimes|boolean',
         ]);
 
@@ -78,17 +90,29 @@ class MessageController extends Controller
             if ($contactPhone) {
                 $number = WhatsappNumber::where('api_type', 'cloud')->where('status', 'connected')->first();
 
-                if ($number) {
-                    try {
-                        $sender = WhatsAppSenderFactory::make($number);
-                        $result = $request->type === 'image'
-                            ? $sender->sendImage($contactPhone, $request->content)
-                            : $sender->sendMessage($contactPhone, $request->content);
-                        $waMessageId = $result['messages'][0]['id'] ?? null;
-                        $number->incrementSent();
-                    } catch (\Exception $e) {
-                        Log::error('[MessageController] send failed', ['conversation_id' => $conversation->id, 'error' => $e->getMessage()]);
-                    }
+                if (! $number) {
+                    return response()->json(['message' => 'لا يوجد رقم واتساب متصل حالياً لإرسال الرسالة.'], 422);
+                }
+
+                try {
+                    $sender = WhatsAppSenderFactory::make($number);
+                    $result = match ($request->type) {
+                        'image' => $sender->sendImage($contactPhone, $request->content),
+                        'video' => $sender->sendVideo($contactPhone, $request->content),
+                        'audio' => $sender->sendAudio($contactPhone, $request->content),
+                        'file' => $sender->sendDocument($contactPhone, $request->content, $request->filename),
+                        default => $sender->sendMessage($contactPhone, $request->content),
+                    };
+                    $waMessageId = $result['messages'][0]['id'] ?? null;
+                    $number->incrementSent();
+                } catch (\Exception $e) {
+                    // Previously this was swallowed (logged only) and a "sent" message was
+                    // created locally regardless — misleading the agent into thinking a
+                    // failed send actually went out. Now it fails the request instead, same
+                    // as sendTemplate() below already does.
+                    Log::error('[MessageController] send failed', ['conversation_id' => $conversation->id, 'error' => $e->getMessage()]);
+
+                    return response()->json(['message' => 'فشل الإرسال: '.$e->getMessage()], 422);
                 }
             }
         }
@@ -158,6 +182,7 @@ class MessageController extends Controller
 
         $message = Message::create([
             'conversation_id' => $conversation->id,
+            'whatsapp_template_id' => $template->id,
             'whatsapp_message_id' => $waMessageId,
             'content' => $sentBody,
             'type' => 'text',
@@ -174,6 +199,36 @@ class MessageController extends Controller
         event(new ConversationUpdatedEvent($conversation->fresh()));
 
         return response()->json(['message' => new MessageResource($message)], 201);
+    }
+
+    /**
+     * Generic outbound-attachment upload — separate from the campaign-scoped
+     * /campaigns/upload-image (which is image-only and semantically tied to campaigns).
+     * WhatsApp media sends need a publicly-fetchable URL, hence the `public` disk.
+     */
+    public function uploadAttachment(Request $request): JsonResponse
+    {
+        $request->validate([
+            'file' => 'required|file|max:16384',
+        ]);
+
+        $file = $request->file('file');
+        $mime = $file->getMimeType();
+        $type = match (true) {
+            str_starts_with($mime, 'image/') => 'image',
+            str_starts_with($mime, 'video/') => 'video',
+            str_starts_with($mime, 'audio/') => 'audio',
+            default => 'file',
+        };
+
+        $filename = Str::uuid().'.'.$file->getClientOriginalExtension();
+        $path = $file->storeAs('message-attachments', $filename, 'public');
+
+        return response()->json([
+            'url' => Storage::disk('public')->url($path),
+            'type' => $type,
+            'original_filename' => $file->getClientOriginalName(),
+        ]);
     }
 
     public function addNote(Request $request, Conversation $conversation): JsonResponse

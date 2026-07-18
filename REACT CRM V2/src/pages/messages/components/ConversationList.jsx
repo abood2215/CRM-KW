@@ -32,7 +32,7 @@ const ConversationList = ({ list, selectedId, onSelect, onNewConversation, class
   const groups = groupByDay(conversations);
 
   return (
-    <div className={cn('w-full lg:max-w-sm flex-col border-l border-slate-100 bg-white h-full', className)}>
+    <div className={cn('w-full md:max-w-[280px] lg:max-w-sm flex-col border-l border-slate-100 bg-white h-full', className)}>
       <div className="p-4 border-b border-slate-100 space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="font-black text-slate-800">المحادثات</h2>

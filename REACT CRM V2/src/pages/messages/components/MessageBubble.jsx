@@ -1,8 +1,9 @@
 import React from 'react';
-import { Check, CheckCheck, AlertCircle, Lock, FileText, Download, Heart } from 'lucide-react';
+import { Check, CheckCheck, AlertCircle, Clock, Lock, FileText, Download, Heart } from 'lucide-react';
 import { cn } from '../../../utils/cn';
 
 const STATUS_META = {
+  pending: { icon: <Clock size={13} />, label: 'جارِ الإرسال...' },
   sent: { icon: <Check size={13} />, label: 'أُرسلت' },
   delivered: { icon: <CheckCheck size={13} />, label: 'تم التوصيل' },
   read: { icon: <CheckCheck size={13} className="text-sky-400" />, label: 'تمت القراءة' },
@@ -37,7 +38,7 @@ const MessageBubble = ({ message }) => {
   }
 
   return (
-    <div className={cn('flex mb-2', isOut ? 'justify-start' : 'justify-end')}>
+    <div className={cn('flex mb-2', isOut ? 'justify-start' : 'justify-end', message._optimistic && 'opacity-60')}>
       <div className="relative max-w-[70%]">
         <div
           className={cn(

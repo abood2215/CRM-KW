@@ -70,6 +70,7 @@ Route::middleware(['auth:sanctum', 'update.last.seen', 'throttle:60,1'])->group(
 
     Route::get('/templates/preview/{name}', [TemplateController::class, 'preview']);
     Route::post('/templates/sync', [TemplateController::class, 'sync']);
+    Route::get('/templates/{template}/analytics', [TemplateController::class, 'analytics']);
     Route::apiResource('templates', TemplateController::class);
 
     Route::post('/campaigns/upload-image', [CampaignController::class, 'uploadImage']);
@@ -90,8 +91,10 @@ Route::middleware(['auth:sanctum', 'update.last.seen', 'throttle:60,1'])->group(
     Route::put('/conversations/{conversation}/assign', [ConversationController::class, 'assign']);
     Route::get('/conversations/{conversation}/messages', [MessageController::class, 'index']);
     Route::post('/conversations/{conversation}/messages', [MessageController::class, 'store'])->middleware('throttle:20,1');
+    Route::post('/messages/upload-attachment', [MessageController::class, 'uploadAttachment'])->middleware('throttle:20,1');
     Route::post('/conversations/{conversation}/send-template', [MessageController::class, 'sendTemplate'])->middleware('throttle:20,1');
     Route::post('/conversations/{conversation}/notes', [MessageController::class, 'addNote']);
+    Route::post('/conversations/{conversation}/typing', [ConversationController::class, 'typing'])->middleware('throttle:30,1');
 
     Route::get('/stats/dashboard', [StatsController::class, 'dashboard']);
     Route::get('/stats/campaigns', [StatsController::class, 'campaigns']);

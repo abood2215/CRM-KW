@@ -108,6 +108,8 @@ class CampaignController extends Controller
 
     public function start(Campaign $campaign): JsonResponse
     {
+        $this->authorize('manage', $campaign);
+
         if (! $campaign->template_name && ! $campaign->message_text) {
             return response()->json(['message' => 'الحملة لا تحتوي على رسالة أو قالب.'], 422);
         }
@@ -128,6 +130,8 @@ class CampaignController extends Controller
 
     public function pause(Campaign $campaign): JsonResponse
     {
+        $this->authorize('manage', $campaign);
+
         try {
             $campaign = $this->campaigns->pauseCampaign($campaign);
         } catch (\RuntimeException $e) {
@@ -144,6 +148,8 @@ class CampaignController extends Controller
 
     public function resume(Campaign $campaign): JsonResponse
     {
+        $this->authorize('manage', $campaign);
+
         try {
             $campaign = $this->campaigns->resumeCampaign($campaign);
         } catch (\RuntimeException $e) {
@@ -230,6 +236,8 @@ class CampaignController extends Controller
 
     public function uploadImage(Request $request): JsonResponse
     {
+        $this->authorize('manage', Campaign::class);
+
         $request->validate(['image' => 'required|file|mimes:jpeg,jpg,png,gif,webp|max:10240']);
 
         $file = $request->file('image');
@@ -246,6 +254,8 @@ class CampaignController extends Controller
      */
     public function blacklistFailed(Campaign $campaign): JsonResponse
     {
+        $this->authorize('manage', $campaign);
+
         $failed = $campaign->recipients()->where('status', 'failed')->with('contact')->get();
 
         if ($failed->isEmpty()) {

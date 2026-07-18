@@ -4,11 +4,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { ArrowRight, Loader2, Phone, ShieldOff, AlertTriangle } from 'lucide-react';
 import { campaigns as campaignsApi } from '../../api';
+import { usePermission } from '../../hooks/usePermission';
 
 const CampaignReportPage = () => {
   const { id } = useParams();
   const [page, setPage] = useState(1);
   const queryClient = useQueryClient();
+  const canManage = usePermission('campaigns.manage');
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['campaign-report', id, page],
@@ -76,7 +78,7 @@ const CampaignReportPage = () => {
       </div>
 
       {/* Secondary/manual fallback — auto-blacklisting on delivery failure normally handles this */}
-      {analytics.failed_count > 0 && (
+      {canManage && analytics.failed_count > 0 && (
         <button
           onClick={() => blacklistFailedMutation.mutate()}
           disabled={blacklistFailedMutation.isPending}

@@ -9,6 +9,7 @@ import { Megaphone, Plus, Pause, Play, Trash2, CheckCircle2, Clock, Loader2, Bar
 import { campaigns as campaignsApi } from '../../api';
 import { cn } from '../../utils/cn';
 import { useConfirm } from '../../hooks/useConfirm';
+import { usePermission } from '../../hooks/usePermission';
 import CreateCampaignModal from '../../components/CreateCampaignModal';
 
 const STATUS_MAP = {
@@ -28,6 +29,7 @@ const TABS = [
 const CampaignsPage = () => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const canManage = usePermission('campaigns.manage');
   const { confirm, dialog: confirmDialog } = useConfirm();
   const [activeTab, setActiveTab] = useState('all');
   const [createOpen, setCreateOpen] = useState(false);
@@ -67,15 +69,17 @@ const CampaignsPage = () => {
             <h1 className="text-xl lg:text-2xl font-black text-slate-800">الحملات الترويجية</h1>
             <p className="text-slate-500 mt-1 font-medium text-sm">أطلق حملات واتساب للوصول إلى عملائك.</p>
           </div>
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.97 }}
-            onClick={() => setCreateOpen(true)}
-            className="h-11 px-6 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-colors flex items-center gap-2 text-sm"
-          >
-            <Plus size={16} />
-            <span>حملة جديدة</span>
-          </motion.button>
+          {canManage && (
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={() => setCreateOpen(true)}
+              className="h-11 px-6 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-colors flex items-center gap-2 text-sm"
+            >
+              <Plus size={16} />
+              <span>حملة جديدة</span>
+            </motion.button>
+          )}
         </div>
 
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden min-h-[400px] flex flex-col">
@@ -114,7 +118,7 @@ const CampaignsPage = () => {
                         {STATUS_MAP[campaign.status]?.icon}
                         {STATUS_MAP[campaign.status]?.label ?? campaign.status}
                       </span>
-                      {['draft', 'completed', 'paused'].includes(campaign.status) && (
+                      {canManage && ['draft', 'completed', 'paused'].includes(campaign.status) && (
                         <button
                           onClick={async () => { if (await confirm('هل تريد حذف هذه الحملة؟')) deleteMutation.mutate(campaign.id); }}
                           className="p-1.5 text-slate-300 hover:text-rose-500 rounded-lg transition-colors"
@@ -170,15 +174,15 @@ const CampaignsPage = () => {
                         <Clock size={12} />
                         <span>{campaign.created_at ? format(new Date(campaign.created_at), 'dd MMM yyyy', { locale: ar }) : '—'}</span>
                       </div>
-                      {campaign.status === 'running' ? (
+                      {canManage && campaign.status === 'running' ? (
                         <button onClick={() => pauseMutation.mutate(campaign.id)} className="w-9 h-9 bg-amber-500 text-white rounded-xl flex items-center justify-center shadow-lg hover:bg-amber-600">
                           <Pause size={16} />
                         </button>
-                      ) : campaign.status === 'paused' ? (
+                      ) : canManage && campaign.status === 'paused' ? (
                         <button onClick={() => resumeMutation.mutate(campaign.id)} className="w-9 h-9 bg-emerald-500 text-white rounded-xl flex items-center justify-center shadow-lg hover:bg-emerald-600">
                           <Play size={16} />
                         </button>
-                      ) : ['draft', 'scheduled'].includes(campaign.status) ? (
+                      ) : canManage && ['draft', 'scheduled'].includes(campaign.status) ? (
                         <button onClick={() => startMutation.mutate(campaign.id)} className="w-9 h-9 bg-indigo-600 text-white rounded-xl flex items-center justify-center shadow-lg hover:bg-indigo-700">
                           <Play size={16} />
                         </button>
@@ -198,13 +202,15 @@ const CampaignsPage = () => {
                 </div>
                 <p className="text-lg font-black text-slate-700 mb-2">لا توجد حملات حالياً</p>
                 <p className="text-slate-400 font-medium max-w-xs mx-auto text-sm mb-5">أطلق حملتك الترويجية الأولى للوصول إلى عملائك.</p>
-                <button
-                  onClick={() => setCreateOpen(true)}
-                  className="h-10 px-5 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-all inline-flex items-center gap-2 text-sm"
-                >
-                  <Plus size={16} />
-                  حملة جديدة
-                </button>
+                {canManage && (
+                  <button
+                    onClick={() => setCreateOpen(true)}
+                    className="h-10 px-5 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-all inline-flex items-center gap-2 text-sm"
+                  >
+                    <Plus size={16} />
+                    حملة جديدة
+                  </button>
+                )}
               </div>
             )}
           </div>
