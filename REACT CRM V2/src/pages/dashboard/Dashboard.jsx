@@ -104,18 +104,20 @@ const Dashboard = () => {
         <>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { icon: Users, label: 'عملاء بالمتابعة', value: data.total_clients, color: 'text-indigo-600 bg-indigo-50' },
-              { icon: CheckSquare, label: 'مهام معلقة', value: data.pending_tasks, color: 'text-amber-600 bg-amber-50' },
-              { icon: MessageSquare, label: 'محادثات مفتوحة', value: data.open_conversations, color: 'text-emerald-600 bg-emerald-50' },
-              { icon: Megaphone, label: 'حملات نشطة', value: data.active_campaigns, color: 'text-rose-600 bg-rose-50' },
-            ].map(({ icon: Icon, label, value, color }) => (
-              <motion.div key={label} whileHover={{ y: -2 }} className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
-                <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center mb-3', color)}>
-                  <Icon size={18} />
-                </div>
-                <p className="text-2xl font-black text-slate-800">{value}</p>
-                <p className="text-xs text-slate-400 font-bold mt-1">{label}</p>
-              </motion.div>
+              { icon: Users, label: 'عملاء بالمتابعة', value: data.total_clients, color: 'text-indigo-600 bg-indigo-50', to: '/contacts' },
+              { icon: CheckSquare, label: 'مهام معلقة', value: data.pending_tasks, color: 'text-amber-600 bg-amber-50', to: '/tasks' },
+              { icon: MessageSquare, label: 'محادثات مفتوحة', value: data.open_conversations, color: 'text-emerald-600 bg-emerald-50', to: '/messages' },
+              { icon: Megaphone, label: 'حملات نشطة', value: data.active_campaigns, color: 'text-rose-600 bg-rose-50', to: '/campaigns' },
+            ].map(({ icon: Icon, label, value, color, to }) => (
+              <Link key={label} to={to}>
+                <motion.div whileHover={{ y: -2 }} className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+                  <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center mb-3', color)}>
+                    <Icon size={18} />
+                  </div>
+                  <p className="text-2xl font-black text-slate-800">{value}</p>
+                  <p className="text-xs text-slate-400 font-bold mt-1">{label}</p>
+                </motion.div>
+              </Link>
             ))}
           </div>
 
