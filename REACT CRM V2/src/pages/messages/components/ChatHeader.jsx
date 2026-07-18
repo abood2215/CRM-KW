@@ -32,7 +32,7 @@ const StatusPicker = ({ status, onUpdateStatus }) => {
               <button
                 key={key}
                 onClick={() => { onUpdateStatus(key); setOpen(false); }}
-                className={`w-full text-right px-3 py-2 text-xs font-bold hover:bg-slate-50 flex items-center gap-2 ${key === status ? 'bg-indigo-50/50' : ''} ${s.cls}`}
+                className={`w-full text-right px-3 py-2 text-xs font-bold hover:bg-slate-50 flex items-center gap-2 ${key === status ? 'bg-teal-50/70' : ''} ${s.cls}`}
               >
                 {s.icon}
                 {s.label}
@@ -88,7 +88,7 @@ const AssigneePicker = ({ conversation, onAssign }) => {
               <button
                 key={u.id}
                 onClick={() => { onAssign(u.id); setOpen(false); }}
-                className="w-full text-right px-3 py-2 text-xs font-bold hover:bg-indigo-50 text-slate-700 truncate"
+                className="w-full text-right px-3 py-2 text-xs font-bold hover:bg-teal-50 text-slate-700 truncate"
               >
                 {u.name}
               </button>
@@ -137,7 +137,7 @@ const ChatHeader = ({ conversation, onUpdateStatus, onAssign, onBack, onToggleIn
         {onToggleInfo && (
           <button
             onClick={onToggleInfo}
-            className={`w-9 h-9 rounded-lg border flex items-center justify-center flex-shrink-0 transition-colors ${infoOpen ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'border-slate-200 text-slate-400 hover:bg-slate-50'}`}
+            className={`w-9 h-9 rounded-lg border flex items-center justify-center flex-shrink-0 transition-colors ${infoOpen ? 'bg-teal-50 border-teal-200 text-teal-700' : 'border-slate-200 text-slate-400 hover:bg-slate-50'}`}
             title="معلومات جهة الاتصال"
             aria-label="معلومات جهة الاتصال"
           >

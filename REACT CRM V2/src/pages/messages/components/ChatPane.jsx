@@ -35,7 +35,7 @@ const ChatPane = ({ conversationId, onBack, className }) => {
 
   return (
     <div className={cn('flex-1 flex h-full min-w-0', className)}>
-    <div className="flex flex-col flex-1 h-full min-w-0 bg-slate-50/50">
+    <div className="flex flex-col flex-1 h-full min-w-0 bg-[#efe9df]">
       <ChatHeader
         conversation={conversation}
         onUpdateStatus={updateStatus}
@@ -48,7 +48,7 @@ const ChatPane = ({ conversationId, onBack, className }) => {
       <div className="flex-1 overflow-y-auto p-5">
         <div className="max-w-3xl mx-auto">
           {isLoading ? (
-            <div className="flex justify-center py-10"><Loader2 className="animate-spin text-indigo-600" size={24} /></div>
+            <div className="flex justify-center py-10"><Loader2 className="animate-spin text-teal-600" size={24} /></div>
           ) : (
             <>
               {hasOlderMessages && (
@@ -56,7 +56,7 @@ const ChatPane = ({ conversationId, onBack, className }) => {
                   <button
                     onClick={() => loadOlderMessages()}
                     disabled={isLoadingOlderMessages}
-                    className="text-xs font-bold text-indigo-500 hover:text-indigo-700 px-3 py-1.5 rounded-full bg-white border border-slate-100 flex items-center gap-1.5 disabled:opacity-50"
+                    className="text-xs font-bold text-teal-600 hover:text-teal-800 px-3 py-1.5 rounded-full bg-white border border-slate-100 flex items-center gap-1.5 disabled:opacity-50"
                   >
                     {isLoadingOlderMessages && <Loader2 size={12} className="animate-spin" />}
                     تحميل رسائل أقدم

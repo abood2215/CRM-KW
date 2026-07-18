@@ -147,7 +147,7 @@ const MessageComposer = ({ onSend, isSending, onOpenTemplatePicker, onTyping }) 
           'max-w-3xl mx-auto flex items-end gap-1.5 rounded-[1.5rem] border p-2 transition-all',
           isPrivate
             ? 'border-amber-200 bg-amber-50/50'
-            : 'border-slate-200 bg-slate-50 focus-within:border-indigo-300 focus-within:bg-white focus-within:ring-4 focus-within:ring-indigo-500/10'
+            : 'border-slate-200 bg-slate-50 focus-within:border-teal-300 focus-within:bg-white focus-within:ring-4 focus-within:ring-teal-500/10'
         )}
       >
         <div ref={toolbarRef} className="flex gap-0.5 flex-shrink-0">
@@ -166,7 +166,7 @@ const MessageComposer = ({ onSend, isSending, onOpenTemplatePicker, onTyping }) 
             <button
               type="button"
               onClick={() => setOpenPopover((p) => (p === 'canned' ? null : 'canned'))}
-              className={cn('w-9 h-9 rounded-xl flex items-center justify-center transition-colors', openPopover === 'canned' ? 'bg-indigo-100 text-indigo-600' : 'text-slate-400 hover:bg-slate-200/60 hover:text-slate-600')}
+              className={cn('w-9 h-9 rounded-xl flex items-center justify-center transition-colors', openPopover === 'canned' ? 'bg-teal-100 text-teal-700' : 'text-slate-400 hover:bg-slate-200/60 hover:text-slate-600')}
               title="ردود جاهزة"
             >
               <Zap size={16} />
@@ -194,7 +194,7 @@ const MessageComposer = ({ onSend, isSending, onOpenTemplatePicker, onTyping }) 
                       <button
                         onClick={() => createCannedMutation.mutate()}
                         disabled={!newCanned.title.trim() || !newCanned.content.trim() || createCannedMutation.isPending}
-                        className="flex-1 h-7 rounded-lg bg-indigo-600 text-white text-xs font-bold disabled:opacity-50 flex items-center justify-center gap-1"
+                        className="flex-1 h-7 rounded-lg bg-teal-600 text-white text-xs font-bold disabled:opacity-50 flex items-center justify-center gap-1"
                       >
                         {createCannedMutation.isPending && <Loader2 size={11} className="animate-spin" />}
                         حفظ
@@ -213,7 +213,7 @@ const MessageComposer = ({ onSend, isSending, onOpenTemplatePicker, onTyping }) 
                         <button
                           key={r.id}
                           onClick={() => { setText(r.content); setOpenPopover(null); }}
-                          className="w-full text-right p-2.5 rounded-lg hover:bg-indigo-50/50 transition-colors"
+                          className="w-full text-right p-2.5 rounded-lg hover:bg-teal-50/50 transition-colors"
                         >
                           <p className="text-xs font-bold text-slate-800 truncate">{r.title}</p>
                           <p className="text-[11px] text-slate-400 line-clamp-2 mt-0.5">{r.content}</p>
@@ -222,7 +222,7 @@ const MessageComposer = ({ onSend, isSending, onOpenTemplatePicker, onTyping }) 
                     )}
                     <button
                       onClick={() => setAddingCanned(true)}
-                      className="w-full flex items-center justify-center gap-1.5 p-2 mt-1 rounded-lg border-t border-slate-100 text-xs font-bold text-indigo-600 hover:bg-indigo-50/50"
+                      className="w-full flex items-center justify-center gap-1.5 p-2 mt-1 rounded-lg border-t border-slate-100 text-xs font-bold text-teal-600 hover:bg-teal-50/50"
                     >
                       <Plus size={13} />
                       إضافة رد جديد
@@ -236,7 +236,7 @@ const MessageComposer = ({ onSend, isSending, onOpenTemplatePicker, onTyping }) 
             <button
               type="button"
               onClick={() => setOpenPopover((p) => (p === 'emoji' ? null : 'emoji'))}
-              className={cn('w-9 h-9 rounded-xl flex items-center justify-center transition-colors', openPopover === 'emoji' ? 'bg-indigo-100 text-indigo-600' : 'text-slate-400 hover:bg-slate-200/60 hover:text-slate-600')}
+              className={cn('w-9 h-9 rounded-xl flex items-center justify-center transition-colors', openPopover === 'emoji' ? 'bg-teal-100 text-teal-700' : 'text-slate-400 hover:bg-slate-200/60 hover:text-slate-600')}
               title="إيموجي"
             >
               <Smile size={16} />
@@ -281,7 +281,7 @@ const MessageComposer = ({ onSend, isSending, onOpenTemplatePicker, onTyping }) 
         <button
           onClick={handleSend}
           disabled={isSending || !text.trim()}
-          className="w-10 h-10 rounded-full bg-indigo-600 text-white flex items-center justify-center hover:bg-indigo-700 active:scale-95 disabled:opacity-40 disabled:active:scale-100 transition-all flex-shrink-0"
+          className="w-10 h-10 rounded-full bg-teal-600 text-white flex items-center justify-center hover:bg-teal-700 active:scale-95 disabled:opacity-40 disabled:active:scale-100 transition-all flex-shrink-0"
         >
           {isSending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
         </button>

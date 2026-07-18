@@ -62,7 +62,7 @@ const NewConversationModal = ({ open, onClose, onCreated }) => {
                 value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                 className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm"
               />
-              <div className="flex items-start gap-2 bg-indigo-50 text-indigo-700 text-xs font-medium p-3 rounded-xl">
+              <div className="flex items-start gap-2 bg-teal-50 text-teal-700 text-xs font-medium p-3 rounded-xl">
                 <Info size={14} className="flex-shrink-0 mt-0.5" />
                 <span>لو هذا الرقم لم يتواصل معك من قبل، واتساب لا يسمح برسالة نصية حرة — استخدم قالباً معتمداً بدلاً من ذلك.</span>
               </div>
@@ -81,7 +81,7 @@ const NewConversationModal = ({ open, onClose, onCreated }) => {
                       templates.map((t) => (
                         <button
                           key={t.id} type="button" onClick={() => pickTemplate(t)}
-                          className="w-full text-right p-2.5 rounded-xl border border-slate-100 hover:border-indigo-200 hover:bg-indigo-50/30 transition-colors"
+                          className="w-full text-right p-2.5 rounded-xl border border-slate-100 hover:border-teal-200 hover:bg-teal-50/30 transition-colors"
                         >
                           <p className="font-bold text-xs text-slate-800">{t.name}</p>
                           <p className="text-[11px] text-slate-400 line-clamp-1 mt-0.5">{t.body_text}</p>
@@ -91,7 +91,7 @@ const NewConversationModal = ({ open, onClose, onCreated }) => {
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    <button type="button" onClick={() => setSelectedTemplate(null)} className="text-xs font-bold text-indigo-600">‹ اختيار قالب آخر</button>
+                    <button type="button" onClick={() => setSelectedTemplate(null)} className="text-xs font-bold text-teal-600">‹ اختيار قالب آخر</button>
                     {form.variables.map((v, i) => (
                       <input
                         key={i} placeholder={`متغير {{${i + 1}}}`} value={v}
@@ -112,7 +112,7 @@ const NewConversationModal = ({ open, onClose, onCreated }) => {
 
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={onClose} className="flex-1 h-11 bg-slate-100 text-slate-600 font-bold rounded-xl">إلغاء</button>
-                <button type="submit" disabled={isSubmitting} className="flex-1 h-11 bg-indigo-600 text-white font-bold rounded-xl flex items-center justify-center gap-2">
+                <button type="submit" disabled={isSubmitting} className="flex-1 h-11 bg-teal-600 text-white font-bold rounded-xl flex items-center justify-center gap-2">
                   {isSubmitting && <Loader2 size={16} className="animate-spin" />}
                   بدء المحادثة
                 </button>

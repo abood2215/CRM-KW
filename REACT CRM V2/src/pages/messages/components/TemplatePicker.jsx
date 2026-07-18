@@ -45,7 +45,7 @@ const TemplatePicker = ({ open, onClose, onSend }) => {
             <div className="p-6 overflow-y-auto flex-1">
               {!selected ? (
                 isLoading ? (
-                  <div className="flex justify-center py-10"><Loader2 className="animate-spin text-indigo-600" size={24} /></div>
+                  <div className="flex justify-center py-10"><Loader2 className="animate-spin text-teal-600" size={24} /></div>
                 ) : templates.length === 0 ? (
                   <div className="text-center py-10 px-4">
                     <FileText size={32} className="text-slate-100 mx-auto mb-2" />
@@ -55,7 +55,7 @@ const TemplatePicker = ({ open, onClose, onSend }) => {
                 ) : (
                   <div className="space-y-2">
                     {templates.map((t) => (
-                      <button key={t.id} onClick={() => handlePick(t)} className="w-full text-right p-3 rounded-xl border border-slate-100 hover:border-indigo-200 hover:bg-indigo-50/30 transition-colors">
+                      <button key={t.id} onClick={() => handlePick(t)} className="w-full text-right p-3 rounded-xl border border-slate-100 hover:border-teal-200 hover:bg-teal-50/30 transition-colors">
                         <p className="font-bold text-sm text-slate-800">{t.name}</p>
                         <p className="text-xs text-slate-400 line-clamp-2 mt-1">{t.body_text}</p>
                       </button>
@@ -81,7 +81,7 @@ const TemplatePicker = ({ open, onClose, onSend }) => {
             {selected && (
               <div className="p-6 pt-0 flex gap-3">
                 <button onClick={() => setSelected(null)} className="flex-1 h-11 bg-slate-100 text-slate-600 font-bold rounded-xl">رجوع</button>
-                <button onClick={handleSend} className="flex-1 h-11 bg-indigo-600 text-white font-bold rounded-xl">إرسال</button>
+                <button onClick={handleSend} className="flex-1 h-11 bg-teal-600 text-white font-bold rounded-xl">إرسال</button>
               </div>
             )}
           </motion.div>

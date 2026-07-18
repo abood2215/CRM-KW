@@ -6,8 +6,8 @@ const STATUS_META = {
   pending: { icon: <Clock size={13} />, label: 'جارِ الإرسال...' },
   sent: { icon: <Check size={13} />, label: 'أُرسلت' },
   delivered: { icon: <CheckCheck size={13} />, label: 'تم التوصيل' },
-  read: { icon: <CheckCheck size={13} className="text-sky-400" />, label: 'تمت القراءة' },
-  failed: { icon: <AlertCircle size={13} className="text-rose-300" />, label: 'فشل الإرسال' },
+  read: { icon: <CheckCheck size={13} className="text-teal-600" />, label: 'تمت القراءة' },
+  failed: { icon: <AlertCircle size={13} className="text-rose-400" />, label: 'فشل الإرسال' },
 };
 
 const MessageBubble = ({ message }) => {
@@ -43,11 +43,11 @@ const MessageBubble = ({ message }) => {
         <div
           className={cn(
             'rounded-2xl px-4 py-2.5 text-sm shadow-sm',
-            isOut ? 'bg-indigo-600 text-white rounded-bl-sm' : 'bg-white border border-slate-100 text-slate-800 rounded-br-sm'
+            isOut ? 'bg-teal-100 text-slate-800 rounded-bl-sm' : 'bg-white border border-slate-100 text-slate-800 rounded-br-sm'
           )}
         >
           {message.sender_name && isOut && (
-            <p className="text-[10px] font-black opacity-70 mb-0.5">{message.sender_name}</p>
+            <p className="text-[10px] font-black text-teal-700/80 mb-0.5">{message.sender_name}</p>
           )}
           {message.type === 'image' ? (
             <img src={message.content} alt="" className="rounded-lg max-w-full" />
@@ -62,7 +62,7 @@ const MessageBubble = ({ message }) => {
               rel="noopener noreferrer"
               className={cn(
                 'flex items-center gap-2 rounded-lg px-3 py-2 -mx-1 hover:opacity-80 transition-opacity',
-                isOut ? 'bg-white/10' : 'bg-slate-50'
+                isOut ? 'bg-teal-600/10' : 'bg-slate-50'
               )}
             >
               <FileText size={18} className="flex-shrink-0" />
@@ -72,7 +72,7 @@ const MessageBubble = ({ message }) => {
           ) : (
             <p className="whitespace-pre-wrap break-words leading-relaxed">{message.content}</p>
           )}
-          <div className={cn('flex items-center gap-1 mt-1 text-[10px]', isOut ? 'text-indigo-200 justify-end' : 'text-slate-400')}>
+          <div className={cn('flex items-center gap-1 mt-1 text-[10px]', isOut ? 'text-teal-700/60 justify-end' : 'text-slate-400')}>
             <span>{message.sent_at ? new Date(message.sent_at).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }) : ''}</span>
             {isOut && statusMeta && <span title={statusLabel} aria-label={statusLabel}>{statusMeta.icon}</span>}
           </div>

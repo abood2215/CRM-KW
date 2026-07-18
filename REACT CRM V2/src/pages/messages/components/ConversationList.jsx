@@ -36,7 +36,7 @@ const ConversationList = ({ list, selectedId, onSelect, onNewConversation, class
       <div className="p-4 border-b border-slate-100 space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="font-black text-slate-800">المحادثات</h2>
-          <button onClick={onNewConversation} title="محادثة جديدة" aria-label="محادثة جديدة" className="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center hover:bg-indigo-700">
+          <button onClick={onNewConversation} title="محادثة جديدة" aria-label="محادثة جديدة" className="w-9 h-9 rounded-xl bg-teal-600 text-white flex items-center justify-center hover:bg-teal-700">
             <Plus size={16} />
           </button>
         </div>
@@ -46,7 +46,7 @@ const ConversationList = ({ list, selectedId, onSelect, onNewConversation, class
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="بحث بالاسم أو الهاتف..."
-            className="w-full h-10 pr-9 pl-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+            className="w-full h-10 pr-9 pl-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20"
           />
         </div>
         <div className="flex gap-1">
@@ -56,7 +56,7 @@ const ConversationList = ({ list, selectedId, onSelect, onNewConversation, class
               onClick={() => setStatus(tab.id)}
               className={cn(
                 'flex-1 py-1.5 rounded-lg text-xs font-bold transition-colors',
-                status === tab.id ? 'bg-indigo-600 text-white' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'
+                status === tab.id ? 'bg-teal-600 text-white' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'
               )}
             >
               {tab.label}
@@ -67,7 +67,7 @@ const ConversationList = ({ list, selectedId, onSelect, onNewConversation, class
 
       <div className="flex-1 overflow-y-auto">
         {isLoading ? (
-          <div className="flex justify-center py-10"><Loader2 className="animate-spin text-indigo-600" size={24} /></div>
+          <div className="flex justify-center py-10"><Loader2 className="animate-spin text-teal-600" size={24} /></div>
         ) : conversations.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center px-4">
             <MessageSquare size={32} className="text-slate-100 mb-3" />
@@ -79,7 +79,7 @@ const ConversationList = ({ list, selectedId, onSelect, onNewConversation, class
                 <p className="text-slate-400 text-xs mb-4 max-w-[220px]">ابدأ محادثة جديدة مع أحد جهات الاتصال، أو انتظر رسالة واردة عبر واتساب.</p>
                 <button
                   onClick={onNewConversation}
-                  className="h-9 px-4 bg-indigo-600 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 hover:bg-indigo-700 transition-colors"
+                  className="h-9 px-4 bg-teal-600 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 hover:bg-teal-700 transition-colors"
                 >
                   <Plus size={14} />
                   محادثة جديدة

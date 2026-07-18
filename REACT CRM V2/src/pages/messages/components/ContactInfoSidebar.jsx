@@ -8,7 +8,7 @@ import { contacts as contactsApi } from '../../../api';
 
 const PIPELINE_COLORS = {
   new: 'bg-slate-100 text-slate-500',
-  contacted: 'bg-indigo-50 text-indigo-600',
+  contacted: 'bg-teal-50 text-teal-700',
   qualified: 'bg-amber-50 text-amber-600',
   won: 'bg-emerald-50 text-emerald-600',
   lost: 'bg-rose-50 text-rose-500',
@@ -97,7 +97,7 @@ const ContactInfoSidebar = ({ contact, onClose }) => {
         <div>
           <p className="text-[11px] font-black text-slate-400 uppercase mb-2">آخر نشاط</p>
           {isLoading ? (
-            <div className="flex justify-center py-3"><Loader2 size={14} className="animate-spin text-indigo-600" /></div>
+            <div className="flex justify-center py-3"><Loader2 size={14} className="animate-spin text-teal-600" /></div>
           ) : timeline.length === 0 ? (
             <p className="text-xs text-slate-400">لا يوجد نشاط مسجّل بعد.</p>
           ) : (
@@ -114,7 +114,7 @@ const ContactInfoSidebar = ({ contact, onClose }) => {
 
         <Link
           to={`/contacts/${contact.id}`}
-          className="flex items-center justify-center gap-1.5 h-9 rounded-xl border border-slate-200 text-xs font-bold text-indigo-600 hover:bg-indigo-50"
+          className="flex items-center justify-center gap-1.5 h-9 rounded-xl border border-slate-200 text-xs font-bold text-teal-600 hover:bg-teal-50"
         >
           <ExternalLink size={13} />
           عرض الملف الكامل

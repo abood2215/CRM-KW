@@ -4,6 +4,13 @@ import { ar } from 'date-fns/locale';
 import { Megaphone } from 'lucide-react';
 import { cn } from '../../../utils/cn';
 
+/** First letter of each of the first two words (e.g. "سارة الجميل" → "سج"); falls back to the first two characters for a single word or a bare phone number. */
+const initialsOf = (label) => {
+  if (!label) return '#';
+  const words = label.trim().split(/\s+/);
+  return words.length >= 2 ? words[0][0] + words[1][0] : label.slice(0, 2);
+};
+
 const ConversationListItem = ({ conversation, isActive, onClick }) => {
   const hasUnread = conversation.unread_count > 0;
 
@@ -12,17 +19,17 @@ const ConversationListItem = ({ conversation, isActive, onClick }) => {
       onClick={onClick}
       className={cn(
         'relative w-full text-right px-4 py-3.5 border-b border-slate-50 hover:bg-slate-50/80 transition-colors flex gap-3',
-        isActive && 'bg-indigo-50/70 hover:bg-indigo-50/70'
+        isActive && 'bg-teal-50/70 hover:bg-teal-50/70'
       )}
     >
-      {hasUnread && <span className="absolute right-0 top-2 bottom-2 w-1 rounded-full bg-indigo-500" />}
+      {hasUnread && <span className="absolute right-0 top-2 bottom-2 w-1 rounded-full bg-teal-500" />}
       <div
         className={cn(
           'w-11 h-11 rounded-full flex items-center justify-center font-black flex-shrink-0 text-sm transition-colors',
-          isActive ? 'bg-indigo-600 text-white' : 'bg-indigo-100 text-indigo-600'
+          isActive ? 'bg-teal-600 text-white' : 'bg-teal-50 text-teal-700'
         )}
       >
-        {conversation.contact?.name?.[0] ?? '#'}
+        {initialsOf(conversation.contact?.name ?? conversation.contact?.phone)}
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2">
@@ -40,7 +47,7 @@ const ConversationListItem = ({ conversation, isActive, onClick }) => {
             {conversation.last_message ?? '—'}
           </p>
           {hasUnread && (
-            <span className="bg-indigo-600 text-white text-[10px] font-black rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0">
+            <span className="bg-teal-600 text-white text-[10px] font-black rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0">
               {conversation.unread_count}
             </span>
           )}
