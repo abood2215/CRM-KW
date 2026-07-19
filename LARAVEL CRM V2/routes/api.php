@@ -26,16 +26,24 @@ use App\Http\Controllers\Api\V1\WhatsappNumberController;
 use Illuminate\Support\Facades\Route;
 
 // Rate limit: max 10 login attempts per minute per IP
-Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
+//
+// Every throttle: below carries an explicit prefix (the 3rd param). Laravel's
+// built-in throttle middleware keys its counter purely by the authenticated
+// user ID (or IP+domain for guests) — WITHOUT the route at all — so without a
+// distinct prefix, every throttled route for the same user shares one counter.
+// That silently made each "stricter" per-action limit fire early (or never
+// independently) depending on unrelated traffic the same user generated
+// elsewhere in the exact same minute. The prefix gives each limit its own bucket.
+Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:10,1,login');
 
 // Public webhooks — rate limited since they're unauthenticated
-Route::get('/webhooks/whatsapp', [WebhookController::class, 'whatsappVerify'])->middleware('throttle:20,1');
-Route::post('/webhooks/whatsapp', [WebhookController::class, 'whatsapp'])->middleware('throttle:120,1');
-Route::post('/webhooks/chatwoot', [WebhookController::class, 'chatwoot'])->middleware('throttle:60,1');
+Route::get('/webhooks/whatsapp', [WebhookController::class, 'whatsappVerify'])->middleware('throttle:20,1,webhook-verify');
+Route::post('/webhooks/whatsapp', [WebhookController::class, 'whatsapp'])->middleware('throttle:120,1,webhook-whatsapp');
+Route::post('/webhooks/chatwoot', [WebhookController::class, 'chatwoot'])->middleware('throttle:60,1,webhook-chatwoot');
 
 // Public self-service booking — unauthenticated by design, so it gets its own strict throttle.
-Route::get('/public/booking/slots', [PublicBookingController::class, 'slots'])->middleware('throttle:30,1');
-Route::post('/public/booking', [PublicBookingController::class, 'store'])->middleware('throttle:10,1');
+Route::get('/public/booking/slots', [PublicBookingController::class, 'slots'])->middleware('throttle:30,1,booking-slots');
+Route::post('/public/booking', [PublicBookingController::class, 'store'])->middleware('throttle:10,1,booking-store');
 
 // Default cap for every authenticated route below — most sensitive/costly
 // endpoints (password changes, WhatsApp sends) additionally get a stricter
@@ -45,7 +53,7 @@ Route::middleware(['auth:sanctum', 'update.last.seen', 'throttle:60,1'])->group(
         Route::post('/logout', [AuthController::class, 'logout']);
         Route::get('/me', [AuthController::class, 'me']);
         Route::put('/profile', [AuthController::class, 'updateProfile']);
-        Route::put('/password', [AuthController::class, 'updatePassword'])->middleware('throttle:10,1');
+        Route::put('/password', [AuthController::class, 'updatePassword'])->middleware('throttle:10,1,password-update');
     });
 
     Route::get('/contacts/pipeline', [ContactController::class, 'pipeline']);
@@ -87,7 +95,7 @@ Route::middleware(['auth:sanctum', 'update.last.seen', 'throttle:60,1'])->group(
     Route::apiResource('templates', TemplateController::class);
 
     Route::post('/campaigns/upload-image', [CampaignController::class, 'uploadImage']);
-    Route::post('/campaigns/{campaign}/start', [CampaignController::class, 'start'])->middleware('throttle:20,1');
+    Route::post('/campaigns/{campaign}/start', [CampaignController::class, 'start'])->middleware('throttle:20,1,campaign-start');
     Route::post('/campaigns/{campaign}/pause', [CampaignController::class, 'pause']);
     Route::post('/campaigns/{campaign}/resume', [CampaignController::class, 'resume']);
     Route::post('/campaigns/{campaign}/blacklist-failed', [CampaignController::class, 'blacklistFailed']);
@@ -108,12 +116,12 @@ Route::middleware(['auth:sanctum', 'update.last.seen', 'throttle:60,1'])->group(
     Route::put('/conversations/{conversation}/status', [ConversationController::class, 'updateStatus']);
     Route::put('/conversations/{conversation}/assign', [ConversationController::class, 'assign']);
     Route::get('/conversations/{conversation}/messages', [MessageController::class, 'index']);
-    Route::post('/conversations/{conversation}/messages', [MessageController::class, 'store'])->middleware('throttle:20,1');
-    Route::post('/messages/upload-attachment', [MessageController::class, 'uploadAttachment'])->middleware('throttle:20,1');
-    Route::post('/conversations/{conversation}/send-template', [MessageController::class, 'sendTemplate'])->middleware('throttle:20,1');
+    Route::post('/conversations/{conversation}/messages', [MessageController::class, 'store'])->middleware('throttle:20,1,message-send');
+    Route::post('/messages/upload-attachment', [MessageController::class, 'uploadAttachment'])->middleware('throttle:20,1,message-upload');
+    Route::post('/conversations/{conversation}/send-template', [MessageController::class, 'sendTemplate'])->middleware('throttle:20,1,send-template');
     Route::post('/conversations/{conversation}/notes', [MessageController::class, 'addNote']);
-    Route::post('/conversations/{conversation}/messages/{message}/react', [MessageController::class, 'react'])->middleware('throttle:20,1');
-    Route::post('/conversations/{conversation}/typing', [ConversationController::class, 'typing'])->middleware('throttle:30,1');
+    Route::post('/conversations/{conversation}/messages/{message}/react', [MessageController::class, 'react'])->middleware('throttle:20,1,message-react');
+    Route::post('/conversations/{conversation}/typing', [ConversationController::class, 'typing'])->middleware('throttle:30,1,typing');
 
     Route::get('/stats/dashboard', [StatsController::class, 'dashboard']);
     Route::get('/stats/campaigns', [StatsController::class, 'campaigns']);
