@@ -31,6 +31,16 @@ class MessageStatusUpdateService
                 $errorCode = $statusData['errors'][0]['code'] ?? null;
                 $errorTitle = $statusData['errors'][0]['title'] ?? null;
                 $update['error_message'] = $this->resolveErrorLabel($errorCode, $errorTitle);
+
+                // Unlike CampaignRecipient failures below, a plain conversation message failing
+                // here logged nothing at all — the only trace was the (now user-facing) label on
+                // the message row itself, with no code/title recorded anywhere for later digging.
+                Log::warning('[MessageStatusUpdate] فشل توصيل رسالة', [
+                    'message_id' => $message->id,
+                    'wamid' => $waMessageId,
+                    'error_code' => $errorCode,
+                    'error_title' => $errorTitle,
+                ]);
             }
             $message->update($update);
             event(new MessageStatusUpdatedEvent($message));
@@ -127,6 +137,13 @@ class MessageStatusUpdateService
     {
         if ($errorCode === 131047) {
             return 'انتهت نافذة 24 ساعة — استخدم قالب Template';
+        }
+
+        // Meta's own marketing-message pacing/anti-spam rejection — not a config or code
+        // problem on our end, it's Meta unilaterally declining to deliver a MARKETING-category
+        // template to a recipient it predicts won't engage with it.
+        if ($errorCode === 131049) {
+            return 'رفضت ميتا توصيل رسالة تسويقية للحفاظ على جودة النظام — المستقبِل غير متفاعل كفاية (كود ميتا: 131049)';
         }
 
         return $errorTitle ?? 'فشل التوصيل';
