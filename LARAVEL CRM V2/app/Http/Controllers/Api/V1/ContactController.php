@@ -14,6 +14,7 @@ use App\Models\Contact;
 use App\Models\ContactList;
 use App\Policies\ContactPolicy;
 use App\Services\Contacts\ContactImportService;
+use App\Services\Contacts\ContactSegmentQueryBuilder;
 use App\Services\Contacts\ContactService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -73,6 +74,23 @@ class ContactController extends Controller
                 'total' => $contacts->total(),
             ],
         ]);
+    }
+
+    /** Live "how many contacts match these criteria" preview for the campaign-creation segment builder. */
+    public function segmentCount(Request $request, ContactSegmentQueryBuilder $builder): JsonResponse
+    {
+        $filters = $request->validate([
+            'pipeline_stages' => 'nullable|array',
+            'pipeline_stages.*' => 'string',
+            'tags' => 'nullable|array',
+            'tags.*' => 'string',
+            'sources' => 'nullable|array',
+            'sources.*' => 'string',
+            'last_contacted_before' => 'nullable|date',
+            'last_contacted_after' => 'nullable|date',
+        ]);
+
+        return response()->json(['count' => $builder->build($filters)->count()]);
     }
 
     public function store(StoreContactRequest $request): JsonResponse

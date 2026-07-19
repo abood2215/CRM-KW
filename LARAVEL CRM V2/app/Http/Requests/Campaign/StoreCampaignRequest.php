@@ -18,6 +18,12 @@ class StoreCampaignRequest extends FormRequest
             'description' => 'nullable|string',
             'whatsapp_number_id' => 'nullable|exists:whatsapp_numbers,id',
             'contact_list_id' => 'nullable|exists:contact_lists,id',
+            'segment_filters' => 'nullable|array',
+            'segment_filters.pipeline_stages' => 'nullable|array',
+            'segment_filters.tags' => 'nullable|array',
+            'segment_filters.sources' => 'nullable|array',
+            'segment_filters.last_contacted_before' => 'nullable|date',
+            'segment_filters.last_contacted_after' => 'nullable|date',
 
             'template_name' => 'nullable|string|max:255',
             'template_language' => 'nullable|string|max:10',
@@ -42,11 +48,12 @@ class StoreCampaignRequest extends FormRequest
         $validator->after(function ($v) {
             $hasRecipients = ! empty($this->recipients);
             $hasContactList = ! empty($this->contact_list_id);
+            $hasSegment = ! empty($this->segment_filters);
             $hasTemplate = ! empty($this->template_name);
             $hasMessage = ! empty($this->message_text);
 
-            if (! $hasRecipients && ! $hasContactList) {
-                $v->errors()->add('recipients', 'يجب تحديد قائمة مستلمين أو اختيار قائمة جهات اتصال.');
+            if (! $hasRecipients && ! $hasContactList && ! $hasSegment) {
+                $v->errors()->add('recipients', 'يجب تحديد قائمة مستلمين أو قائمة جهات اتصال أو معايير استهداف.');
             }
 
             if (! $hasTemplate && ! $hasMessage) {

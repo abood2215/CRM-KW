@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Outlet, useNavigate, useLocation, NavLink } from 'react-router-dom';
 import { useQuery, useQueryClient, QueryErrorResetBoundary } from '@tanstack/react-query';
 import { AnimatePresence, motion } from 'framer-motion';
-import { LogOut, LayoutDashboard, Kanban, Users, CheckSquare, ListChecks, Phone, FileText, Megaphone, MessageSquare, Bell, Settings, HardDrive, BarChart3, Menu, X, Search, History, AlertTriangle } from 'lucide-react';
+import { LogOut, LayoutDashboard, Kanban, Users, CheckSquare, CalendarClock, ListChecks, Phone, FileText, Megaphone, GitBranch, MessageSquare, Bell, Settings, HardDrive, BarChart3, Menu, X, Search, History, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../store/useAuthStore';
 import { auth, notifications as notificationsApi, whatsappNumbers as whatsappNumbersApi } from '../api';
@@ -44,6 +44,7 @@ const NAV_GROUPS = [
       { to: '/pipeline', label: 'تتبع العملاء', icon: Kanban, color: 'blue' },
       { to: '/contacts', label: 'جهات الاتصال', icon: Users, color: 'violet' },
       { to: '/tasks', label: 'المهام', icon: CheckSquare, color: 'amber' },
+      { to: '/appointments', label: 'المواعيد', icon: CalendarClock, color: 'teal' },
       { to: '/contact-lists', label: 'قوائم التواصل', icon: ListChecks, color: 'cyan' },
     ],
   },
@@ -54,6 +55,7 @@ const NAV_GROUPS = [
       { to: '/whatsapp', label: 'أرقام واتساب', icon: Phone, color: 'green' },
       { to: '/templates', label: 'القوالب', icon: FileText, color: 'purple' },
       { to: '/campaigns', label: 'الحملات', icon: Megaphone, color: 'rose' },
+      { to: '/drip-sequences', label: 'الحملات المتسلسلة', icon: GitBranch, color: 'violet' },
     ],
   },
   {

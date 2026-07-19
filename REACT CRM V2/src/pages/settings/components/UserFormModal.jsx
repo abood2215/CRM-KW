@@ -5,7 +5,7 @@ import { X, Loader2, Eye, EyeOff } from 'lucide-react';
 import { users as usersApi, roles as rolesApi } from '../../../api';
 import { useModalA11y } from '../../../hooks/useModalA11y';
 
-const emptyForm = { name: '', email: '', password: '', role_id: '', phone: '', is_active: true };
+const emptyForm = { name: '', email: '', password: '', role_id: '', phone: '', specialty: '', is_active: true };
 
 const UserFormModal = ({ open, onClose, user }) => {
   const queryClient = useQueryClient();
@@ -20,6 +20,15 @@ const UserFormModal = ({ open, onClose, user }) => {
     enabled: open,
   });
 
+  // Reuses UsersTab's already-fetched ['users'] cache — just here to build the specialty
+  // suggestion list, not to trigger a second network round-trip.
+  const { data: existingUsers = [] } = useQuery({
+    queryKey: ['users'],
+    queryFn: usersApi.getUsers,
+    enabled: open,
+  });
+  const specialtySuggestions = [...new Set(existingUsers.map((u) => u.specialty).filter(Boolean))];
+
   useEffect(() => {
     if (open) {
       setForm(user ? {
@@ -28,6 +37,7 @@ const UserFormModal = ({ open, onClose, user }) => {
         password: '',
         role_id: user.role?.id ?? '',
         phone: user.phone ?? '',
+        specialty: user.specialty ?? '',
         is_active: user.is_active ?? true,
       } : emptyForm);
     }
@@ -113,6 +123,20 @@ const UserFormModal = ({ open, onClose, user }) => {
               <input value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
                 className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm" placeholder="07xxxxxxxx" />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-black text-slate-600 mb-1.5">التخصص (اختياري — لتوجيه المحادثات الجديدة تلقائياً)</label>
+            <input
+              list="specialty-suggestions"
+              value={form.specialty}
+              onChange={(e) => setForm((f) => ({ ...f, specialty: e.target.value }))}
+              className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm"
+              placeholder="مثال: نطق، لغة إنجليزية"
+            />
+            <datalist id="specialty-suggestions">
+              {specialtySuggestions.map((s) => <option key={s} value={s} />)}
+            </datalist>
           </div>
 
           {isEdit && (

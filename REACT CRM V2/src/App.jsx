@@ -13,11 +13,14 @@ import PipelinePage from './pages/pipeline/PipelinePage';
 import ContactsPage from './pages/contacts/ContactsPage';
 import ContactDetailPage from './pages/contacts/ContactDetailPage';
 import TasksPage from './pages/tasks/TasksPage';
+import AppointmentsPage from './pages/appointments/AppointmentsPage';
+import BookingPage from './pages/booking/BookingPage';
 import ContactListsPage from './pages/contactLists/ContactListsPage';
 import WhatsappPage from './pages/whatsapp/WhatsappPage';
 import TemplatesPage from './pages/templates/TemplatesPage';
 import CampaignsPage from './pages/campaigns/CampaignsPage';
 import CampaignReportPage from './pages/campaigns/CampaignReportPage';
+import DripSequencesPage from './pages/dripSequences/DripSequencesPage';
 import MessagesPage from './pages/messages/MessagesPage';
 import NotificationsPage from './pages/notifications/NotificationsPage';
 import SettingsPage from './pages/settings/SettingsPage';
@@ -49,6 +52,7 @@ function App() {
           <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+            <Route path="/book" element={<BookingPage />} />
             <Route
               path="/"
               element={
@@ -64,11 +68,13 @@ function App() {
               <Route path="contacts" element={<ContactsPage />} />
               <Route path="contacts/:id" element={<ContactDetailPage />} />
               <Route path="tasks" element={<TasksPage />} />
+              <Route path="appointments" element={<AppointmentsPage />} />
               <Route path="contact-lists" element={<ContactListsPage />} />
               <Route path="whatsapp" element={<WhatsappPage />} />
               <Route path="templates" element={<TemplatesPage />} />
               <Route path="campaigns" element={<CampaignsPage />} />
               <Route path="campaigns/:id/report" element={<CampaignReportPage />} />
+              <Route path="drip-sequences" element={<DripSequencesPage />} />
               <Route path="notifications" element={<NotificationsPage />} />
               <Route path="settings" element={<SettingsPage />} />
               <Route path="drive" element={<DrivePage />} />

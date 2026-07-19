@@ -19,6 +19,7 @@ class StoreUserRequest extends FormRequest
             'password' => 'required|string|min:8',
             'role_id' => 'required|exists:roles,id',
             'phone' => 'nullable|string|max:20',
+            'specialty' => 'nullable|string|max:255',
             'avatar' => 'nullable|image|max:2048',
         ];
     }

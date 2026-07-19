@@ -2,7 +2,9 @@
 
 use App\Jobs\ExpireConversationsJob;
 use App\Jobs\ProcessCampaignJob;
+use App\Jobs\ProcessDripSequencesJob;
 use App\Jobs\ResetDailyLimitJob;
+use App\Jobs\SendAppointmentRemindersJob;
 use App\Jobs\SendTaskRemindersJob;
 use App\Jobs\SyncTemplatesJob;
 use App\Models\Campaign;
@@ -23,6 +25,10 @@ Schedule::job(new ExpireConversationsJob)->everyThirtyMinutes()->withoutOverlapp
 Schedule::job(new SyncTemplatesJob)->everySixHours()->withoutOverlapping();
 
 Schedule::job(new SendTaskRemindersJob)->dailyAt('08:00')->withoutOverlapping();
+
+Schedule::job(new SendAppointmentRemindersJob)->everyFifteenMinutes()->withoutOverlapping();
+
+Schedule::job(new ProcessDripSequencesJob)->everyFifteenMinutes()->withoutOverlapping();
 
 Schedule::command('backup:run')->dailyAt('03:00')->withoutOverlapping();
 

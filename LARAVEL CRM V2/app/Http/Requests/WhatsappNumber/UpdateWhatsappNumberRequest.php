@@ -15,7 +15,9 @@ class UpdateWhatsappNumberRequest extends FormRequest
     {
         return [
             'name' => 'sometimes|string|max:255',
-            'daily_limit' => 'sometimes|integer|min:1|max:1000',
+            // Meta's own messaging tiers scale up to 100k/unlimited conversations per 24h —
+            // 1000 was an arbitrary starter cap that real high-volume numbers already exceed.
+            'daily_limit' => 'sometimes|integer|min:1|max:1000000',
             'access_token' => 'sometimes|nullable|string',
             'phone_number_id' => 'sometimes|nullable|string',
             'business_account_id' => 'sometimes|nullable|string',

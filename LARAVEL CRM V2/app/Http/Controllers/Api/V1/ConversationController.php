@@ -8,6 +8,7 @@ use App\Events\UserTypingEvent;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ConversationResource;
 use App\Http\Resources\MessageResource;
+use App\Jobs\SendSatisfactionSurveyJob;
 use App\Models\Contact;
 use App\Models\Conversation;
 use App\Models\WhatsappNumber;
@@ -147,8 +148,15 @@ class ConversationController extends Controller
             $this->chatwoot->toggleStatus($conversation->chatwoot_conv_id, $request->status);
         }
 
+        $wasResolved = $conversation->status === 'resolved';
         $conversation->update(['status' => $request->status]);
         event(new ConversationUpdatedEvent($conversation->fresh()));
+
+        // Give the customer a couple of hours after the conversation actually ends before
+        // asking how it went — sending this instantly would feel like it interrupted them.
+        if ($request->status === 'resolved' && ! $wasResolved) {
+            SendSatisfactionSurveyJob::dispatch($conversation->id)->delay(now()->addHours(2));
+        }
 
         return response()->json([
             'conversation' => new ConversationResource($conversation->fresh()->load(['contact', 'assignedUser'])),

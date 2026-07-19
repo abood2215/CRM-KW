@@ -58,6 +58,7 @@ const UsersTab = () => {
                 <div className="flex items-center gap-2 flex-wrap">
                   <p className="text-sm font-black text-slate-800 truncate">{u.name}</p>
                   <span className="px-2 py-0.5 rounded-lg text-[10px] font-black bg-indigo-50 text-indigo-600">{u.role?.name}</span>
+                  {u.specialty && <span className="px-2 py-0.5 rounded-lg text-[10px] font-black bg-emerald-50 text-emerald-600">{u.specialty}</span>}
                   {!u.is_active && <span className="px-2 py-0.5 rounded-lg text-[10px] font-black bg-slate-100 text-slate-400">معطل</span>}
                 </div>
                 <p className="text-xs text-slate-400 mt-0.5 truncate">{u.email}</p>

@@ -4,7 +4,7 @@ import {
   ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip,
   LineChart, Line, Cell, PieChart, Pie,
 } from 'recharts';
-import { Loader2, Users, Target, PhoneCall, Clock, Download, Phone } from 'lucide-react';
+import { Loader2, Users, Target, PhoneCall, Clock, Download, Phone, Star } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { stats as statsApi } from '../../api';
 import { usePermission } from '../../hooks/usePermission';
@@ -49,6 +49,21 @@ const StatsPage = () => {
   const { data: whatsappStats } = useQuery({
     queryKey: ['stats-whatsapp'],
     queryFn: statsApi.getWhatsappStats,
+  });
+
+  const { data: sourceReport = [] } = useQuery({
+    queryKey: ['stats-sources'],
+    queryFn: statsApi.getSourceReport,
+  });
+
+  const { data: campaignStats } = useQuery({
+    queryKey: ['stats-campaigns'],
+    queryFn: statsApi.getCampaignStats,
+  });
+
+  const { data: satisfaction } = useQuery({
+    queryKey: ['stats-satisfaction'],
+    queryFn: statsApi.getSatisfactionStats,
   });
 
   const agentData = agents.map((a) => ({ name: a.name, deals: a.clients_count }));
@@ -227,6 +242,97 @@ const StatsPage = () => {
               ))}
             </div>
           </div>
+        </div>
+      )}
+
+      {sourceReport.length > 0 && (
+        <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
+          <h3 className="font-black text-slate-800 mb-1">تقرير المصادر</h3>
+          <p className="text-[11px] text-slate-400 mb-4">"الميزانية المتوقعة" رقم يدخله الموظف تقديرياً — مش إيراد فعلي محصّل، لا يوجد تتبع مالي حقيقي بالنظام.</p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-right text-slate-400 text-xs font-black uppercase border-b border-slate-100">
+                  <th className="px-3 py-2">المصدر</th>
+                  <th className="px-3 py-2">إجمالي</th>
+                  <th className="px-3 py-2">تحوّلوا</th>
+                  <th className="px-3 py-2">نسبة التحويل</th>
+                  <th className="px-3 py-2">الميزانية المتوقعة (متوسط)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sourceReport.map((s) => (
+                  <tr key={s.source} className="border-b border-slate-50 last:border-0">
+                    <td className="px-3 py-2.5 font-bold text-slate-700">{s.source}</td>
+                    <td className="px-3 py-2.5 text-slate-500">{s.total_contacts}</td>
+                    <td className="px-3 py-2.5 text-slate-500">{s.converted_count}</td>
+                    <td className="px-3 py-2.5">
+                      <span className={cn('text-xs font-black px-2 py-0.5 rounded-lg', s.conversion_rate > 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400')}>
+                        {s.conversion_rate}%
+                      </span>
+                    </td>
+                    <td className="px-3 py-2.5 text-slate-500">{s.avg_expected_budget != null ? s.avg_expected_budget : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {campaignStats?.recent_campaigns?.length > 0 && (
+        <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
+          <h3 className="font-black text-slate-800 mb-4">آخر الحملات وتحويلها</h3>
+          <div className="space-y-3">
+            {campaignStats.recent_campaigns.map((c) => (
+              <div key={c.id} className="flex items-center justify-between gap-3 border-b border-slate-50 last:border-0 pb-3 last:pb-0">
+                <span className="text-sm font-bold text-slate-700 truncate">{c.name}</span>
+                <div className="flex items-center gap-4 text-xs text-slate-400 flex-shrink-0">
+                  <span>{c.sent_count} أُرسلت</span>
+                  <span className="font-black text-emerald-600">{c.converted_count} تحوّلوا</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {satisfaction?.sent_count > 0 && (
+        <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
+          <h3 className="font-black text-slate-800 mb-4 flex items-center gap-2">
+            <Star size={16} className="text-amber-500" />
+            رضا العملاء
+          </h3>
+          <div className="grid grid-cols-3 gap-4 mb-5">
+            <div className="text-center">
+              <p className="text-2xl font-black text-slate-800">{satisfaction.average_rating ?? '—'}<span className="text-sm text-slate-400">/5</span></p>
+              <p className="text-[11px] text-slate-400 font-bold mt-1">متوسط التقييم</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-black text-slate-800">{satisfaction.response_count}</p>
+              <p className="text-[11px] text-slate-400 font-bold mt-1">ردود على الاستبيان</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-black text-slate-800">
+                {satisfaction.sent_count > 0 ? Math.round((satisfaction.response_count / satisfaction.sent_count) * 100) : 0}%
+              </p>
+              <p className="text-[11px] text-slate-400 font-bold mt-1">نسبة الاستجابة</p>
+            </div>
+          </div>
+
+          {satisfaction.recent?.length > 0 && (
+            <div className="space-y-2 border-t border-slate-50 pt-4">
+              {satisfaction.recent.map((r) => (
+                <div key={r.id} className="flex items-center justify-between gap-3 text-sm">
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Star key={i} size={13} className={i < r.rating ? 'fill-amber-400 text-amber-400' : 'text-slate-200'} />
+                    ))}
+                  </div>
+                  <span className="text-slate-500 truncate flex-1">{r.comment || r.contact_name || '—'}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

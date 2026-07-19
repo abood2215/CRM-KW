@@ -1,6 +1,8 @@
 export * as auth from './auth';
 export * as contacts from './contacts';
 export * as tasks from './tasks';
+export * as appointments from './appointments';
+export * as dripSequences from './dripSequences';
 export * as contactLists from './contactLists';
 export * as whatsappNumbers from './whatsappNumbers';
 export * as templates from './templates';

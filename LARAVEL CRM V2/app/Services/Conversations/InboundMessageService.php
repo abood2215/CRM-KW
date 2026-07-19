@@ -6,8 +6,12 @@ use App\Events\ConversationUpdatedEvent;
 use App\Events\MessageStatusUpdatedEvent;
 use App\Events\NewMessageEvent;
 use App\Models\Contact;
+use App\Models\Conversation;
 use App\Models\Message;
+use App\Models\SatisfactionSurvey;
+use App\Models\User;
 use App\Models\WhatsappNumber;
+use App\Services\Notifications\NotificationService;
 use App\Services\Whatsapp\CloudApiWhatsAppSender;
 use App\ValueObjects\PhoneNumber;
 use Illuminate\Support\Facades\Cache;
@@ -74,6 +78,12 @@ class InboundMessageService
 
             $conversation = $this->conversations->resolveForContact($contact);
 
+            if ($conversation->wasRecentlyCreated) {
+                $this->maybeAutoAssignSpecialist($conversation, $contact);
+            }
+
+            $this->maybeRecordSurveyResponse($conversation, $content);
+
             $message = Message::create([
                 'conversation_id' => $conversation->id,
                 'whatsapp_message_id' => $waMessageId,
@@ -100,6 +110,74 @@ class InboundMessageService
 
         $this->replyAttribution->attribute($phone);
         $this->autoReply->maybeReply($conversation, $phone);
+    }
+
+    /**
+     * Auto-assigns a brand-new conversation to the one consultant whose specialty matches
+     * the contact's requested service. Stays unassigned on zero or ambiguous (2+) matches —
+     * same safe default as today's fully-manual assignment, just skipped when there's a
+     * single, confident match.
+     */
+    private function maybeAutoAssignSpecialist(Conversation $conversation, Contact $contact): void
+    {
+        if (! $contact->service) {
+            return;
+        }
+
+        $service = mb_strtolower(trim($contact->service));
+
+        $matches = User::where('is_active', true)
+            ->whereNotNull('specialty')
+            ->get()
+            ->filter(function (User $user) use ($service) {
+                $specialty = mb_strtolower(trim($user->specialty));
+
+                return $specialty !== '' && (str_contains($service, $specialty) || str_contains($specialty, $service));
+            });
+
+        if ($matches->count() !== 1) {
+            return;
+        }
+
+        $specialist = $matches->first();
+        $conversation->update(['assigned_user_id' => $specialist->id]);
+
+        NotificationService::send(
+            $specialist->id,
+            'conversation_auto_assigned',
+            'محادثة جديدة معيّنة لك',
+            "تم تعيين محادثة جديدة مع \"{$contact->name}\" لك تلقائياً حسب تخصصك.",
+            ['conversation_id' => $conversation->id],
+        );
+    }
+
+    /**
+     * If this conversation has a satisfaction survey awaiting a reply and the inbound text
+     * starts with a digit 1-5, record it as the rating (anything after the digit is kept as
+     * a free-text comment). Anything else — a normal message, an out-of-range number — is
+     * left alone; it still gets created as a regular message either way.
+     */
+    private function maybeRecordSurveyResponse(Conversation $conversation, string $content): void
+    {
+        $survey = SatisfactionSurvey::where('conversation_id', $conversation->id)
+            ->whereNotNull('sent_at')
+            ->whereNull('responded_at')
+            ->latest('sent_at')
+            ->first();
+
+        if (! $survey) {
+            return;
+        }
+
+        if (! preg_match('/^\s*([1-5])\b\s*(.*)$/us', trim($content), $matches)) {
+            return;
+        }
+
+        $survey->update([
+            'rating' => (int) $matches[1],
+            'comment' => trim($matches[2]) ?: null,
+            'responded_at' => now(),
+        ]);
     }
 
     /** Meta sends an empty/missing emoji to mean "reaction removed" — clear it in that case. */

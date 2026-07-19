@@ -1,9 +1,9 @@
 import React, { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { X, Loader2, Image as ImageIcon } from 'lucide-react';
+import { X, Loader2, Image as ImageIcon, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
-import { campaigns as campaignsApi, contactLists as contactListsApi, whatsappNumbers as whatsappNumbersApi, templates as templatesApi } from '../api';
+import { campaigns as campaignsApi, contacts as contactsApi, contactLists as contactListsApi, whatsappNumbers as whatsappNumbersApi, templates as templatesApi } from '../api';
 import { useModalA11y } from '../hooks/useModalA11y';
 
 const emptyForm = {
@@ -16,11 +16,63 @@ const emptyForm = {
   delay_seconds: 30,
 };
 
+const emptySegment = {
+  pipeline_stages: [],
+  sources: [],
+  tags: '',
+  last_contacted_before: '',
+  last_contacted_after: '',
+};
+
+const PIPELINE_STAGES = [
+  { id: 'new', label: 'جديد' },
+  { id: 'contacted', label: 'تم التواصل' },
+  { id: 'interested', label: 'مهتم' },
+  { id: 'booked', label: 'محجوز' },
+  { id: 'active', label: 'نشط' },
+  { id: 'following', label: 'متابعة' },
+];
+
+const SOURCES = [
+  { id: 'whatsapp', label: 'واتساب' },
+  { id: 'instagram', label: 'انستغرام' },
+  { id: 'referral', label: 'إحالة' },
+  { id: 'google', label: 'جوجل' },
+];
+
 const CreateCampaignModal = ({ open, onClose }) => {
   const queryClient = useQueryClient();
   const ref = useModalA11y(open, onClose);
   const [form, setForm] = useState(emptyForm);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [targetMode, setTargetMode] = useState('list'); // 'list' | 'segment'
+  const [segment, setSegment] = useState(emptySegment);
+
+  const segmentPayload = useMemo(() => {
+    const tags = segment.tags.split(',').map((t) => t.trim()).filter(Boolean);
+    const payload = {
+      pipeline_stages: segment.pipeline_stages,
+      sources: segment.sources,
+      tags,
+      last_contacted_before: segment.last_contacted_before || undefined,
+      last_contacted_after: segment.last_contacted_after || undefined,
+    };
+    const hasAnyFilter = payload.pipeline_stages.length || payload.sources.length || tags.length
+      || payload.last_contacted_before || payload.last_contacted_after;
+
+    return hasAnyFilter ? payload : null;
+  }, [segment]);
+
+  const { data: segmentCount, isFetching: isCountingSegment } = useQuery({
+    queryKey: ['segment-count', segmentPayload],
+    queryFn: () => contactsApi.getSegmentCount(segmentPayload),
+    enabled: open && targetMode === 'segment' && !!segmentPayload,
+  });
+
+  const toggleInArray = (key, value) => setSegment((s) => ({
+    ...s,
+    [key]: s[key].includes(value) ? s[key].filter((v) => v !== value) : [...s[key], value],
+  }));
 
   const { data: numbers = [] } = useQuery({
     queryKey: ['whatsapp-numbers-select'],
@@ -79,6 +131,8 @@ const CreateCampaignModal = ({ open, onClose }) => {
       toast.success(res.skipped_message ?? 'تم إنشاء الحملة بنجاح');
       onClose();
       setForm(emptyForm);
+      setSegment(emptySegment);
+      setTargetMode('list');
     },
     onError: (e) => toast.error(e?.response?.data?.message || 'فشل إنشاء الحملة'),
   });
@@ -86,10 +140,16 @@ const CreateCampaignModal = ({ open, onClose }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!form.name.trim()) return toast.error('اسم الحملة مطلوب');
-    if (!form.contact_list_id) return toast.error('اختر قائمة جهات اتصال');
+    if (targetMode === 'list' && !form.contact_list_id) return toast.error('اختر قائمة جهات اتصال');
+    if (targetMode === 'segment' && !segmentPayload) return toast.error('حدّد معيار استهداف واحد على الأقل');
     if (!form.template_name) return toast.error('اختر قالب رسالة');
     if (needsImage && !form.image_path) return toast.error('هذا القالب يتطلب صورة بالرأس — ارفع صورة أولاً');
-    mutation.mutate(form);
+
+    mutation.mutate({
+      ...form,
+      contact_list_id: targetMode === 'list' ? form.contact_list_id : '',
+      segment_filters: targetMode === 'segment' ? segmentPayload : undefined,
+    });
   };
 
   return (
@@ -103,7 +163,7 @@ const CreateCampaignModal = ({ open, onClose }) => {
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
-            className="bg-white rounded-[2rem] shadow-2xl w-full max-w-lg relative max-h-[85vh] flex flex-col"
+            className="bg-white rounded-[2rem] shadow-2xl w-full max-w-xl relative max-h-[85vh] flex flex-col"
           >
             <div className="p-8 border-b border-slate-100 flex items-center justify-between flex-shrink-0">
               <h2 className="text-xl font-black text-slate-800">حملة جديدة</h2>
@@ -136,15 +196,92 @@ const CreateCampaignModal = ({ open, onClose }) => {
               </div>
 
               <div>
-                <label className="block text-xs font-black text-slate-600 mb-1.5">قائمة جهات الاتصال *</label>
-                <select
-                  required value={form.contact_list_id}
-                  onChange={(e) => setForm((f) => ({ ...f, contact_list_id: e.target.value }))}
-                  className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                >
-                  <option value="">اختر قائمة</option>
-                  {lists.map((l) => <option key={l.id} value={l.id}>{l.name} ({l.count})</option>)}
-                </select>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-black text-slate-600">الجمهور المستهدف *</label>
+                  <div className="flex gap-1 bg-slate-50 rounded-lg p-0.5">
+                    <button type="button" onClick={() => setTargetMode('list')}
+                      className={`px-3 py-1 rounded-md text-[11px] font-bold transition-colors ${targetMode === 'list' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-400'}`}>
+                      قائمة تواصل
+                    </button>
+                    <button type="button" onClick={() => setTargetMode('segment')}
+                      className={`px-3 py-1 rounded-md text-[11px] font-bold transition-colors ${targetMode === 'segment' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-400'}`}>
+                      معايير ذكية
+                    </button>
+                  </div>
+                </div>
+
+                {targetMode === 'list' ? (
+                  <select
+                    required value={form.contact_list_id}
+                    onChange={(e) => setForm((f) => ({ ...f, contact_list_id: e.target.value }))}
+                    className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  >
+                    <option value="">اختر قائمة</option>
+                    {lists.map((l) => <option key={l.id} value={l.id}>{l.name} ({l.count})</option>)}
+                  </select>
+                ) : (
+                  <div className="space-y-3 bg-slate-50/70 border border-slate-100 rounded-xl p-4">
+                    <div>
+                      <p className="text-[11px] font-bold text-slate-500 mb-1.5">مرحلة المسار</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {PIPELINE_STAGES.map((s) => (
+                          <button key={s.id} type="button" onClick={() => toggleInArray('pipeline_stages', s.id)}
+                            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors ${segment.pipeline_stages.includes(s.id) ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-500 border-slate-200'}`}>
+                            {s.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="text-[11px] font-bold text-slate-500 mb-1.5">المصدر</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {SOURCES.map((s) => (
+                          <button key={s.id} type="button" onClick={() => toggleInArray('sources', s.id)}
+                            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors ${segment.sources.includes(s.id) ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-500 border-slate-200'}`}>
+                            {s.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="text-[11px] font-bold text-slate-500 mb-1.5">الوسوم (افصل بفاصلة)</p>
+                      <input
+                        value={segment.tags}
+                        onChange={(e) => setSegment((s) => ({ ...s, tags: e.target.value }))}
+                        placeholder="مثال: كبار السن, دورة صيفية"
+                        className="w-full h-9 px-3 bg-white border border-slate-200 rounded-lg text-xs"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <p className="text-[11px] font-bold text-slate-500 mb-1.5">لم يُتواصل معه منذ</p>
+                        <input
+                          type="date"
+                          value={segment.last_contacted_before}
+                          onChange={(e) => setSegment((s) => ({ ...s, last_contacted_before: e.target.value }))}
+                          className="w-full h-9 px-3 bg-white border border-slate-200 rounded-lg text-xs"
+                        />
+                      </div>
+                      <div>
+                        <p className="text-[11px] font-bold text-slate-500 mb-1.5">تواصل معه بعد</p>
+                        <input
+                          type="date"
+                          value={segment.last_contacted_after}
+                          onChange={(e) => setSegment((s) => ({ ...s, last_contacted_after: e.target.value }))}
+                          className="w-full h-9 px-3 bg-white border border-slate-200 rounded-lg text-xs"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-700 bg-indigo-50 rounded-lg px-3 py-2">
+                      <Users size={13} />
+                      {!segmentPayload ? 'حدّد معياراً واحداً على الأقل' : isCountingSegment ? 'جارِ الحساب...' : `${segmentCount ?? 0} جهة اتصال مطابقة`}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div>

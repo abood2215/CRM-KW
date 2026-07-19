@@ -4,9 +4,11 @@ namespace App\Services\Stats;
 
 use App\Enums\ContactPipelineStage;
 use App\Models\Campaign;
+use App\Models\CampaignRecipient;
 use App\Models\Contact;
 use App\Models\Conversation;
 use App\Models\Message;
+use App\Models\SatisfactionSurvey;
 use App\Models\Task;
 use App\Models\User;
 use App\Models\WhatsappNumber;
@@ -78,6 +80,8 @@ class StatsService
 
     public function campaigns(): array
     {
+        $convertedStages = [ContactPipelineStage::Booked->value, ContactPipelineStage::Active->value];
+
         return [
             'total_campaigns' => Campaign::count(),
             'active_campaigns' => Campaign::where('status', 'running')->count(),
@@ -91,8 +95,52 @@ class StatsService
                 'sent_count' => $c->sent_count,
                 'total_recipients' => $c->total_recipients,
                 'progress' => $c->progress_percentage,
+                // How many recipients actually advanced in the pipeline — a real signal of
+                // campaign value, versus reply_count which just means "they said something back".
+                'converted_count' => CampaignRecipient::where('campaign_id', $c->id)
+                    ->whereHas('contact', fn ($q) => $q->whereIn('pipeline_stage', $convertedStages))
+                    ->count(),
             ]),
         ];
+    }
+
+    /**
+     * "Profitability" here is honest about its limits: there is no real payments/invoicing
+     * data anywhere in this system. `avg_expected_budget` is a manually-entered prospective
+     * figure per contact, not collected revenue — reported as such, not as "profit".
+     */
+    public function sourceReport(): array
+    {
+        $convertedStages = [ContactPipelineStage::Booked->value, ContactPipelineStage::Active->value];
+
+        $totalsBySource = Contact::select('source', DB::raw('count(*) as total'))
+            ->groupBy('source')
+            ->pluck('total', 'source');
+
+        $convertedBySource = Contact::whereIn('pipeline_stage', $convertedStages)
+            ->select('source', DB::raw('count(*) as converted'))
+            ->groupBy('source')
+            ->pluck('converted', 'source');
+
+        $avgBudgetBySource = Contact::whereNotNull('budget')
+            ->select('source', DB::raw('avg(budget) as avg_budget'))
+            ->groupBy('source')
+            ->pluck('avg_budget', 'source');
+
+        $sources = $totalsBySource->map(function ($total, $source) use ($convertedBySource, $avgBudgetBySource) {
+            $total = (int) $total;
+            $converted = (int) ($convertedBySource[$source] ?? 0);
+
+            return [
+                'source' => $source ?: 'غير محدد',
+                'total_contacts' => $total,
+                'converted_count' => $converted,
+                'conversion_rate' => $total > 0 ? round(($converted / $total) * 100, 1) : 0,
+                'avg_expected_budget' => isset($avgBudgetBySource[$source]) ? round((float) $avgBudgetBySource[$source], 2) : null,
+            ];
+        })->sortByDesc('total_contacts')->values();
+
+        return ['sources' => $sources];
     }
 
     public function agents(): array
@@ -148,6 +196,31 @@ class StatsService
                 'daily_limit' => $n->daily_limit,
                 'week_number' => $n->week_number,
             ]),
+        ];
+    }
+
+    public function satisfaction(): array
+    {
+        $responded = SatisfactionSurvey::whereNotNull('rating');
+
+        return [
+            'sent_count' => SatisfactionSurvey::whereNotNull('sent_at')->count(),
+            'response_count' => (clone $responded)->count(),
+            'average_rating' => round((float) (clone $responded)->avg('rating'), 1) ?: null,
+            'rating_breakdown' => (clone $responded)->select('rating', DB::raw('count(*) as count'))
+                ->groupBy('rating')->orderBy('rating')->pluck('count', 'rating'),
+            'recent' => SatisfactionSurvey::whereNotNull('rating')
+                ->with('contact')
+                ->orderByDesc('responded_at')
+                ->limit(10)
+                ->get()
+                ->map(fn (SatisfactionSurvey $s) => [
+                    'id' => $s->id,
+                    'contact_name' => $s->contact?->name,
+                    'rating' => $s->rating,
+                    'comment' => $s->comment,
+                    'responded_at' => $s->responded_at?->toISOString(),
+                ]),
         ];
     }
 

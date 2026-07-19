@@ -20,6 +20,7 @@ class UserResource extends JsonResource
             ],
             'avatar' => $this->avatar,
             'phone' => $this->phone,
+            'specialty' => $this->specialty,
             'is_active' => $this->is_active,
             'is_online' => $this->isOnline(),
             'last_seen_at' => $this->last_seen_at?->toISOString(),

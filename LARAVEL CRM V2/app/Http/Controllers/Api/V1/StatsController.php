@@ -69,4 +69,14 @@ class StatsController extends Controller
     {
         return response()->json($this->stats->whatsapp());
     }
+
+    public function sources(): JsonResponse
+    {
+        return response()->json($this->stats->sourceReport());
+    }
+
+    public function satisfaction(): JsonResponse
+    {
+        return response()->json($this->stats->satisfaction());
+    }
 }

@@ -21,7 +21,7 @@ class StoreWhatsappNumberRequest extends FormRequest
             'phone_number_id' => 'required_if:api_type,cloud|nullable|string',
             'access_token' => 'required_if:api_type,cloud|nullable|string',
             'business_account_id' => 'nullable|string',
-            'daily_limit' => 'sometimes|integer|min:1|max:1000',
+            'daily_limit' => 'sometimes|integer|min:1|max:1000000',
         ];
     }
 }

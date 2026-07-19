@@ -40,3 +40,5 @@ export const destroyAllContacts = () => client.delete('/contacts/destroy-all').t
 export const bulkDestroyContacts = (ids) => client.post('/contacts/bulk-destroy', { ids }).then((res) => res.data);
 
 export const bulkBlacklistContacts = (ids) => client.post('/contacts/bulk-blacklist', { ids }).then((res) => res.data);
+
+export const getSegmentCount = (filters) => client.post('/contacts/segment-count', filters).then((res) => res.data.count);

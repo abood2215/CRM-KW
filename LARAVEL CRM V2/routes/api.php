@@ -1,17 +1,20 @@
 <?php
 
 use App\Http\Controllers\Api\V1\ActivityLogController;
+use App\Http\Controllers\Api\V1\AppointmentController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\CampaignController;
 use App\Http\Controllers\Api\V1\CannedResponseController;
 use App\Http\Controllers\Api\V1\ContactController;
 use App\Http\Controllers\Api\V1\ContactListController;
 use App\Http\Controllers\Api\V1\ConversationController;
+use App\Http\Controllers\Api\V1\DripSequenceController;
 use App\Http\Controllers\Api\V1\FileController;
 use App\Http\Controllers\Api\V1\GlobalSearchController;
 use App\Http\Controllers\Api\V1\MessageController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\PermissionController;
+use App\Http\Controllers\Api\V1\PublicBookingController;
 use App\Http\Controllers\Api\V1\RoleController;
 use App\Http\Controllers\Api\V1\SettingsController;
 use App\Http\Controllers\Api\V1\StatsController;
@@ -29,6 +32,10 @@ Route::post('/auth/login', [AuthController::class, 'login'])->middleware('thrott
 Route::get('/webhooks/whatsapp', [WebhookController::class, 'whatsappVerify'])->middleware('throttle:20,1');
 Route::post('/webhooks/whatsapp', [WebhookController::class, 'whatsapp'])->middleware('throttle:120,1');
 Route::post('/webhooks/chatwoot', [WebhookController::class, 'chatwoot'])->middleware('throttle:60,1');
+
+// Public self-service booking — unauthenticated by design, so it gets its own strict throttle.
+Route::get('/public/booking/slots', [PublicBookingController::class, 'slots'])->middleware('throttle:30,1');
+Route::post('/public/booking', [PublicBookingController::class, 'store'])->middleware('throttle:10,1');
 
 // Default cap for every authenticated route below — most sensitive/costly
 // endpoints (password changes, WhatsApp sends) additionally get a stricter
@@ -48,6 +55,7 @@ Route::middleware(['auth:sanctum', 'update.last.seen', 'throttle:60,1'])->group(
     Route::delete('/contacts/destroy-all', [ContactController::class, 'destroyAll']);
     Route::post('/contacts/bulk-destroy', [ContactController::class, 'bulkDestroy']);
     Route::post('/contacts/bulk-blacklist', [ContactController::class, 'bulkBlacklist']);
+    Route::post('/contacts/segment-count', [ContactController::class, 'segmentCount']);
     Route::get('/contacts/{contact}/timeline', [ContactController::class, 'timeline']);
     Route::post('/contacts/{contact}/opt-out', [ContactController::class, 'optOut']);
     Route::post('/contacts/{contact}/blacklist', [ContactController::class, 'blacklist']);
@@ -59,6 +67,11 @@ Route::middleware(['auth:sanctum', 'update.last.seen', 'throttle:60,1'])->group(
 
     Route::post('/tasks/{task}/complete', [TaskController::class, 'complete']);
     Route::apiResource('tasks', TaskController::class);
+
+    Route::post('/appointments/{appointment}/confirm', [AppointmentController::class, 'confirm']);
+    Route::post('/appointments/{appointment}/cancel', [AppointmentController::class, 'cancel']);
+    Route::post('/appointments/{appointment}/complete', [AppointmentController::class, 'complete']);
+    Route::apiResource('appointments', AppointmentController::class)->except(['show']);
 
     Route::get('/whatsapp-numbers', [WhatsappNumberController::class, 'index']);
     Route::post('/whatsapp-numbers', [WhatsappNumberController::class, 'store']);
@@ -84,6 +97,11 @@ Route::middleware(['auth:sanctum', 'update.last.seen', 'throttle:60,1'])->group(
     Route::apiResource('campaigns', CampaignController::class)->except(['show'])->parameters(['campaigns' => 'campaign']);
     Route::get('/campaigns/{campaign}', [CampaignController::class, 'show']);
 
+    Route::put('/drip-sequences/{sequence}/steps', [DripSequenceController::class, 'replaceSteps']);
+    Route::post('/drip-sequences/{sequence}/enroll', [DripSequenceController::class, 'enroll']);
+    Route::post('/drip-enrollments/{enrollment}/stop', [DripSequenceController::class, 'stopEnrollment']);
+    Route::apiResource('drip-sequences', DripSequenceController::class)->parameters(['drip-sequences' => 'sequence']);
+
     Route::post('/conversations', [ConversationController::class, 'store']);
     Route::get('/conversations', [ConversationController::class, 'index']);
     Route::get('/conversations/{conversation}', [ConversationController::class, 'show']);
@@ -102,6 +120,8 @@ Route::middleware(['auth:sanctum', 'update.last.seen', 'throttle:60,1'])->group(
     Route::get('/stats/campaigns/export/csv', [StatsController::class, 'exportCampaignsCsv']);
     Route::get('/stats/agents', [StatsController::class, 'agents']);
     Route::get('/stats/whatsapp', [StatsController::class, 'whatsapp']);
+    Route::get('/stats/sources', [StatsController::class, 'sources']);
+    Route::get('/stats/satisfaction', [StatsController::class, 'satisfaction']);
 
     Route::get('/activity-logs', [ActivityLogController::class, 'index']);
     Route::get('/search', GlobalSearchController::class);

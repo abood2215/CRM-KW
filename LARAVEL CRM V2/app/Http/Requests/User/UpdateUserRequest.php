@@ -20,6 +20,7 @@ class UpdateUserRequest extends FormRequest
             'password' => 'sometimes|string|min:8',
             'role_id' => 'sometimes|exists:roles,id',
             'phone' => 'nullable|string|max:20',
+            'specialty' => 'nullable|string|max:255',
             'avatar' => 'nullable|image|max:2048',
             'is_active' => 'sometimes|boolean',
         ];

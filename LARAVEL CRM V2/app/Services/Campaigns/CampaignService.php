@@ -24,6 +24,7 @@ class CampaignService
             $data['contact_list_id'] ?? null,
             $data['template_name'] ?? null,
             $actor,
+            $data['segment_filters'] ?? null,
         );
 
         if (empty($resolved['recipients'])) {

@@ -20,6 +20,7 @@ class Campaign extends Model
         'template_language',
         'template_variables',
         'contact_list_id',
+        'segment_filters',
         'message_text',
         'image_path',
         'status',
@@ -40,6 +41,7 @@ class Campaign extends Model
     {
         return [
             'template_variables' => 'array',
+            'segment_filters' => 'array',
             'scheduled_at' => 'datetime',
             'started_at' => 'datetime',
             'completed_at' => 'datetime',
