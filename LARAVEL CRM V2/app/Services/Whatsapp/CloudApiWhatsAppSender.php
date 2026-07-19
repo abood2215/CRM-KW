@@ -35,6 +35,7 @@ class CloudApiWhatsAppSender implements WhatsAppSenderInterface
         131005, // cannot verify number quality
         132000, // template name not found
         132001, // template not approved
+        190, // access token expired/invalid — retrying with the same dead token never helps
     ];
 
     public function sendMessage(string $to, string $body): array
@@ -241,6 +242,8 @@ class CloudApiWhatsAppSender implements WhatsAppSenderInterface
     private function send(array $payload, int $maxAttempts = 3): array
     {
         $url = "{$this->baseUrl}/{$this->apiVersion}/{$this->phoneNumberId}/messages";
+        $lastErrorCode = null;
+        $lastErrorMessage = null;
 
         for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
             try {
@@ -253,8 +256,10 @@ class CloudApiWhatsAppSender implements WhatsAppSenderInterface
                 $errorBody = $response->json() ?? [];
                 $errorCode = $errorBody['error']['code'] ?? null;
                 $errorMessage = $errorBody['error']['message'] ?? $response->body();
+                $lastErrorCode = $errorCode;
+                $lastErrorMessage = $errorMessage;
 
-                Log::warning("[CloudApiWhatsAppSender] attempt {$attempt} failed", ['status' => $response->status(), 'error_code' => $errorCode]);
+                Log::warning("[CloudApiWhatsAppSender] attempt {$attempt} failed", ['status' => $response->status(), 'error_code' => $errorCode, 'error_message' => $errorMessage]);
 
                 if ($errorCode && in_array($errorCode, self::NON_RETRYABLE_CODES, true)) {
                     throw new \RuntimeException($this->friendlyError($errorCode, $errorMessage));
@@ -262,6 +267,7 @@ class CloudApiWhatsAppSender implements WhatsAppSenderInterface
             } catch (\RuntimeException $e) {
                 throw $e;
             } catch (\Exception $e) {
+                $lastErrorMessage = $e->getMessage();
                 Log::warning("[CloudApiWhatsAppSender] attempt {$attempt} exception", ['error' => $e->getMessage()]);
             }
 
@@ -270,7 +276,14 @@ class CloudApiWhatsAppSender implements WhatsAppSenderInterface
             }
         }
 
-        throw new \RuntimeException("WhatsApp message failed after {$maxAttempts} attempts.");
+        // Never throw a bare "failed after N attempts" — always carry forward Meta's actual
+        // last-known reason (or the last transport exception) so the UI/log show the real cause
+        // instead of forcing a manual log dig every time a send fails.
+        $reason = $lastErrorCode
+            ? $this->friendlyError($lastErrorCode, $lastErrorMessage ?? 'سبب غير معروف')
+            : ($lastErrorMessage ?? 'سبب غير معروف');
+
+        throw new \RuntimeException("فشل إرسال رسالة واتساب بعد {$maxAttempts} محاولات — {$reason}");
     }
 
     private function friendlyError(int $code, string $fallback): string
@@ -283,7 +296,8 @@ class CloudApiWhatsAppSender implements WhatsAppSenderInterface
             131005 => "لا يمكن التحقق من جودة الرقم (كود Meta: {$code})",
             132000 => "اسم القالب غير موجود في حسابك (كود Meta: {$code})",
             132001 => "القالب غير معتمد من Meta (كود Meta: {$code})",
-            default => $fallback,
+            190 => "انتهت صلاحية رمز الدخول (access token) — حدّثه من صفحة أرقام واتساب (كود Meta: {$code})",
+            default => "{$fallback} (كود Meta: {$code})",
         };
     }
 }
