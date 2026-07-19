@@ -91,6 +91,7 @@ Route::middleware(['auth:sanctum', 'update.last.seen', 'throttle:60,1'])->group(
 
     Route::get('/templates/preview/{name}', [TemplateController::class, 'preview']);
     Route::post('/templates/sync', [TemplateController::class, 'sync']);
+    Route::post('/templates/upload-image', [TemplateController::class, 'uploadImage']);
     Route::get('/templates/{template}/analytics', [TemplateController::class, 'analytics']);
     Route::apiResource('templates', TemplateController::class);
 

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { X, Loader2, Plus, Trash2 } from 'lucide-react';
+import { X, Loader2, Plus, Trash2, Image as ImageIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { templates as templatesApi, whatsappNumbers as whatsappNumbersApi } from '../../../api';
 import { useModalA11y } from '../../../hooks/useModalA11y';
@@ -26,6 +26,7 @@ const TemplateFormModal = ({ open, onClose, template, cloneFrom }) => {
   const queryClient = useQueryClient();
   const ref = useModalA11y(open, onClose);
   const [form, setForm] = useState(emptyForm);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const isEdit = !!template;
 
   const { data: numbers = [] } = useQuery({
@@ -64,6 +65,21 @@ const TemplateFormModal = ({ open, onClose, template, cloneFrom }) => {
     },
     onError: (e) => toast.error(e?.response?.data?.message || 'فشلت العملية'),
   });
+
+  const handleImageChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setUploadingImage(true);
+    try {
+      const res = await templatesApi.uploadTemplateImage(file);
+      setForm((f) => ({ ...f, header_content: res.url }));
+    } catch {
+      toast.error('فشل رفع الصورة');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
 
   const variablesCount = (form.body_text.match(/\{\{\d+\}\}/g) ?? []).length;
   const selectedNumber = numbers.find((n) => String(n.id) === String(form.whatsapp_number_id));
@@ -137,12 +153,39 @@ const TemplateFormModal = ({ open, onClose, template, cloneFrom }) => {
                     className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm">
                     <option value="none">بدون ترويسة</option>
                     <option value="text">نص</option>
+                    {/* Only ever present when editing a template already synced from Meta with an
+                        image header — this app can't submit a NEW image-header template (see
+                        TemplateController::store), so this option is never manually selectable. */}
+                    {form.header_type === 'image' && <option value="image">صورة (من ميتا)</option>}
                   </select>
                   {form.header_type === 'text' && (
                     <input value={form.header_content} onChange={(e) => setForm((f) => ({ ...f, header_content: e.target.value }))}
                       className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm" placeholder="نص الترويسة" />
                   )}
                 </div>
+
+                {form.header_type === 'image' && (
+                  <div className="mt-3">
+                    <p className="text-[11px] text-slate-400 mb-2 leading-relaxed">
+                      هذا القالب مسجَّل عند ميتا بترويسة صورة، لكن ميتا لا تُرجع رابط الصورة عند المزامنة —
+                      ارفع الصورة المستخدمة هون عشان يقدر التطبيق يرسلها فعلياً بكل مرة يُستخدم فيها القالب.
+                    </p>
+                    {form.header_content ? (
+                      <div className="flex items-center gap-3">
+                        <img src={form.header_content} alt="" className="w-14 h-14 rounded-xl object-cover border border-slate-200" />
+                        <button type="button" onClick={() => setForm((f) => ({ ...f, header_content: '' }))} className="text-xs font-bold text-rose-600 hover:underline">
+                          إزالة الصورة
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="inline-flex items-center gap-2 h-10 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-600 cursor-pointer hover:bg-slate-100">
+                        {uploadingImage ? <Loader2 size={16} className="animate-spin" /> : <ImageIcon size={16} />}
+                        {uploadingImage ? 'جارِ الرفع...' : 'ارفع صورة'}
+                        <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} disabled={uploadingImage} />
+                      </label>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div>
@@ -200,7 +243,7 @@ const TemplateFormModal = ({ open, onClose, template, cloneFrom }) => {
 
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={onClose} className="flex-1 h-11 bg-slate-100 text-slate-600 font-bold rounded-xl">إلغاء</button>
-                <button type="submit" disabled={mutation.isPending} className="flex-1 h-11 bg-indigo-600 text-white font-bold rounded-xl flex items-center justify-center gap-2">
+                <button type="submit" disabled={mutation.isPending || uploadingImage} className="flex-1 h-11 bg-indigo-600 text-white font-bold rounded-xl flex items-center justify-center gap-2">
                   {mutation.isPending && <Loader2 size={16} className="animate-spin" />}
                   {isEdit ? 'حفظ' : 'إنشاء'}
                 </button>

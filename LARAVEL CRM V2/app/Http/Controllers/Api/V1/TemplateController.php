@@ -14,10 +14,31 @@ use App\Services\Whatsapp\CloudApiWhatsAppSender;
 use App\Services\Whatsapp\TemplateSyncService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class TemplateController extends Controller
 {
+    /**
+     * Templates with an image/video/document header synced from Meta (created directly on
+     * Meta's dashboard — this app can't submit those for creation, see store() below) have no
+     * source of a sendable header media link: Meta's template list API only reports the header
+     * FORMAT, never a reusable URL. This lets an admin attach one locally so sends can use it.
+     */
+    public function uploadImage(Request $request): JsonResponse
+    {
+        $this->authorize('create', WhatsappTemplate::class);
+
+        $request->validate(['image' => 'required|file|mimes:jpeg,jpg,png,gif,webp|max:10240']);
+
+        $file = $request->file('image');
+        $fileName = Str::uuid().'.'.$file->getClientOriginalExtension();
+        $path = $file->storeAs('template-images', $fileName, 'public');
+
+        return response()->json(['url' => Storage::disk('public')->url($path)]);
+    }
+
     public function index(Request $request): JsonResponse
     {
         $query = WhatsappTemplate::with('whatsappNumber')->latest('last_synced_at');

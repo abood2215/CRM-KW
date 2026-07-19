@@ -13,6 +13,9 @@ const TemplateBubblePreview = ({ headerType, headerContent, bodyText, footerText
     <div className="rounded-2xl p-4 bg-[#efe9df]">
       <div className="max-w-[280px] mr-auto">
         <div className="bg-white rounded-2xl rounded-br-sm shadow-sm overflow-hidden">
+          {headerType === 'image' && headerContent && (
+            <img src={headerContent} alt="" className="w-full h-36 object-cover" />
+          )}
           <div className="px-3.5 pt-3 pb-2.5">
             {headerType === 'text' && headerContent && (
               <p className="font-black text-sm text-slate-800 mb-1">{headerContent}</p>
