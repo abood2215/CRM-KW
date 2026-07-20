@@ -98,7 +98,16 @@ class CloudApiWhatsAppSender implements WhatsAppSenderInterface
                 return $response->json();
             }
 
-            $errorMessage = $response->json('error.message') ?? $response->body();
+            // Meta's top-level error.message is often a generic phrase ("Invalid parameter") —
+            // the actually-useful, specific reason lives in error_user_msg / error_user_title /
+            // error_data.details, which this used to ignore entirely.
+            $error = $response->json('error') ?? [];
+            $errorMessage = $error['error_user_msg']
+                ?? $error['error_data']['details']
+                ?? $error['error_user_title']
+                ?? $error['message']
+                ?? $response->body();
+
             Log::warning('[CloudApiWhatsAppSender] createTemplate failed', ['status' => $response->status(), 'body' => $response->json()]);
 
             throw new \RuntimeException("رفضت ميتا القالب: {$errorMessage}");
