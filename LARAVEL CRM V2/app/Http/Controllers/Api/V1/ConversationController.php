@@ -19,6 +19,7 @@ use App\Services\Conversations\ConversationService;
 use App\Services\Whatsapp\CloudApiWhatsAppSender;
 use App\Services\Whatsapp\Contracts\WhatsAppSenderInterface;
 use App\Services\Whatsapp\HeaderMediaResolver;
+use App\Services\Whatsapp\TemplateSendValidator;
 use App\Services\Whatsapp\WhatsAppSenderFactory;
 use App\ValueObjects\PhoneNumber;
 use Illuminate\Http\JsonResponse;
@@ -107,6 +108,14 @@ class ConversationController extends Controller
             ? WhatsappTemplate::where('name', $request->template_name)->where('whatsapp_number_id', $number->id)->first()
             : null;
         $headerImageUrl = ($template && $template->header_type === 'image') ? $template->header_content : null;
+
+        if ($template) {
+            try {
+                TemplateSendValidator::assertSendable($template, $headerImageUrl, $request->variables ?? []);
+            } catch (\RuntimeException $e) {
+                return response()->json(['message' => $e->getMessage()], 422);
+            }
+        }
 
         try {
             $sender = WhatsAppSenderFactory::make($number);

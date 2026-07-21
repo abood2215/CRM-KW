@@ -14,6 +14,7 @@ use App\Services\Notifications\NotificationService;
 use App\Services\Whatsapp\CloudApiWhatsAppSender;
 use App\Services\Whatsapp\Contracts\WhatsAppSenderInterface;
 use App\Services\Whatsapp\HeaderMediaResolver;
+use App\Services\Whatsapp\TemplateSendValidator;
 use App\Services\Whatsapp\WhatsAppSenderFactory;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -200,6 +201,10 @@ class ProcessCampaignJob implements ShouldQueue
     private function buildTemplateComponents(Campaign $campaign, CampaignRecipient $recipient, WhatsAppSenderInterface $sender, ?WhatsappTemplate $localTemplate, ?string $imageUrl): array
     {
         $components = [];
+
+        if ($localTemplate) {
+            TemplateSendValidator::assertSendable($localTemplate, $imageUrl, $recipient->variables ?? $campaign->template_variables ?? []);
+        }
 
         if ($localTemplate && $localTemplate->header_type === 'image' && $imageUrl) {
             if ($sender instanceof CloudApiWhatsAppSender) {

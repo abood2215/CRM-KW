@@ -15,6 +15,7 @@ use App\Policies\ConversationPolicy;
 use App\Services\ChatwootService;
 use App\Services\Whatsapp\CloudApiWhatsAppSender;
 use App\Services\Whatsapp\HeaderMediaResolver;
+use App\Services\Whatsapp\TemplateSendValidator;
 use App\Services\Whatsapp\WhatsAppSenderFactory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -217,6 +218,13 @@ class MessageController extends Controller
         $sentBody = $template->body_text;
         foreach ($variables as $i => $val) {
             $sentBody = str_replace('{{'.($i + 1).'}}', $val, $sentBody);
+        }
+
+        $headerImageUrl = $template->header_type === 'image' ? $template->header_content : null;
+        try {
+            TemplateSendValidator::assertSendable($template, $headerImageUrl, $variables);
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
         }
 
         $waMessageId = null;
