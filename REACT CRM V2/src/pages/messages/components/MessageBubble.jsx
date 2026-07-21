@@ -92,6 +92,9 @@ const MessageBubble = ({ message, onReact }) => {
           {message.sender_name && isOut && (
             <p className="text-[10px] font-black text-teal-700/80 mb-0.5">{message.sender_name}</p>
           )}
+          {message.media_url && message.type !== 'image' && (
+            <img src={message.media_url} alt="" className="rounded-lg max-w-full mb-2" />
+          )}
           {message.type === 'image' ? (
             <img src={message.content} alt="" className="rounded-lg max-w-full" />
           ) : message.type === 'audio' ? (

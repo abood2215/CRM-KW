@@ -18,7 +18,7 @@ class CampaignConversationSync
     {
     }
 
-    public function recordSend(Contact $contact, Campaign $campaign, string $content, ?string $waMessageId): void
+    public function recordSend(Contact $contact, Campaign $campaign, string $content, ?string $waMessageId, ?string $mediaUrl = null): void
     {
         $wasNew = ! Conversation::where('contact_id', $contact->id)->where('source', 'whatsapp')->exists();
 
@@ -28,6 +28,6 @@ class CampaignConversationSync
             $conversation->update(['is_campaign_origin' => true]);
         }
 
-        $this->conversations->recordOutboundMessage($conversation, $content, $waMessageId, $campaign->name);
+        $this->conversations->recordOutboundMessage($conversation, $content, $waMessageId, $campaign->name, $mediaUrl);
     }
 }

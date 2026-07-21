@@ -16,6 +16,7 @@ class Message extends Model
         'chatwoot_message_id',
         'whatsapp_message_id',
         'content',
+        'media_url',
         'type',
         'reaction_emoji',
         'direction',

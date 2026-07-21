@@ -15,6 +15,7 @@ class MessageResource extends JsonResource
             'chatwoot_message_id' => $this->chatwoot_message_id,
             'whatsapp_message_id' => $this->whatsapp_message_id,
             'content' => $this->content,
+            'media_url' => $this->media_url,
             'type' => $this->type,
             'reaction_emoji' => $this->reaction_emoji,
             'direction' => $this->direction,

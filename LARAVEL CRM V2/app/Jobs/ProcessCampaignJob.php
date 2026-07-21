@@ -104,7 +104,9 @@ class ProcessCampaignJob implements ShouldQueue
 
         try {
             $sender = WhatsAppSenderFactory::make($number);
-            $result = $this->sendToRecipient($sender, $campaign, $recipient);
+            $localTemplate = $campaign->template_name ? WhatsappTemplate::where('name', $campaign->template_name)->first() : null;
+            $headerImageUrl = $this->headerImageUrl($campaign, $localTemplate);
+            $result = $this->sendToRecipient($sender, $campaign, $recipient, $localTemplate, $headerImageUrl);
 
             $waMessageId = $result['messages'][0]['id'] ?? null;
 
@@ -119,7 +121,7 @@ class ProcessCampaignJob implements ShouldQueue
 
             if ($recipient->contact) {
                 $sentContent = $campaign->message_text ?: "حملة: {$campaign->name}";
-                $conversationSync->recordSend($recipient->contact, $campaign, $sentContent, $waMessageId);
+                $conversationSync->recordSend($recipient->contact, $campaign, $sentContent, $waMessageId, $headerImageUrl);
             }
 
             Log::info("[Campaign #{$campaign->id}] أُرسلت لـ {$recipient->phone_snapshot}", ['wamid' => $waMessageId]);
@@ -165,7 +167,17 @@ class ProcessCampaignJob implements ShouldQueue
         NotificationService::sendToAdmins('campaign_paused', 'الحملة موقوفة', $reason, ['campaign_id' => $campaign->id]);
     }
 
-    private function sendToRecipient(WhatsAppSenderInterface $sender, Campaign $campaign, CampaignRecipient $recipient): array
+    /** A campaign can override its template's own header image (campaign.image_path) to reuse an approved image-header template with different promotional art. */
+    private function headerImageUrl(Campaign $campaign, ?WhatsappTemplate $localTemplate): ?string
+    {
+        if (! $localTemplate || $localTemplate->header_type !== 'image') {
+            return null;
+        }
+
+        return $campaign->image_path ?: $localTemplate->header_content;
+    }
+
+    private function sendToRecipient(WhatsAppSenderInterface $sender, Campaign $campaign, CampaignRecipient $recipient, ?WhatsappTemplate $localTemplate, ?string $headerImageUrl): array
     {
         $phone = $recipient->phone_snapshot;
 
@@ -174,7 +186,7 @@ class ProcessCampaignJob implements ShouldQueue
                 $phone,
                 $campaign->template_name,
                 $campaign->template_language ?? 'ar',
-                $this->buildTemplateComponents($campaign, $recipient, $sender),
+                $this->buildTemplateComponents($campaign, $recipient, $sender, $localTemplate, $headerImageUrl),
             );
         }
 
@@ -185,19 +197,14 @@ class ProcessCampaignJob implements ShouldQueue
         return $sender->sendMessage($phone, $campaign->message_text);
     }
 
-    private function buildTemplateComponents(Campaign $campaign, CampaignRecipient $recipient, WhatsAppSenderInterface $sender): array
+    private function buildTemplateComponents(Campaign $campaign, CampaignRecipient $recipient, WhatsAppSenderInterface $sender, ?WhatsappTemplate $localTemplate, ?string $imageUrl): array
     {
         $components = [];
 
-        $localTemplate = WhatsappTemplate::where('name', $campaign->template_name)->first();
-        $imageUrl = $campaign->image_path ?: $localTemplate?->header_content;
-
         if ($localTemplate && $localTemplate->header_type === 'image' && $imageUrl) {
             if ($sender instanceof CloudApiWhatsAppSender) {
-                // A campaign can override the template's own header image (campaign.image_path)
-                // to reuse an approved image-header template with different promotional art — so
-                // the uploaded-media-id cache has to live on whichever of the two actually
-                // supplied the image, not always the template.
+                // The uploaded-media-id cache has to live on whichever of the two actually
+                // supplied the image (see headerImageUrl()), not always the template.
                 $cachedMediaId = $campaign->image_path ? $campaign->image_media_id : $localTemplate->header_media_id;
                 $image = (new HeaderMediaResolver())->resolve(
                     $cachedMediaId,

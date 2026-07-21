@@ -12,9 +12,13 @@ use App\Jobs\SendSatisfactionSurveyJob;
 use App\Models\Contact;
 use App\Models\Conversation;
 use App\Models\WhatsappNumber;
+use App\Models\WhatsappTemplate;
 use App\Policies\ConversationPolicy;
 use App\Services\ChatwootService;
 use App\Services\Conversations\ConversationService;
+use App\Services\Whatsapp\CloudApiWhatsAppSender;
+use App\Services\Whatsapp\Contracts\WhatsAppSenderInterface;
+use App\Services\Whatsapp\HeaderMediaResolver;
 use App\Services\Whatsapp\WhatsAppSenderFactory;
 use App\ValueObjects\PhoneNumber;
 use Illuminate\Http\JsonResponse;
@@ -99,10 +103,15 @@ class ConversationController extends Controller
             return response()->json(['message' => 'لا يوجد رقم واتساب متصل حالياً لإرسال الرسالة.'], 422);
         }
 
+        $template = $request->template_name
+            ? WhatsappTemplate::where('name', $request->template_name)->where('whatsapp_number_id', $number->id)->first()
+            : null;
+        $headerImageUrl = ($template && $template->header_type === 'image') ? $template->header_content : null;
+
         try {
             $sender = WhatsAppSenderFactory::make($number);
             $result = $request->template_name
-                ? $sender->sendTemplate($contact->phone, $request->template_name, $request->template_language ?? 'ar', $this->buildComponents($request->variables ?? []))
+                ? $sender->sendTemplate($contact->phone, $request->template_name, $request->template_language ?? 'ar', $this->buildComponents($template, $headerImageUrl, $sender, $request->variables ?? []))
                 : $sender->sendMessage($contact->phone, $request->message);
             $waMessageId = $result['messages'][0]['id'] ?? null;
             $number->incrementSent();
@@ -112,7 +121,7 @@ class ConversationController extends Controller
             return response()->json(['message' => $e->getMessage()], 422);
         }
 
-        $this->conversations->recordOutboundMessage($conversation, $request->message, $waMessageId, $request->user()->name);
+        $this->conversations->recordOutboundMessage($conversation, $request->message, $waMessageId, $request->user()->name, $headerImageUrl);
 
         $message = $conversation->messages()->latest()->first();
         event(new NewMessageEvent($message));
@@ -193,15 +202,40 @@ class ConversationController extends Controller
         return response()->json(['message' => 'ok']);
     }
 
-    private function buildComponents(array $variables): array
+    /**
+     * This is the "start new conversation" send path — used specifically to reach numbers
+     * that haven't messaged in first, per the UI's own "لرقم جديد" hint — so an image-header
+     * template here needs the same header component MessageController::sendTemplate already
+     * builds. This used to only handle body variables, silently dropping the header image for
+     * any image-header template sent through this endpoint.
+     */
+    private function buildComponents(?WhatsappTemplate $template, ?string $headerImageUrl, WhatsAppSenderInterface $sender, array $variables): array
     {
-        if (empty($variables)) {
-            return [];
+        $components = [];
+
+        if ($template && $template->header_type === 'image' && $headerImageUrl) {
+            $image = $sender instanceof CloudApiWhatsAppSender
+                ? (new HeaderMediaResolver())->resolve(
+                    $template->header_media_id,
+                    $headerImageUrl,
+                    $sender,
+                    fn ($mediaId) => $template->update(['header_media_id' => $mediaId]),
+                )
+                : ['link' => $headerImageUrl];
+
+            $components[] = [
+                'type' => 'header',
+                'parameters' => [['type' => 'image', 'image' => $image]],
+            ];
         }
 
-        return [[
-            'type' => 'body',
-            'parameters' => array_map(fn ($v) => ['type' => 'text', 'text' => (string) $v], array_values($variables)),
-        ]];
+        if (! empty($variables)) {
+            $components[] = [
+                'type' => 'body',
+                'parameters' => array_map(fn ($v) => ['type' => 'text', 'text' => (string) $v], array_values($variables)),
+            ];
+        }
+
+        return $components;
     }
 }
