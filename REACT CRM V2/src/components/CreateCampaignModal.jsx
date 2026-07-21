@@ -290,7 +290,9 @@ const CreateCampaignModal = ({ open, onClose }) => {
                   required value={form.template_name}
                   onChange={(e) => {
                     const selected = availableTemplates.find((t) => t.name === e.target.value);
-                    setForm((f) => ({ ...f, template_name: e.target.value, template_language: selected?.language ?? '', image_path: '' }));
+                    // Reuse the image attached to the selected template by default. The
+                    // campaign upload remains available as an explicit override only.
+                    setForm((f) => ({ ...f, template_name: e.target.value, template_language: selected?.language ?? '', image_path: selected?.header_content ?? '' }));
                   }}
                   className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                 >
