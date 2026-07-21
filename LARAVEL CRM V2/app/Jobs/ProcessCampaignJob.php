@@ -122,7 +122,7 @@ class ProcessCampaignJob implements ShouldQueue
 
             if ($recipient->contact) {
                 $sentContent = $campaign->message_text ?: "حملة: {$campaign->name}";
-                $conversationSync->recordSend($recipient->contact, $campaign, $sentContent, $waMessageId, $headerImageUrl);
+                $conversationSync->recordSend($recipient->contact, $campaign, $sentContent, $waMessageId, $headerImageUrl, $number->id);
             }
 
             Log::info("[Campaign #{$campaign->id}] أُرسلت لـ {$recipient->phone_snapshot}", ['wamid' => $waMessageId]);

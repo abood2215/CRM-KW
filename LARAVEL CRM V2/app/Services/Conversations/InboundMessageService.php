@@ -60,8 +60,12 @@ class InboundMessageService
                 return;
             }
 
+            $number = $phoneNumberId
+                ? WhatsappNumber::where('phone_number_id', $phoneNumberId)->first()
+                : WhatsappNumber::where('api_type', 'cloud')->where('status', 'connected')->first();
+
             $phone = PhoneNumber::normalize($fromPhone);
-            $content = $this->resolveContent($msgData, $messageType, $phoneNumberId);
+            $content = $this->resolveContent($msgData, $messageType, $number);
             $type = $this->normalizeType($messageType);
 
             $contact = Contact::firstOrCreate(
@@ -86,6 +90,7 @@ class InboundMessageService
 
             $message = Message::create([
                 'conversation_id' => $conversation->id,
+                'whatsapp_number_id' => $number?->id,
                 'whatsapp_message_id' => $waMessageId,
                 'content' => $content,
                 'type' => $type,
@@ -199,7 +204,7 @@ class InboundMessageService
         event(new MessageStatusUpdatedEvent($targetMessage));
     }
 
-    private function resolveContent(array $msgData, string $type, ?string $phoneNumberId): string
+    private function resolveContent(array $msgData, string $type, ?WhatsappNumber $number): string
     {
         $mediaId = match ($type) {
             'image' => $msgData['image']['id'] ?? null,
@@ -210,7 +215,7 @@ class InboundMessageService
             default => null,
         };
 
-        $mediaUrl = $mediaId ? $this->downloadMedia($mediaId, $phoneNumberId) : null;
+        $mediaUrl = $mediaId ? $this->downloadMedia($mediaId, $number) : null;
 
         return match ($type) {
             'text' => $msgData['text']['body'] ?? '',
@@ -241,12 +246,8 @@ class InboundMessageService
         };
     }
 
-    private function downloadMedia(string $mediaId, ?string $phoneNumberId): ?string
+    private function downloadMedia(string $mediaId, ?WhatsappNumber $number): ?string
     {
-        $number = $phoneNumberId
-            ? WhatsappNumber::where('phone_number_id', $phoneNumberId)->first()
-            : WhatsappNumber::where('api_type', 'cloud')->where('status', 'connected')->first();
-
         if (! $number || ! $number->access_token) {
             return null;
         }

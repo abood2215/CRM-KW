@@ -71,10 +71,11 @@ class ConversationService
     }
 
     /** Used by the campaign job: record an outbound send as a conversation message, tagged as campaign-originated. */
-    public function recordOutboundMessage(Conversation $conversation, string $content, ?string $waMessageId, string $senderName, ?string $mediaUrl = null): void
+    public function recordOutboundMessage(Conversation $conversation, string $content, ?string $waMessageId, string $senderName, ?string $mediaUrl = null, ?int $whatsappNumberId = null): void
     {
         \App\Models\Message::create([
             'conversation_id' => $conversation->id,
+            'whatsapp_number_id' => $whatsappNumberId,
             'whatsapp_message_id' => $waMessageId,
             'content' => $content,
             'media_url' => $mediaUrl,

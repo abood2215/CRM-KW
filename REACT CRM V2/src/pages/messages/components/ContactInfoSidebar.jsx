@@ -1,9 +1,10 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 import { formatDistanceToNow } from 'date-fns';
 import { ar } from 'date-fns/locale';
-import { X, Phone, Mail, Tag, Wallet, StickyNote, ShieldOff, ExternalLink, Loader2 } from 'lucide-react';
+import { X, Phone, Mail, Tag, Wallet, StickyNote, ShieldOff, ShieldCheck, ExternalLink, Loader2 } from 'lucide-react';
 import { contacts as contactsApi } from '../../../api';
 
 const PIPELINE_COLORS = {
@@ -15,10 +16,23 @@ const PIPELINE_COLORS = {
 };
 
 const ContactInfoSidebar = ({ contact, onClose }) => {
+  const queryClient = useQueryClient();
   const { data, isLoading } = useQuery({
     queryKey: ['contact-timeline', contact?.id],
     queryFn: () => contactsApi.getTimeline(contact.id),
     enabled: !!contact?.id,
+  });
+
+  // Blacklisting used to be reachable only from the Contacts page — an agent mid-conversation
+  // with a customer they want to block had to leave the chat, find the contact, then come back.
+  const blacklistMutation = useMutation({
+    mutationFn: () => (contact.is_blacklisted ? contactsApi.unblacklistContact(contact.id) : contactsApi.blacklistContact(contact.id)),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['conversation'], exact: false });
+      queryClient.invalidateQueries({ queryKey: ['contact-timeline', contact.id] });
+      toast.success(contact.is_blacklisted ? 'تم رفع الحظر عن الرقم' : 'تم إضافة الرقم لقائمة الحظر');
+    },
+    onError: (e) => toast.error(e?.response?.data?.message || 'فشل تحديث حالة الحظر'),
   });
 
   const timeline = (data?.timeline ?? []).slice(0, 5);
@@ -69,12 +83,18 @@ const ContactInfoSidebar = ({ contact, onClose }) => {
           )}
         </div>
 
-        {contact.is_blacklisted && (
-          <div className="flex items-center gap-1.5 text-xs font-bold text-rose-500 bg-rose-50 px-2.5 py-1.5 rounded-lg">
-            <ShieldOff size={13} />
-            محظور
-          </div>
-        )}
+        <button
+          type="button"
+          onClick={() => blacklistMutation.mutate()}
+          disabled={blacklistMutation.isPending}
+          title={contact.is_blacklisted ? 'رفع الحظر عن الرقم' : 'إضافة الرقم لقائمة الحظر'}
+          className={`w-full flex items-center justify-center gap-1.5 text-xs font-bold px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-50 ${
+            contact.is_blacklisted ? 'text-rose-500 bg-rose-50 hover:bg-rose-100' : 'text-slate-400 bg-slate-50 hover:bg-rose-50 hover:text-rose-500'
+          }`}
+        >
+          {contact.is_blacklisted ? <ShieldCheck size={13} /> : <ShieldOff size={13} />}
+          {contact.is_blacklisted ? 'محظور — اضغط لرفع الحظر' : 'إضافة للحظر'}
+        </button>
 
         {contact.tags?.length > 0 && (
           <div className="flex flex-wrap gap-1.5">

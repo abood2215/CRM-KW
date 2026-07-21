@@ -127,6 +127,11 @@ const MessageBubble = ({ message, onReact }) => {
             <p className="whitespace-pre-wrap break-words leading-relaxed">{message.content}</p>
           )}
           <div className={cn('flex items-center gap-1 mt-1 text-[10px]', isOut ? 'text-teal-700/60 justify-end' : 'text-slate-400')}>
+            {/* Only useful when more than one WhatsApp number is connected — lets an agent tell
+                which line a message actually went through without opening the numbers page. */}
+            {message.sender_number && (
+              <span title="رقم واتساب المستخدم" className="opacity-70">{message.sender_number} ·</span>
+            )}
             <span>{message.sent_at ? new Date(message.sent_at).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }) : ''}</span>
             {isOut && statusMeta && <span title={statusLabel} aria-label={statusLabel}>{statusMeta.icon}</span>}
           </div>

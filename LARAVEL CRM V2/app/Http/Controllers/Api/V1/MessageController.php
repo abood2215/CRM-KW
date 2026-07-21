@@ -49,7 +49,7 @@ class MessageController extends Controller
         $page = max(1, $page);
 
         $messages = $conversation->messages()
-            ->with('whatsappTemplate')
+            ->with(['whatsappTemplate', 'whatsappNumber'])
             ->orderBy('sent_at', 'asc')
             ->paginate($perPage, ['*'], 'page', $page);
 
@@ -77,6 +77,7 @@ class MessageController extends Controller
 
         $conversation->load('contact');
         $waMessageId = null;
+        $number = null;
         $isPrivate = $request->boolean('is_private', false);
 
         // A private/internal note must never actually reach the customer — only real
@@ -124,6 +125,7 @@ class MessageController extends Controller
 
         $message = Message::create([
             'conversation_id' => $conversation->id,
+            'whatsapp_number_id' => $number?->id,
             'whatsapp_message_id' => $waMessageId,
             'content' => $request->content,
             'type' => $request->type ?? 'text',
@@ -268,6 +270,7 @@ class MessageController extends Controller
 
         $message = Message::create([
             'conversation_id' => $conversation->id,
+            'whatsapp_number_id' => $number->id,
             'whatsapp_template_id' => $template->id,
             'whatsapp_message_id' => $waMessageId,
             'content' => $sentBody,
