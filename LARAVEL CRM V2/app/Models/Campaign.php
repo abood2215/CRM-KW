@@ -23,6 +23,7 @@ class Campaign extends Model
         'segment_filters',
         'message_text',
         'image_path',
+        'image_media_id',
         'status',
         'scheduled_at',
         'started_at',

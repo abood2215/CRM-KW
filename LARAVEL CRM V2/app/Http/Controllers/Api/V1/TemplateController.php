@@ -208,6 +208,12 @@ class TemplateController extends Controller
             $data['buttons'] = array_map(fn ($label) => ['type' => 'QUICK_REPLY', 'text' => $label], $data['buttons']);
         }
 
+        // A new header_content invalidates any media id cached for the old image — otherwise
+        // sends would keep reusing Meta's id for a picture that's no longer the one saved here.
+        if (array_key_exists('header_content', $data) && $data['header_content'] !== $template->header_content) {
+            $data['header_media_id'] = null;
+        }
+
         // Note: this only edits the local record — an already-submitted Meta template isn't
         // re-submitted for re-review here (that requires a separate versioning flow).
         $template->update($data);

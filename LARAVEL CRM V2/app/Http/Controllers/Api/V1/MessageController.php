@@ -13,6 +13,8 @@ use App\Models\WhatsappNumber;
 use App\Models\WhatsappTemplate;
 use App\Policies\ConversationPolicy;
 use App\Services\ChatwootService;
+use App\Services\Whatsapp\CloudApiWhatsAppSender;
+use App\Services\Whatsapp\HeaderMediaResolver;
 use App\Services\Whatsapp\WhatsAppSenderFactory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -217,27 +219,37 @@ class MessageController extends Controller
             $sentBody = str_replace('{{'.($i + 1).'}}', $val, $sentBody);
         }
 
-        // Must go through Meta's real template mechanism (name + approved components), not a
-        // plain text send of the locally-rendered body — Meta enforces the 24h re-engagement
-        // window on plain text exactly like any other message, template or not. A plain send
-        // only works inside that window, defeating the entire point of using a template.
-        $components = [];
-        if ($template->header_type === 'image' && $template->header_content) {
-            $components[] = [
-                'type' => 'header',
-                'parameters' => [['type' => 'image', 'image' => ['link' => $template->header_content]]],
-            ];
-        }
-        if (! empty($variables)) {
-            $components[] = [
-                'type' => 'body',
-                'parameters' => array_map(fn ($v) => ['type' => 'text', 'text' => (string) $v], array_values($variables)),
-            ];
-        }
-
         $waMessageId = null;
         try {
             $sender = WhatsAppSenderFactory::make($number);
+
+            // Must go through Meta's real template mechanism (name + approved components), not a
+            // plain text send of the locally-rendered body — Meta enforces the 24h re-engagement
+            // window on plain text exactly like any other message, template or not. A plain send
+            // only works inside that window, defeating the entire point of using a template.
+            $components = [];
+            if ($template->header_type === 'image' && $template->header_content) {
+                $image = $sender instanceof CloudApiWhatsAppSender
+                    ? (new HeaderMediaResolver())->resolve(
+                        $template->header_media_id,
+                        $template->header_content,
+                        $sender,
+                        fn ($mediaId) => $template->update(['header_media_id' => $mediaId]),
+                    )
+                    : ['link' => $template->header_content];
+
+                $components[] = [
+                    'type' => 'header',
+                    'parameters' => [['type' => 'image', 'image' => $image]],
+                ];
+            }
+            if (! empty($variables)) {
+                $components[] = [
+                    'type' => 'body',
+                    'parameters' => array_map(fn ($v) => ['type' => 'text', 'text' => (string) $v], array_values($variables)),
+                ];
+            }
+
             $result = $sender->sendTemplate($contactPhone, $template->name, $template->language ?? 'ar', $components);
             $waMessageId = $result['messages'][0]['id'] ?? null;
             $number->incrementSent();

@@ -11,7 +11,9 @@ use App\Services\Campaigns\CampaignService;
 use App\Services\Conversations\BlacklistPolicyService;
 use App\Services\Conversations\CampaignConversationSync;
 use App\Services\Notifications\NotificationService;
+use App\Services\Whatsapp\CloudApiWhatsAppSender;
 use App\Services\Whatsapp\Contracts\WhatsAppSenderInterface;
+use App\Services\Whatsapp\HeaderMediaResolver;
 use App\Services\Whatsapp\WhatsAppSenderFactory;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -172,7 +174,7 @@ class ProcessCampaignJob implements ShouldQueue
                 $phone,
                 $campaign->template_name,
                 $campaign->template_language ?? 'ar',
-                $this->buildTemplateComponents($campaign, $recipient),
+                $this->buildTemplateComponents($campaign, $recipient, $sender),
             );
         }
 
@@ -183,7 +185,7 @@ class ProcessCampaignJob implements ShouldQueue
         return $sender->sendMessage($phone, $campaign->message_text);
     }
 
-    private function buildTemplateComponents(Campaign $campaign, CampaignRecipient $recipient): array
+    private function buildTemplateComponents(Campaign $campaign, CampaignRecipient $recipient, WhatsAppSenderInterface $sender): array
     {
         $components = [];
 
@@ -191,9 +193,27 @@ class ProcessCampaignJob implements ShouldQueue
         $imageUrl = $campaign->image_path ?: $localTemplate?->header_content;
 
         if ($localTemplate && $localTemplate->header_type === 'image' && $imageUrl) {
+            if ($sender instanceof CloudApiWhatsAppSender) {
+                // A campaign can override the template's own header image (campaign.image_path)
+                // to reuse an approved image-header template with different promotional art — so
+                // the uploaded-media-id cache has to live on whichever of the two actually
+                // supplied the image, not always the template.
+                $cachedMediaId = $campaign->image_path ? $campaign->image_media_id : $localTemplate->header_media_id;
+                $image = (new HeaderMediaResolver())->resolve(
+                    $cachedMediaId,
+                    $imageUrl,
+                    $sender,
+                    fn ($mediaId) => $campaign->image_path
+                        ? $campaign->update(['image_media_id' => $mediaId])
+                        : $localTemplate->update(['header_media_id' => $mediaId]),
+                );
+            } else {
+                $image = ['link' => $imageUrl];
+            }
+
             $components[] = [
                 'type' => 'header',
-                'parameters' => [['type' => 'image', 'image' => ['link' => $imageUrl]]],
+                'parameters' => [['type' => 'image', 'image' => $image]],
             ];
         }
 

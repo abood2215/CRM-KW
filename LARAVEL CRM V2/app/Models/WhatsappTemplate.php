@@ -20,6 +20,7 @@ class WhatsappTemplate extends Model
         'rejection_reason',
         'header_type',
         'header_content',
+        'header_media_id',
         'body_text',
         'footer_text',
         'buttons',

@@ -46,20 +46,29 @@ class TemplateSyncService
                 }
             }
 
+            $values = [
+                'language' => $tpl['language'] ?? 'ar',
+                'category' => strtolower($tpl['category'] ?? 'marketing'),
+                'status' => strtolower($tpl['status'] ?? 'pending'),
+                'header_type' => $headerType,
+                'body_text' => $bodyText,
+                'footer_text' => $footerText,
+                'buttons' => $buttons,
+                'variables_count' => $variablesCount,
+                'last_synced_at' => now(),
+            ];
+
+            // Meta's template list API never returns a reusable URL for image/video/document
+            // headers — only TEXT headers carry `text`. Without this guard, every re-sync would
+            // null out a header image an admin attached locally after the fact (see
+            // TemplateController::uploadImage), silently breaking sends again.
+            if ($headerContent !== null) {
+                $values['header_content'] = $headerContent;
+            }
+
             WhatsappTemplate::updateOrCreate(
                 ['whatsapp_number_id' => $number->id, 'name' => $tpl['name']],
-                [
-                    'language' => $tpl['language'] ?? 'ar',
-                    'category' => strtolower($tpl['category'] ?? 'marketing'),
-                    'status' => strtolower($tpl['status'] ?? 'pending'),
-                    'header_type' => $headerType,
-                    'header_content' => $headerContent,
-                    'body_text' => $bodyText,
-                    'footer_text' => $footerText,
-                    'buttons' => $buttons,
-                    'variables_count' => $variablesCount,
-                    'last_synced_at' => now(),
-                ]
+                $values
             );
 
             $synced++;

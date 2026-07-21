@@ -215,6 +215,45 @@ class CloudApiWhatsAppSender implements WhatsAppSenderInterface
         return [];
     }
 
+    /**
+     * Uploads a file to Meta's Media API and returns the durable media id it assigns. Meta
+     * expects header media to be sent by this id, not by re-sending a `link` on every message
+     * — a `link` forces Meta's servers to re-fetch our file on every single send, which gets
+     * flagged as non-compliant once a template fans out to many recipients (e.g. a campaign).
+     */
+    public function uploadMedia(string $url, string $mimeType = 'image/jpeg'): ?string
+    {
+        try {
+            $fileResp = Http::timeout(30)->get($url);
+
+            if (! $fileResp->successful()) {
+                Log::warning('[CloudApiWhatsAppSender] uploadMedia: failed to fetch source file', ['url' => $url]);
+
+                return null;
+            }
+
+            $filename = basename(parse_url($url, PHP_URL_PATH) ?: 'upload');
+
+            $response = Http::withToken($this->accessToken)
+                ->timeout(30)
+                ->attach('file', $fileResp->body(), $filename, ['Content-Type' => $mimeType])
+                ->post("{$this->baseUrl}/{$this->apiVersion}/{$this->phoneNumberId}/media", [
+                    'messaging_product' => 'whatsapp',
+                    'type' => $mimeType,
+                ]);
+
+            if ($response->successful()) {
+                return $response->json('id');
+            }
+
+            Log::warning('[CloudApiWhatsAppSender] uploadMedia failed', ['status' => $response->status(), 'body' => $response->body()]);
+        } catch (\Exception $e) {
+            Log::error('[CloudApiWhatsAppSender] uploadMedia exception: '.$e->getMessage());
+        }
+
+        return null;
+    }
+
     /** Downloads a Meta media asset (image/video/audio/document) and stores it publicly, returning its URL. */
     public function downloadMedia(string $mediaId): ?string
     {
