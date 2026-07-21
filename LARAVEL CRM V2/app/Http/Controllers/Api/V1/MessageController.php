@@ -49,6 +49,7 @@ class MessageController extends Controller
         $page = max(1, $page);
 
         $messages = $conversation->messages()
+            ->with('whatsappTemplate')
             ->orderBy('sent_at', 'asc')
             ->paginate($perPage, ['*'], 'page', $page);
 
@@ -270,6 +271,9 @@ class MessageController extends Controller
             'whatsapp_template_id' => $template->id,
             'whatsapp_message_id' => $waMessageId,
             'content' => $sentBody,
+            // Keep the template header locally too, so the CRM conversation renders the
+            // same image Meta delivered with the template instead of showing body text only.
+            'media_url' => $headerImageUrl,
             'type' => 'text',
             'direction' => 'out',
             'is_private' => false,

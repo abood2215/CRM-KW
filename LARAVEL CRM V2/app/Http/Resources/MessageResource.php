@@ -9,13 +9,20 @@ class MessageResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        // Older template sends were stored without their header image. Use the local
+        // template image as a display fallback while new sends persist media_url directly.
+        $mediaUrl = $this->media_url;
+        if (! $mediaUrl && $this->relationLoaded('whatsappTemplate')) {
+            $mediaUrl = $this->whatsappTemplate?->header_content;
+        }
+
         return [
             'id' => $this->id,
             'conversation_id' => $this->conversation_id,
             'chatwoot_message_id' => $this->chatwoot_message_id,
             'whatsapp_message_id' => $this->whatsapp_message_id,
             'content' => $this->content,
-            'media_url' => $this->media_url,
+            'media_url' => $mediaUrl,
             'type' => $this->type,
             'reaction_emoji' => $this->reaction_emoji,
             'direction' => $this->direction,
