@@ -3,8 +3,8 @@
 namespace App\Events;
 
 use App\Models\Conversation;
-use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
@@ -22,7 +22,7 @@ class ConversationUpdatedEvent implements ShouldBroadcastNow
 
     public function broadcastOn(): array
     {
-        return [new Channel('conversations')];
+        return [new PrivateChannel('conversations')];
     }
 
     /** Without this, Laravel broadcasts the FQCN as the wire event name, which never matches

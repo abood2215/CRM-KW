@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
 import { useAuthStore } from '../store/useAuthStore';
@@ -30,13 +30,14 @@ function buildEcho(token) {
 // Deliberately not torn down on component unmount — only on logout (token → null).
 export function useEcho() {
   const token = useAuthStore((state) => state.token);
-  const ref = useRef(null);
+  const [echo, setEcho] = useState(() => echoInstance);
 
   useEffect(() => {
     if (!token) {
       echoInstance?.disconnect();
       echoInstance = null;
       echoToken = null;
+      setEcho(null);
 
       return;
     }
@@ -47,8 +48,44 @@ export function useEcho() {
       echoToken = token;
     }
 
-    ref.current = echoInstance;
+    // Creating the singleton inside an effect used to leave the first render with
+    // `null` and no state update. Consumers then subscribed only after an unrelated
+    // re-render, which made real-time updates feel intermittent.
+    setEcho(echoInstance);
   }, [token]);
 
-  return echoInstance;
+  return echo;
+}
+
+/** Pusher/Reverb connection states, collapsed to what the UI actually needs to show. */
+function mapConnectionState(state) {
+  if (state === 'connected') return 'connected';
+  if (state === 'connecting' || state === 'initialized') return 'connecting';
+
+  return 'disconnected'; // unavailable, failed, disconnected
+}
+
+/** Surfaces the shared socket's live connection state so the UI can show "live" vs
+ * "reconnecting" instead of silently going stale whenever Reverb drops. */
+export function useEchoConnectionStatus() {
+  const echo = useEcho();
+  const [status, setStatus] = useState('connecting');
+
+  useEffect(() => {
+    if (!echo) {
+      setStatus('disconnected');
+
+      return undefined;
+    }
+
+    const connection = echo.connector.pusher.connection;
+    setStatus(mapConnectionState(connection.state));
+
+    const onStateChange = ({ current }) => setStatus(mapConnectionState(current));
+    connection.bind('state_change', onStateChange);
+
+    return () => connection.unbind('state_change', onStateChange);
+  }, [echo]);
+
+  return status;
 }

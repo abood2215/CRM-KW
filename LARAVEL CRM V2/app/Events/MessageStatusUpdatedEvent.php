@@ -3,8 +3,8 @@
 namespace App\Events;
 
 use App\Models\Message;
-use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
@@ -23,8 +23,8 @@ class MessageStatusUpdatedEvent implements ShouldBroadcastNow
     public function broadcastOn(): array
     {
         return [
-            new Channel('conversations.'.$this->message->conversation_id),
-            new Channel('conversations'),
+            new PrivateChannel('conversations.'.$this->message->conversation_id),
+            new PrivateChannel('conversations'),
         ];
     }
 

@@ -23,6 +23,27 @@ export function useChatPane(conversationId) {
     enabled: !!conversationId,
   });
 
+  // The `show` endpoint already zeroes unread_count server-side the moment this
+  // conversation is opened, but the sidebar list only found out about it via the
+  // ConversationUpdatedEvent broadcast — so with the socket down (or just slow), the
+  // badge kept showing stale unread counts until something else forced a refetch.
+  // Patching the cached list directly makes it disappear the instant this loads,
+  // independent of whether real-time is connected at all.
+  useEffect(() => {
+    if (!conversation) return;
+
+    queryClient.setQueriesData({ queryKey: ['conversations'], exact: false }, (old) => {
+      if (!old?.conversations) return old;
+
+      return {
+        ...old,
+        conversations: old.conversations.map((c) =>
+          c.id === conversation.id && c.unread_count !== 0 ? { ...c, unread_count: 0 } : c
+        ),
+      };
+    });
+  }, [conversation, queryClient]);
+
   // No `page` on the first fetch — the backend defaults that to the LAST page (most
   // recent messages). Older pages are only fetched on demand via fetchPreviousPage(),
   // so a conversation with >100 messages always opens showing the latest activity
@@ -56,7 +77,7 @@ export function useChatPane(conversationId) {
   useEffect(() => {
     if (!echo || !conversationId) return undefined;
 
-    const channel = echo.channel(`conversations.${conversationId}`);
+    const channel = echo.private(`conversations.${conversationId}`);
     let typingExpiry;
 
     const onNewMessage = () => {

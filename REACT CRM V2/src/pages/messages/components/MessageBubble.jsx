@@ -1,6 +1,11 @@
 import React, { useState } from 'react';
-import { Check, CheckCheck, AlertCircle, Clock, Lock, FileText, Download, Heart, SmilePlus } from 'lucide-react';
+import { Check, CheckCheck, AlertCircle, Clock, Lock, FileText, Download, Heart, SmilePlus, Info } from 'lucide-react';
 import { cn } from '../../../utils/cn';
+
+// Meta's own marketing-quality throttling (declined delivery, not a send failure on our
+// end — see MessageStatusUpdateService::translateError) reads as an alarming red error
+// like any other failure otherwise, when it's really just "not eligible right now".
+const isMarketingThrottled = (message) => message.status === 'failed' && message.error_message?.includes('131049');
 
 const STATUS_META = {
   pending: { icon: <Clock size={13} />, label: 'جارِ الإرسال...' },
@@ -15,8 +20,11 @@ const QUICK_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
 const MessageBubble = ({ message, onReact }) => {
   const [pickerOpen, setPickerOpen] = useState(false);
   const isOut = message.direction === 'out';
-  const statusMeta = STATUS_META[message.status];
-  const statusLabel = message.status === 'failed' && message.error_message ? message.error_message : statusMeta?.label;
+  const throttled = isMarketingThrottled(message);
+  const statusMeta = throttled
+    ? { icon: <Info size={13} className="text-amber-500" />, label: 'غير مؤهل للتسويق حالياً' }
+    : STATUS_META[message.status];
+  const statusLabel = !throttled && message.status === 'failed' && message.error_message ? message.error_message : statusMeta?.label;
   // Only offered on the customer's own messages — reacting to your own sent message isn't
   // the point here, and it needs a real wamid to target via Meta's reaction message type.
   const canReact = !isOut && !message._optimistic && !!message.whatsapp_message_id && onReact;
@@ -126,8 +134,11 @@ const MessageBubble = ({ message, onReact }) => {
 
         {/* A hover tooltip alone is easy to miss — a failed send needs to be obvious at a glance. */}
         {isOut && message.status === 'failed' && (
-          <p className="text-[11px] font-bold text-rose-500 mt-1">
-            {message.error_message ?? 'فشل الإرسال'}
+          <p
+            className={cn('text-[11px] font-bold mt-1', throttled ? 'text-amber-600' : 'text-rose-500')}
+            title={message.error_message}
+          >
+            {throttled ? 'غير مؤهل للتسويق حالياً — ميتا لم توصّل الرسالة لهذا الرقم' : message.error_message ?? 'فشل الإرسال'}
           </p>
         )}
 

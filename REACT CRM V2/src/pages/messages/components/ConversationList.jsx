@@ -5,6 +5,26 @@ import { ar } from 'date-fns/locale';
 import { cn } from '../../../utils/cn';
 import ConversationListItem from './ConversationListItem';
 
+const CONNECTION_META = {
+  connected: { label: 'متصل مباشر', cls: 'bg-emerald-50 text-emerald-600', dot: 'bg-emerald-500' },
+  connecting: { label: 'جاري إعادة الاتصال...', cls: 'bg-amber-50 text-amber-600', dot: 'bg-amber-500 animate-pulse' },
+  disconnected: { label: 'غير متصل', cls: 'bg-rose-50 text-rose-500', dot: 'bg-rose-400' },
+};
+
+const ConnectionBadge = ({ status }) => {
+  const meta = CONNECTION_META[status] ?? CONNECTION_META.disconnected;
+
+  return (
+    <span
+      className={cn('flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full flex-shrink-0', meta.cls)}
+      title={meta.label}
+    >
+      <span className={cn('w-1.5 h-1.5 rounded-full', meta.dot)} />
+      <span className="hidden lg:inline">{meta.label}</span>
+    </span>
+  );
+};
+
 const dayLabel = (dateString) => {
   if (!dateString) return 'أقدم';
   const date = new Date(dateString);
@@ -28,15 +48,18 @@ const groupByDay = (conversations) => {
 };
 
 const ConversationList = ({ list, selectedId, onSelect, onNewConversation, className }) => {
-  const { conversations, meta, isLoading, status, setStatus, search, setSearch, page, setPage, statusTabs } = list;
+  const { conversations, meta, isLoading, status, setStatus, search, setSearch, page, setPage, statusTabs, connectionStatus } = list;
   const groups = groupByDay(conversations);
 
   return (
     <div className={cn('w-full md:max-w-[280px] lg:max-w-sm flex-col border-l border-slate-100 bg-white h-full', className)}>
       <div className="p-4 border-b border-slate-100 space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="font-black text-slate-800">المحادثات</h2>
-          <button onClick={onNewConversation} title="محادثة جديدة" aria-label="محادثة جديدة" className="w-9 h-9 rounded-xl bg-teal-600 text-white flex items-center justify-center hover:bg-teal-700">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <h2 className="font-black text-slate-800 flex-shrink-0">المحادثات</h2>
+            {connectionStatus && <ConnectionBadge status={connectionStatus} />}
+          </div>
+          <button onClick={onNewConversation} title="محادثة جديدة" aria-label="محادثة جديدة" className="w-9 h-9 rounded-xl bg-teal-600 text-white flex items-center justify-center hover:bg-teal-700 flex-shrink-0">
             <Plus size={16} />
           </button>
         </div>

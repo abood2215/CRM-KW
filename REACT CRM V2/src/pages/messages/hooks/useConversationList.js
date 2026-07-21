@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { conversations as conversationsApi } from '../../../api';
-import { useEcho } from '../../../hooks/useEcho';
+import { useEcho, useEchoConnectionStatus } from '../../../hooks/useEcho';
 
 const STATUS_TABS = [
   { id: 'open', label: 'مفتوحة' },
@@ -16,6 +16,7 @@ export function useConversationList() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [page, setPage] = useState(1);
   const echo = useEcho();
+  const connectionStatus = useEchoConnectionStatus();
 
   // The input updates `search` (and the UI) immediately; the actual query only reacts to
   // `debouncedSearch` — without this, every keystroke fired its own network request.
@@ -37,7 +38,7 @@ export function useConversationList() {
   useEffect(() => {
     if (!echo) return undefined;
 
-    const channel = echo.channel('conversations');
+    const channel = echo.private('conversations');
     const invalidate = () => queryClient.invalidateQueries({ queryKey: ['conversations'] });
 
     channel.listen('.NewMessageEvent', invalidate);
@@ -60,5 +61,6 @@ export function useConversationList() {
     page,
     setPage,
     statusTabs: STATUS_TABS,
+    connectionStatus,
   };
 }
