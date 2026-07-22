@@ -98,6 +98,13 @@ class ConversationController extends Controller
 
         $conversation = $this->conversations->resolveForContact($contact);
 
+        // A sandboxed test account can only ever see conversations assigned to it (see
+        // ConversationPolicy::scopeVisibleTo) — without this, the conversation it just started
+        // would immediately vanish from its own inbox for being unassigned.
+        if ($request->user()->isSandboxed() && ! $conversation->assigned_user_id) {
+            $conversation->update(['assigned_user_id' => $request->user()->id]);
+        }
+
         $number = WhatsappNumber::where('api_type', 'cloud')->where('status', 'connected')->first();
 
         if (! $number) {

@@ -35,10 +35,14 @@ class GlobalSearchController extends Controller
             ->get()
             ->map(fn (Conversation $c) => ['id' => $c->id, 'title' => $c->contact?->name ?? '—', 'subtitle' => $c->contact?->phone]);
 
-        $campaigns = Campaign::where('name', 'like', "%{$term}%")
-            ->limit(self::LIMIT)
-            ->get(['id', 'name', 'status'])
-            ->map(fn (Campaign $c) => ['id' => $c->id, 'title' => $c->name, 'subtitle' => $c->status]);
+        // A sandboxed test account must not find real campaigns through the side door of
+        // search either — see CampaignController::index for the same restriction on the list.
+        $campaigns = $request->user()->isSandboxed()
+            ? collect()
+            : Campaign::where('name', 'like', "%{$term}%")
+                ->limit(self::LIMIT)
+                ->get(['id', 'name', 'status'])
+                ->map(fn (Campaign $c) => ['id' => $c->id, 'title' => $c->name, 'subtitle' => $c->status]);
 
         return response()->json([
             'contacts' => $contacts,

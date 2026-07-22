@@ -23,6 +23,15 @@ class CampaignController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        // A sandboxed test account must not see real campaign history/stats — unlike a normal
+        // zero-permission staff account, which (by design, unlike this one) sees all campaigns.
+        if ($request->user()->isSandboxed()) {
+            return response()->json([
+                'campaigns' => [],
+                'meta' => ['current_page' => 1, 'last_page' => 1, 'per_page' => $request->per_page ?? 20, 'total' => 0],
+            ]);
+        }
+
         $query = Campaign::with(['user', 'whatsappNumber']);
 
         if ($request->has('status')) {
@@ -67,8 +76,10 @@ class CampaignController extends Controller
         return response()->json($response, 201);
     }
 
-    public function show(Campaign $campaign): JsonResponse
+    public function show(Request $request, Campaign $campaign): JsonResponse
     {
+        abort_if($request->user()->isSandboxed(), 403);
+
         $campaign->load(['user', 'whatsappNumber', 'contactList']);
 
         return response()->json(['campaign' => new CampaignResource($campaign)]);
@@ -196,6 +207,8 @@ class CampaignController extends Controller
      */
     public function report(Request $request, Campaign $campaign): JsonResponse
     {
+        abort_if($request->user()->isSandboxed(), 403);
+
         $hourlyStats = $campaign->recipients()
             ->whereNotNull('sent_at')
             ->selectRaw("

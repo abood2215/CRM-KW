@@ -77,6 +77,14 @@ class User extends Authenticatable
         return $this->last_seen_at && $this->last_seen_at->diffInMinutes(now()) < 5;
     }
 
+    /** The `test` role: a throwaway account for an outside collaborator to reproduce a bug
+     * live, with no visibility into pre-existing campaigns or unassigned conversations —
+     * unlike a normal zero-permission staff account, which intentionally still sees both. */
+    public function isSandboxed(): bool
+    {
+        return $this->role?->slug === 'test';
+    }
+
     public function contacts(): HasMany
     {
         return $this->hasMany(Contact::class);

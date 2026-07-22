@@ -8,9 +8,15 @@ use Illuminate\Database\Eloquent\Builder;
 
 class ConversationPolicy
 {
-    /** Users without conversations.view_all see conversations assigned to them, plus anything unassigned. */
+    /** Users without conversations.view_all see conversations assigned to them, plus anything
+     * unassigned — except a sandboxed test account, which must not see the shared inbox of
+     * real unassigned conversations at all, only whatever it starts itself. */
     public static function scopeVisibleTo(Builder $query, User $user): Builder
     {
+        if ($user->isSandboxed()) {
+            return $query->where('assigned_user_id', $user->id);
+        }
+
         if (! $user->hasPermission('conversations.view_all')) {
             return $query->where(function (Builder $q) use ($user) {
                 $q->where('assigned_user_id', $user->id)->orWhereNull('assigned_user_id');
