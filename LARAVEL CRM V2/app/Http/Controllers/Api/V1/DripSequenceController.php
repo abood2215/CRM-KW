@@ -18,8 +18,14 @@ use Illuminate\Support\Facades\DB;
 
 class DripSequenceController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
+        // Shared team resource by design — except a sandboxed test account, same restriction
+        // as CampaignController::index and ContactListController::index.
+        if ($request->user()->isSandboxed()) {
+            return response()->json(['sequences' => []]);
+        }
+
         $sequences = DripSequence::withCount('steps')
             ->withCount(['enrollments as active_enrollments_count' => fn ($q) => $q->where('status', 'active')])
             ->withCount(['enrollments as completed_enrollments_count' => fn ($q) => $q->where('status', 'completed')])
@@ -29,8 +35,10 @@ class DripSequenceController extends Controller
         return response()->json(['sequences' => DripSequenceResource::collection($sequences)]);
     }
 
-    public function show(DripSequence $sequence): JsonResponse
+    public function show(Request $request, DripSequence $sequence): JsonResponse
     {
+        abort_if($request->user()->isSandboxed(), 403);
+
         $sequence->load(['steps', 'enrollments.contact']);
 
         return response()->json([

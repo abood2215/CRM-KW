@@ -11,11 +11,18 @@ use App\Models\WhatsappNumber;
 use App\Services\Activity\ActivityLogger;
 use App\Services\Whatsapp\BaileysWhatsAppSender;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class WhatsappNumberController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
+        // Real business phone numbers/Meta account IDs — a sandboxed test account never needs
+        // this list (sending already auto-picks the first connected number transparently).
+        if ($request->user()->isSandboxed()) {
+            return response()->json(['whatsapp_numbers' => []]);
+        }
+
         $numbers = WhatsappNumber::orderBy('name')->get();
 
         return response()->json(['whatsapp_numbers' => WhatsappNumberResource::collection($numbers)]);

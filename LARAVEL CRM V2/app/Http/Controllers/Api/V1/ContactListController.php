@@ -15,8 +15,14 @@ use Illuminate\Http\Request;
 
 class ContactListController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
+        // Shared team resource by design (see ContactListPolicy) — except a sandboxed test
+        // account, which must not see real contact segments any more than real campaigns.
+        if ($request->user()->isSandboxed()) {
+            return response()->json(['contact_lists' => []]);
+        }
+
         $lists = ContactList::with('user')->withCount('contacts')->orderBy('name')->get();
 
         return response()->json(['contact_lists' => ContactListResource::collection($lists)]);
@@ -38,6 +44,8 @@ class ContactListController extends Controller
 
     public function show(Request $request, ContactList $contactList): JsonResponse
     {
+        abort_if($request->user()->isSandboxed(), 403);
+
         $contactList->load('user')->loadCount('contacts');
 
         // Members are paginated separately from the list itself — the old unbounded
