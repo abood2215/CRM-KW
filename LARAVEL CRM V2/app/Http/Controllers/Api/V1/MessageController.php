@@ -13,8 +13,7 @@ use App\Models\WhatsappNumber;
 use App\Models\WhatsappTemplate;
 use App\Policies\ConversationPolicy;
 use App\Services\ChatwootService;
-use App\Services\Whatsapp\CloudApiWhatsAppSender;
-use App\Services\Whatsapp\HeaderMediaResolver;
+use App\Services\Whatsapp\TemplateHeaderResolver;
 use App\Services\Whatsapp\TemplateSendValidator;
 use App\Services\Whatsapp\WhatsAppSenderFactory;
 use Illuminate\Http\JsonResponse;
@@ -198,10 +197,16 @@ class MessageController extends Controller
         $request->validate([
             'template_id' => 'required|exists:whatsapp_templates,id',
             'variables' => 'nullable|array',
+            'header_media' => 'nullable|file',
         ]);
 
         $conversation->load('contact');
         $template = WhatsappTemplate::findOrFail($request->template_id);
+
+        // Per-type mimes/size can only be checked once the template (and its header_type) is known.
+        if ($request->hasFile('header_media')) {
+            $request->validate(['header_media' => TemplateHeaderResolver::uploadRuleFor($template->header_type)]);
+        }
 
         if ($template->status !== 'approved') {
             return response()->json(['message' => 'القالب غير معتمد من Meta.'], 422);
@@ -223,9 +228,15 @@ class MessageController extends Controller
             $sentBody = str_replace('{{'.($i + 1).'}}', $val, $sentBody);
         }
 
-        $headerImageUrl = $template->header_type === 'image' ? $template->header_content : null;
+        $headerRequiresMedia = in_array($template->header_type, TemplateHeaderResolver::MEDIA_HEADER_TYPES, true);
+        $headerResolver = new TemplateHeaderResolver();
+        ['url' => $headerMediaUrl, 'isOverride' => $headerIsOverride] = $headerResolver->resolveUrl(
+            $template,
+            $headerRequiresMedia ? $request->file('header_media') : null,
+        );
+
         try {
-            TemplateSendValidator::assertSendable($template, $headerImageUrl, $variables);
+            TemplateSendValidator::assertSendable($template, $headerMediaUrl, $variables);
         } catch (\RuntimeException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }
@@ -239,20 +250,8 @@ class MessageController extends Controller
             // window on plain text exactly like any other message, template or not. A plain send
             // only works inside that window, defeating the entire point of using a template.
             $components = [];
-            if ($template->header_type === 'image' && $template->header_content) {
-                $image = $sender instanceof CloudApiWhatsAppSender
-                    ? (new HeaderMediaResolver())->resolve(
-                        $template->header_media_id,
-                        $template->header_content,
-                        $sender,
-                        fn ($mediaId) => $template->update(['header_media_id' => $mediaId]),
-                    )
-                    : ['link' => $template->header_content];
-
-                $components[] = [
-                    'type' => 'header',
-                    'parameters' => [['type' => 'image', 'image' => $image]],
-                ];
+            if ($headerRequiresMedia && $headerMediaUrl) {
+                $components[] = $headerResolver->buildComponent($template, $headerMediaUrl, $headerIsOverride, $sender);
             }
             if (! empty($variables)) {
                 $components[] = [
@@ -276,7 +275,7 @@ class MessageController extends Controller
             'content' => $sentBody,
             // Keep the template header locally too, so the CRM conversation renders the
             // same image Meta delivered with the template instead of showing body text only.
-            'media_url' => $headerImageUrl,
+            'media_url' => $headerMediaUrl,
             'type' => 'text',
             'direction' => 'out',
             'is_private' => false,

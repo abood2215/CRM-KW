@@ -6,6 +6,10 @@ import { useNewConversationForm } from '../hooks/useNewConversationForm';
 import { useModalA11y } from '../../../hooks/useModalA11y';
 import { templates as templatesApi } from '../../../api';
 
+// Meta's accepted header media formats per header_type — mirrors the backend's per-type rules.
+const HEADER_MEDIA_ACCEPT = { image: 'image/jpeg,image/png,image/webp', video: 'video/mp4,video/3gpp', document: 'application/pdf' };
+const HEADER_MEDIA_LABEL = { image: 'صورة', video: 'فيديو', document: 'ملف PDF' };
+
 const NewConversationModal = ({ open, onClose, onCreated }) => {
   const ref = useModalA11y(open, onClose);
   const [useTemplate, setUseTemplate] = useState(false);
@@ -24,14 +28,19 @@ const NewConversationModal = ({ open, onClose, onCreated }) => {
   const toggleTemplateMode = (on) => {
     setUseTemplate(on);
     setSelectedTemplate(null);
-    setForm((f) => ({ ...f, message: '', template_name: '', template_language: '', variables: [] }));
+    setForm((f) => ({ ...f, message: '', template_name: '', template_language: '', variables: [], header_media: null }));
   };
 
   const pickTemplate = (template) => {
     setSelectedTemplate(template);
     const variables = Array(template.variables_count || 0).fill('');
-    setForm((f) => ({ ...f, template_name: template.name, template_language: template.language, variables, message: template.body_text }));
+    setForm((f) => ({ ...f, template_name: template.name, template_language: template.language, variables, message: template.body_text, header_media: null }));
   };
+
+  const needsHeaderMedia = !!selectedTemplate && !!HEADER_MEDIA_ACCEPT[selectedTemplate.header_type];
+  // A media-header template can't be sent without a file: either one attached here, or the
+  // template's stored default (header_content) uploaded by an admin on the templates page.
+  const missingHeaderMedia = needsHeaderMedia && !form.header_media && !selectedTemplate.header_content;
 
   const setVariable = (index, value) => {
     setForm((f) => {
@@ -92,6 +101,23 @@ const NewConversationModal = ({ open, onClose, onCreated }) => {
                 ) : (
                   <div className="space-y-2">
                     <button type="button" onClick={() => setSelectedTemplate(null)} className="text-xs font-bold text-teal-600">‹ اختيار قالب آخر</button>
+                    {needsHeaderMedia && (
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-bold text-slate-600">
+                          هذا القالب يتطلب {HEADER_MEDIA_LABEL[selectedTemplate.header_type]} في الهيدر
+                          {selectedTemplate.header_content && !form.header_media ? ' — سيتم استخدام الملف المحفوظ للقالب ما لم ترفق غيره' : ''}
+                        </label>
+                        <input
+                          type="file"
+                          accept={HEADER_MEDIA_ACCEPT[selectedTemplate.header_type]}
+                          onChange={(e) => setForm((f) => ({ ...f, header_media: e.target.files[0] ?? null }))}
+                          className="w-full text-sm text-slate-600 file:ml-3 file:h-9 file:px-3 file:rounded-lg file:border-0 file:bg-slate-100 file:text-slate-600 file:text-xs file:font-bold file:cursor-pointer"
+                        />
+                        {missingHeaderMedia && (
+                          <p className="text-xs text-amber-600 font-medium">لا يوجد ملف محفوظ لهذا القالب — أرفق الملف لتتمكن من الإرسال.</p>
+                        )}
+                      </div>
+                    )}
                     {form.variables.map((v, i) => (
                       <input
                         key={i} placeholder={`متغير {{${i + 1}}}`} value={v}
@@ -112,7 +138,7 @@ const NewConversationModal = ({ open, onClose, onCreated }) => {
 
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={onClose} className="flex-1 h-11 bg-slate-100 text-slate-600 font-bold rounded-xl">إلغاء</button>
-                <button type="submit" disabled={isSubmitting} className="flex-1 h-11 bg-teal-600 text-white font-bold rounded-xl flex items-center justify-center gap-2">
+                <button type="submit" disabled={isSubmitting || missingHeaderMedia} className="flex-1 h-11 bg-teal-600 text-white font-bold rounded-xl flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
                   {isSubmitting && <Loader2 size={16} className="animate-spin" />}
                   بدء المحادثة
                 </button>

@@ -175,8 +175,8 @@ export function useChatPane(conversationId) {
   });
 
   const sendTemplateMutation = useMutation({
-    mutationFn: ({ templateId, variables }) =>
-      conversationsApi.sendTemplateMessage(conversationId, { template_id: templateId, variables }),
+    mutationFn: ({ templateId, variables, headerFile }) =>
+      conversationsApi.sendTemplateMessage(conversationId, { template_id: templateId, variables, header_media: headerFile }),
     onSuccess: invalidateAll,
     onError: (e) => toast.error(e?.response?.data?.message || 'فشل إرسال القالب'),
   });

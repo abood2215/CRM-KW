@@ -15,13 +15,13 @@ use Illuminate\Support\Facades\Log;
 class HeaderMediaResolver
 {
     /** @param callable(string $mediaId): void $onUploaded */
-    public function resolve(?string $cachedMediaId, string $imageUrl, CloudApiWhatsAppSender $sender, callable $onUploaded): array
+    public function resolve(?string $cachedMediaId, string $imageUrl, CloudApiWhatsAppSender $sender, callable $onUploaded, ?string $mimeType = null): array
     {
         if ($cachedMediaId) {
             return ['id' => $cachedMediaId];
         }
 
-        $mediaId = $sender->uploadMedia($imageUrl);
+        $mediaId = $mimeType ? $sender->uploadMedia($imageUrl, $mimeType) : $sender->uploadMedia($imageUrl);
 
         if ($mediaId) {
             $onUploaded($mediaId);

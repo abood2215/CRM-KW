@@ -19,7 +19,7 @@ class TemplateSendValidator
     {
         if (in_array($template->header_type, ['image', 'video', 'document'], true) && ! $headerImageUrl) {
             throw new \RuntimeException(
-                "القالب \"{$template->name}\" يتطلب هيدر ({$template->header_type}) ولم يتم رفعه بعد — ارفعه من صفحة القوالب قبل الإرسال."
+                "القالب \"{$template->name}\" يتطلب هيدر ({$template->header_type}) ولم يتم رفعه بعد — أرفق الملف في نموذج الإرسال أو ارفعه من صفحة القوالب."
             );
         }
 

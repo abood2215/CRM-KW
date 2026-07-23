@@ -5,10 +5,15 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { templates as templatesApi } from '../../../api';
 import { useModalA11y } from '../../../hooks/useModalA11y';
 
+// Meta's accepted header media formats per header_type — mirrors the backend's per-type rules.
+const HEADER_MEDIA_ACCEPT = { image: 'image/jpeg,image/png,image/webp', video: 'video/mp4,video/3gpp', document: 'application/pdf' };
+const HEADER_MEDIA_LABEL = { image: 'صورة', video: 'فيديو', document: 'ملف PDF' };
+
 const TemplatePicker = ({ open, onClose, onSend }) => {
   const ref = useModalA11y(open, onClose);
   const [selected, setSelected] = useState(null);
   const [variables, setVariables] = useState([]);
+  const [headerFile, setHeaderFile] = useState(null);
 
   const { data: templates = [], isLoading } = useQuery({
     queryKey: ['templates', 'approved'],
@@ -19,14 +24,21 @@ const TemplatePicker = ({ open, onClose, onSend }) => {
   const handlePick = (template) => {
     setSelected(template);
     setVariables(Array(template.variables_count).fill(''));
+    setHeaderFile(null);
   };
 
   const handleSend = () => {
-    onSend({ templateId: selected.id, variables });
+    onSend({ templateId: selected.id, variables, headerFile });
     setSelected(null);
     setVariables([]);
+    setHeaderFile(null);
     onClose();
   };
+
+  const needsHeaderMedia = !!selected && !!HEADER_MEDIA_ACCEPT[selected.header_type];
+  // A media-header template can't be sent without a file: either one attached here, or the
+  // template's stored default (header_content) uploaded by an admin on the templates page.
+  const missingHeaderMedia = needsHeaderMedia && !headerFile && !selected.header_content;
 
   const preview = selected
     ? variables.reduce((body, v, i) => body.replace(`{{${i + 1}}}`, v || `{{${i + 1}}}`), selected.body_text)
@@ -64,6 +76,23 @@ const TemplatePicker = ({ open, onClose, onSend }) => {
                 )
               ) : (
                 <div className="space-y-4">
+                  {needsHeaderMedia && (
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-bold text-slate-600">
+                        هذا القالب يتطلب {HEADER_MEDIA_LABEL[selected.header_type]} في الهيدر
+                        {selected.header_content && !headerFile ? ' — سيتم استخدام الملف المحفوظ للقالب ما لم ترفق غيره' : ''}
+                      </label>
+                      <input
+                        type="file"
+                        accept={HEADER_MEDIA_ACCEPT[selected.header_type]}
+                        onChange={(e) => setHeaderFile(e.target.files[0] ?? null)}
+                        className="w-full text-sm text-slate-600 file:ml-3 file:h-9 file:px-3 file:rounded-lg file:border-0 file:bg-slate-100 file:text-slate-600 file:text-xs file:font-bold file:cursor-pointer"
+                      />
+                      {missingHeaderMedia && (
+                        <p className="text-xs text-amber-600 font-medium">لا يوجد ملف محفوظ لهذا القالب — أرفق الملف لتتمكن من الإرسال.</p>
+                      )}
+                    </div>
+                  )}
                   {variables.map((v, i) => (
                     <input
                       key={i}
@@ -81,7 +110,7 @@ const TemplatePicker = ({ open, onClose, onSend }) => {
             {selected && (
               <div className="p-6 pt-0 flex gap-3">
                 <button onClick={() => setSelected(null)} className="flex-1 h-11 bg-slate-100 text-slate-600 font-bold rounded-xl">رجوع</button>
-                <button onClick={handleSend} className="flex-1 h-11 bg-teal-600 text-white font-bold rounded-xl">إرسال</button>
+                <button onClick={handleSend} disabled={missingHeaderMedia} className="flex-1 h-11 bg-teal-600 text-white font-bold rounded-xl disabled:opacity-50 disabled:cursor-not-allowed">إرسال</button>
               </div>
             )}
           </motion.div>

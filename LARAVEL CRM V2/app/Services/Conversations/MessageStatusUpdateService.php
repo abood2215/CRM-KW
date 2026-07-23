@@ -143,7 +143,7 @@ class MessageStatusUpdateService
         // problem on our end, it's Meta unilaterally declining to deliver a MARKETING-category
         // template to a recipient it predicts won't engage with it.
         if ($errorCode === 131049) {
-            return 'رفضت ميتا توصيل رسالة تسويقية للحفاظ على جودة النظام — المستقبِل غير متفاعل كفاية (كود ميتا: 131049)';
+            return 'رفضت ميتا توصيل رسالة تسويقية للحفاظ على جودة النظام — المستقبِل غير متفاعل كفاية (كود ميتا: 131049) — أعد المحاولة بعد 24 ساعة على الأقل';
         }
 
         return $errorTitle ?? 'فشل التوصيل';
