@@ -231,7 +231,11 @@ class InboundMessageService
                 ?? '[تفاعل]',
             'contacts' => '[جهة اتصال: '.($msgData['contacts'][0]['name']['formatted_name'] ?? '').']',
             'order' => '[طلب شراء]',
-            default => '[رسالة غير مدعومة: '.$type.']',
+            // Meta's own catch-all for message types it won't forward content for (view-once
+            // media, polls, community messages, ...) — shows Meta's own reason when it sends one,
+            // instead of surfacing the raw wire value "unsupported" as if it were a bug.
+            'unsupported' => '[نوع رسالة غير مدعوم من واتساب'.(($reason = $msgData['errors'][0]['title'] ?? null) ? " — {$reason}" : '').']',
+            default => '[نوع رسالة غير معروف: '.$type.']',
         };
     }
 
