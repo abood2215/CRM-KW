@@ -14,6 +14,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class CampaignController extends Controller
 {
@@ -191,6 +192,41 @@ class CampaignController extends Controller
                 'total' => $recipients->total(),
             ],
         ]);
+    }
+
+    /** Per-recipient detail for one campaign — the aggregate export (StatsController::exportCampaignsCsv)
+     * only ever gave one row per campaign; reviewing who exactly failed/replied meant paging
+     * through the report UI by hand. */
+    public function exportRecipientsCsv(Request $request, Campaign $campaign): StreamedResponse
+    {
+        abort_if($request->user()->isSandboxed(), 403);
+
+        $headers = [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="campaign-'.$campaign->id.'-recipients.csv"',
+        ];
+
+        return response()->stream(function () use ($campaign) {
+            $handle = fopen('php://output', 'w');
+            fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF));
+
+            fputcsv($handle, ['الاسم', 'الهاتف', 'الحالة', 'وقت الإرسال', 'سبب الفشل', 'معرّف رسالة واتساب']);
+
+            $campaign->recipients()->orderBy('id')->chunk(500, function ($chunk) use ($handle) {
+                foreach ($chunk as $r) {
+                    fputcsv($handle, [
+                        $r->name_snapshot,
+                        $r->phone_snapshot,
+                        $r->status,
+                        $r->sent_at?->format('Y-m-d H:i'),
+                        $r->error_message,
+                        $r->whatsapp_message_id,
+                    ]);
+                }
+            });
+
+            fclose($handle);
+        }, 200, $headers);
     }
 
     public function analytics(Campaign $campaign): JsonResponse

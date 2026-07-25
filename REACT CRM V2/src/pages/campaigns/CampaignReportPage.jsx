@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { ArrowRight, Loader2, Phone, ShieldOff, AlertTriangle } from 'lucide-react';
+import { ArrowRight, Loader2, Phone, ShieldOff, AlertTriangle, Download } from 'lucide-react';
 import { campaigns as campaignsApi } from '../../api';
 import { usePermission } from '../../hooks/usePermission';
 
@@ -45,6 +45,22 @@ const CampaignReportPage = () => {
 
   const { campaign, analytics, recipients, meta } = data;
 
+  const handleExportRecipients = async () => {
+    try {
+      const blob = await campaignsApi.exportCampaignRecipientsCsv(id);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `campaign-${id}-recipients.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      toast.error('فشل التصدير');
+    }
+  };
+
   return (
     <div className="space-y-6">
       <Link to="/campaigns" className="inline-flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-indigo-600">
@@ -52,14 +68,23 @@ const CampaignReportPage = () => {
         رجوع للحملات
       </Link>
 
-      <div>
-        <h1 className="text-xl font-black text-slate-800">{campaign.name}</h1>
-        {campaign.whatsapp_number && (
-          <div className="flex items-center gap-1.5 text-sm font-bold text-indigo-500 mt-1">
-            <Phone size={14} />
-            <span>{campaign.whatsapp_number.name} ({campaign.whatsapp_number.phone})</span>
-          </div>
-        )}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-black text-slate-800">{campaign.name}</h1>
+          {campaign.whatsapp_number && (
+            <div className="flex items-center gap-1.5 text-sm font-bold text-indigo-500 mt-1">
+              <Phone size={14} />
+              <span>{campaign.whatsapp_number.name} ({campaign.whatsapp_number.phone})</span>
+            </div>
+          )}
+        </div>
+        <button
+          onClick={handleExportRecipients}
+          className="h-10 px-4 border border-slate-200 rounded-xl text-slate-600 font-bold text-sm flex items-center gap-2 hover:bg-slate-50 transition-all bg-white flex-shrink-0"
+        >
+          <Download size={16} />
+          <span>تصدير المستلمين CSV</span>
+        </button>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">

@@ -26,6 +26,9 @@ export const getCampaignAnalytics = (id) => client.get(`/campaigns/${id}/analyti
 
 export const getCampaignReport = (id, params) => client.get(`/campaigns/${id}/report`, { params }).then((res) => res.data);
 
+export const exportCampaignRecipientsCsv = (id) =>
+  client.get(`/campaigns/${id}/recipients/export/csv`, { responseType: 'blob' }).then((res) => res.data);
+
 export const uploadCampaignImage = (file) => {
   const formData = new FormData();
   formData.append('image', file);

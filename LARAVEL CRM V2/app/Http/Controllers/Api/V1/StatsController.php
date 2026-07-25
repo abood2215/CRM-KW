@@ -20,13 +20,17 @@ class StatsController extends Controller
         return response()->json($this->stats->dashboard($request->get('range', 'week')));
     }
 
-    public function campaigns(): JsonResponse
+    public function campaigns(Request $request): JsonResponse
     {
+        abort_if($request->user()->isSandboxed(), 403);
+
         return response()->json($this->stats->campaigns());
     }
 
-    public function exportCampaignsCsv(): StreamedResponse
+    public function exportCampaignsCsv(Request $request): StreamedResponse
     {
+        abort_if($request->user()->isSandboxed(), 403);
+
         $headers = [
             'Content-Type' => 'text/csv; charset=UTF-8',
             'Content-Disposition' => 'attachment; filename="campaigns-report.csv"',

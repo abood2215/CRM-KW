@@ -103,6 +103,7 @@ Route::middleware(['auth:sanctum', 'update.last.seen', 'throttle:60,1'])->group(
     Route::get('/campaigns/{campaign}/recipients', [CampaignController::class, 'recipients']);
     Route::get('/campaigns/{campaign}/analytics', [CampaignController::class, 'analytics']);
     Route::get('/campaigns/{campaign}/report', [CampaignController::class, 'report']);
+    Route::get('/campaigns/{campaign}/recipients/export/csv', [CampaignController::class, 'exportRecipientsCsv']);
     Route::apiResource('campaigns', CampaignController::class)->except(['show'])->parameters(['campaigns' => 'campaign']);
     Route::get('/campaigns/{campaign}', [CampaignController::class, 'show']);
 
