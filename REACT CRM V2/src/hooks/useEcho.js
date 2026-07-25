@@ -29,7 +29,11 @@ function buildEcho(token) {
     wssPort: useTLS ? 443 : import.meta.env.VITE_PUSHER_PORT || 6001,
     forceTLS: useTLS,
     disableStats: true,
-    enabledTransports: useTLS ? ['wss'] : ['ws'],
+    // pusher-js only registers a transport named 'ws' — it upgrades to a secure socket on its
+    // own based on forceTLS. 'wss' isn't a real transport name, so passing it here left zero
+    // usable transports and pusher-js gave up immediately (connection.state === 'failed') without
+    // ever opening a socket.
+    enabledTransports: ['ws'],
     authEndpoint: `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8001/api'}/broadcasting/auth`,
     auth: { headers: { Authorization: `Bearer ${token}` } },
   });
