@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { conversations as conversationsApi } from '../../../api';
 
-const emptyForm = { phone: '', name: '', message: '', template_name: '', template_language: '', variables: [], header_media: null };
+const emptyForm = { phone: '', name: '', message: '', template_name: '', template_language: '', variables: [], header_media: null, whatsapp_number_id: '' };
 
 export function useNewConversationForm(onDone) {
   const queryClient = useQueryClient();

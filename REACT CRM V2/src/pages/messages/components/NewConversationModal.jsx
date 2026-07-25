@@ -4,7 +4,7 @@ import { X, Loader2, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNewConversationForm } from '../hooks/useNewConversationForm';
 import { useModalA11y } from '../../../hooks/useModalA11y';
-import { templates as templatesApi } from '../../../api';
+import { templates as templatesApi, whatsappNumbers as whatsappNumbersApi } from '../../../api';
 
 // Meta's accepted header media formats per header_type — mirrors the backend's per-type rules.
 const HEADER_MEDIA_ACCEPT = { image: 'image/jpeg,image/png,image/webp', video: 'video/mp4,video/3gpp', document: 'application/pdf' };
@@ -24,6 +24,20 @@ const NewConversationModal = ({ open, onClose, onCreated }) => {
     queryFn: () => templatesApi.getTemplates({ status: 'approved' }),
     enabled: open && useTemplate,
   });
+
+  const { data: whatsappNumbers = [] } = useQuery({
+    queryKey: ['whatsapp-numbers'],
+    queryFn: whatsappNumbersApi.getWhatsappNumbers,
+    enabled: open,
+  });
+  const connectedNumbers = whatsappNumbers.filter((n) => n.api_type === 'cloud' && n.status === 'connected');
+  // Only worth a picker once there's an actual choice — a single connected number (the
+  // common case) just uses the backend's existing auto-pick with no extra UI.
+  const showNumberPicker = connectedNumbers.length > 1;
+
+  const visibleTemplates = templates.filter(
+    (t) => !form.whatsapp_number_id || t.whatsapp_number_id === Number(form.whatsapp_number_id)
+  );
 
   const toggleTemplateMode = (on) => {
     setUseTemplate(on);
@@ -76,6 +90,19 @@ const NewConversationModal = ({ open, onClose, onCreated }) => {
                 <span>لو هذا الرقم لم يتواصل معك من قبل، واتساب لا يسمح برسالة نصية حرة — استخدم قالباً معتمداً بدلاً من ذلك.</span>
               </div>
 
+              {showNumberPicker && (
+                <select
+                  value={form.whatsapp_number_id}
+                  onChange={(e) => setForm((f) => ({ ...f, whatsapp_number_id: e.target.value, template_name: '', template_language: '' }))}
+                  className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm"
+                >
+                  <option value="">أرسل من أي رقم متصل</option>
+                  {connectedNumbers.map((n) => (
+                    <option key={n.id} value={n.id}>{n.name} ({n.phone})</option>
+                  ))}
+                </select>
+              )}
+
               <label className="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" checked={useTemplate} onChange={(e) => toggleTemplateMode(e.target.checked)} />
                 <span className="text-sm font-bold text-slate-700">استخدام قالب (لرقم جديد)</span>
@@ -84,10 +111,10 @@ const NewConversationModal = ({ open, onClose, onCreated }) => {
               {useTemplate ? (
                 !selectedTemplate ? (
                   <div className="space-y-1.5 max-h-40 overflow-y-auto">
-                    {templates.length === 0 ? (
+                    {visibleTemplates.length === 0 ? (
                       <p className="text-xs text-slate-400 text-center py-3">لا توجد قوالب معتمدة</p>
                     ) : (
-                      templates.map((t) => (
+                      visibleTemplates.map((t) => (
                         <button
                           key={t.id} type="button" onClick={() => pickTemplate(t)}
                           className="w-full text-right p-2.5 rounded-xl border border-slate-100 hover:border-teal-200 hover:bg-teal-50/30 transition-colors"

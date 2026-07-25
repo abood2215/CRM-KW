@@ -89,6 +89,7 @@ class ConversationController extends Controller
             'template_language' => 'nullable|string',
             'variables' => 'nullable|array',
             'header_media' => 'nullable|file',
+            'whatsapp_number_id' => 'nullable|exists:whatsapp_numbers,id',
         ]);
 
         $contact = Contact::firstOrCreate(
@@ -105,9 +106,14 @@ class ConversationController extends Controller
             $conversation->update(['assigned_user_id' => $request->user()->id]);
         }
 
-        $number = WhatsappNumber::where('api_type', 'cloud')->where('status', 'connected')->first();
+        // An agent can pick which connected number to start from (matters once a business runs
+        // more than one — e.g. separate sales/support lines); defaults to the old auto-pick
+        // when there's only one number or none was specified.
+        $number = $request->whatsapp_number_id
+            ? WhatsappNumber::find($request->whatsapp_number_id)
+            : WhatsappNumber::where('api_type', 'cloud')->where('status', 'connected')->first();
 
-        if (! $number) {
+        if (! $number || $number->api_type !== 'cloud' || $number->status !== 'connected') {
             return response()->json(['message' => 'لا يوجد رقم واتساب متصل حالياً لإرسال الرسالة.'], 422);
         }
 

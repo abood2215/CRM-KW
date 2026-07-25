@@ -9,7 +9,6 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\MessageResource;
 use App\Models\Conversation;
 use App\Models\Message;
-use App\Models\WhatsappNumber;
 use App\Models\WhatsappTemplate;
 use App\Policies\ConversationPolicy;
 use App\Services\ChatwootService;
@@ -93,7 +92,7 @@ class MessageController extends Controller
             }
 
             if ($contactPhone) {
-                $number = WhatsappNumber::where('api_type', 'cloud')->where('status', 'connected')->first();
+                $number = $conversation->preferredWhatsappNumber();
 
                 if (! $number) {
                     return response()->json(['message' => 'لا يوجد رقم واتساب متصل حالياً لإرسال الرسالة.'], 422);
@@ -170,7 +169,7 @@ class MessageController extends Controller
             return response()->json(['message' => 'لا يوجد رقم هاتف للعميل.'], 422);
         }
 
-        $number = WhatsappNumber::where('api_type', 'cloud')->where('status', 'connected')->first();
+        $number = $conversation->preferredWhatsappNumber();
         if (! $number) {
             return response()->json(['message' => 'لا يوجد رقم واتساب متصل حالياً.'], 422);
         }
@@ -217,7 +216,7 @@ class MessageController extends Controller
             return response()->json(['message' => 'لا يوجد رقم هاتف للعميل.'], 422);
         }
 
-        $number = WhatsappNumber::where('api_type', 'cloud')->where('status', 'connected')->first();
+        $number = $conversation->preferredWhatsappNumber();
         if (! $number) {
             return response()->json(['message' => 'لا يوجد رقم واتساب متصل.'], 422);
         }
