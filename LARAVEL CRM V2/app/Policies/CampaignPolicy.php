@@ -4,9 +4,22 @@ namespace App\Policies;
 
 use App\Models\Campaign;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 
 class CampaignPolicy
 {
+    /** Users without campaigns.view_all only see campaigns they created — granted to every
+     * existing role by default (see the migration that added this permission), so this only
+     * actually restricts anyone once an admin deliberately unchecks it for a role. */
+    public static function scopeVisibleTo(Builder $query, User $user): Builder
+    {
+        if (! $user->hasPermission('campaigns.view_all')) {
+            return $query->where('user_id', $user->id);
+        }
+
+        return $query;
+    }
+
     public function viewAny(User $user): bool
     {
         return true;
@@ -14,7 +27,7 @@ class CampaignPolicy
 
     public function view(User $user, Campaign $campaign): bool
     {
-        return true;
+        return $user->hasPermission('campaigns.view_all') || $campaign->user_id === $user->id;
     }
 
     public function create(User $user): bool

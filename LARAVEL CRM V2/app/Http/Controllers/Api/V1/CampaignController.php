@@ -8,6 +8,7 @@ use App\Http\Requests\Campaign\UpdateCampaignRequest;
 use App\Http\Resources\CampaignRecipientResource;
 use App\Http\Resources\CampaignResource;
 use App\Models\Campaign;
+use App\Policies\CampaignPolicy;
 use App\Services\Activity\ActivityLogger;
 use App\Services\Campaigns\CampaignService;
 use Illuminate\Http\JsonResponse;
@@ -33,7 +34,7 @@ class CampaignController extends Controller
             ]);
         }
 
-        $query = Campaign::with(['user', 'whatsappNumber']);
+        $query = CampaignPolicy::scopeVisibleTo(Campaign::with(['user', 'whatsappNumber']), $request->user());
 
         if ($request->has('status')) {
             $query->where('status', $request->status);
@@ -79,7 +80,7 @@ class CampaignController extends Controller
 
     public function show(Request $request, Campaign $campaign): JsonResponse
     {
-        abort_if($request->user()->isSandboxed(), 403);
+        $this->authorize('view', $campaign);
 
         $campaign->load(['user', 'whatsappNumber', 'contactList']);
 
@@ -178,6 +179,8 @@ class CampaignController extends Controller
 
     public function recipients(Request $request, Campaign $campaign): JsonResponse
     {
+        $this->authorize('view', $campaign);
+
         $recipients = $campaign->recipients()
             ->when($request->status, fn ($q) => $q->where('status', $request->status))
             ->orderBy('id')
@@ -199,7 +202,7 @@ class CampaignController extends Controller
      * through the report UI by hand. */
     public function exportRecipientsCsv(Request $request, Campaign $campaign): StreamedResponse
     {
-        abort_if($request->user()->isSandboxed(), 403);
+        $this->authorize('view', $campaign);
 
         $headers = [
             'Content-Type' => 'text/csv; charset=UTF-8',
@@ -231,6 +234,8 @@ class CampaignController extends Controller
 
     public function analytics(Campaign $campaign): JsonResponse
     {
+        $this->authorize('view', $campaign);
+
         return response()->json([
             'campaign' => new CampaignResource($campaign),
             'analytics' => $this->campaigns->getAnalytics($campaign),
@@ -243,7 +248,7 @@ class CampaignController extends Controller
      */
     public function report(Request $request, Campaign $campaign): JsonResponse
     {
-        abort_if($request->user()->isSandboxed(), 403);
+        $this->authorize('view', $campaign);
 
         $hourlyStats = $campaign->recipients()
             ->whereNotNull('sent_at')

@@ -9,6 +9,7 @@ use App\Http\Resources\ContactListResource;
 use App\Http\Resources\ContactResource;
 use App\Models\Contact;
 use App\Models\ContactList;
+use App\Policies\ContactListPolicy;
 use App\Services\Activity\ActivityLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -17,13 +18,8 @@ class ContactListController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        // Shared team resource by design (see ContactListPolicy) — except a sandboxed test
-        // account, which must not see real contact segments any more than real campaigns.
-        if ($request->user()->isSandboxed()) {
-            return response()->json(['contact_lists' => []]);
-        }
-
-        $lists = ContactList::with('user')->withCount('contacts')->orderBy('name')->get();
+        $lists = ContactListPolicy::scopeVisibleTo(ContactList::with('user')->withCount('contacts'), $request->user())
+            ->orderBy('name')->get();
 
         return response()->json(['contact_lists' => ContactListResource::collection($lists)]);
     }
@@ -44,7 +40,7 @@ class ContactListController extends Controller
 
     public function show(Request $request, ContactList $contactList): JsonResponse
     {
-        abort_if($request->user()->isSandboxed(), 403);
+        $this->authorize('view', $contactList);
 
         $contactList->load('user')->loadCount('contacts');
 
@@ -98,6 +94,8 @@ class ContactListController extends Controller
 
     public function addContacts(Request $request, ContactList $contactList): JsonResponse
     {
+        $this->authorize('update', $contactList);
+
         $request->validate([
             'contact_ids' => 'required_without:phone_numbers|array',
             'contact_ids.*' => 'exists:contacts,id',
