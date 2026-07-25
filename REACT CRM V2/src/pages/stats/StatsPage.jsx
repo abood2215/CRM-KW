@@ -186,6 +186,35 @@ const StatsPage = () => {
         )}
       </div>
 
+      {canViewAgentStats && agents.length > 0 && (
+        <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm overflow-x-auto">
+          <h3 className="font-black text-slate-800 mb-4 flex items-center gap-2">
+            <Clock size={16} className="text-indigo-600" />
+            معدل التحويل ومتوسط وقت الرد لكل موظف
+          </h3>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-right text-xs font-black text-slate-400 border-b border-slate-100">
+                <th className="pb-2 pr-2">الموظف</th>
+                <th className="pb-2">معدل التحويل</th>
+                <th className="pb-2">متوسط وقت الرد</th>
+              </tr>
+            </thead>
+            <tbody>
+              {agents.map((a) => (
+                <tr key={a.id} className="border-b border-slate-50 last:border-0">
+                  <td className="py-2.5 pr-2 font-bold text-slate-700">{a.name}</td>
+                  <td className="py-2.5 font-bold text-slate-600">{a.conversion_rate}%</td>
+                  <td className="py-2.5 font-bold text-slate-600">
+                    {a.avg_response_minutes != null ? `${a.avg_response_minutes} دقيقة` : '—'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
       {whatsappStats?.numbers?.length > 0 && (
         <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
           <h3 className="font-black text-slate-800 mb-4 flex items-center gap-2">

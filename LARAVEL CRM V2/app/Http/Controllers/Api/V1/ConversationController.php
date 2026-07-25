@@ -153,7 +153,7 @@ class ConversationController extends Controller
             return response()->json(['message' => $e->getMessage()], 422);
         }
 
-        $this->conversations->recordOutboundMessage($conversation, $request->message, $waMessageId, $request->user()->name, $headerMediaUrl, $number->id);
+        $this->conversations->recordOutboundMessage($conversation, $request->message, $waMessageId, $request->user()->name, $headerMediaUrl, $number->id, $request->user()->id);
 
         $message = $conversation->messages()->latest()->first();
         event(new NewMessageEvent($message));

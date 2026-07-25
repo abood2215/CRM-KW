@@ -123,6 +123,7 @@ class MessageController extends Controller
 
         $message = Message::create([
             'conversation_id' => $conversation->id,
+            'user_id' => $request->user()->id,
             'whatsapp_number_id' => $number?->id,
             'whatsapp_message_id' => $waMessageId,
             'content' => $request->content,
@@ -268,6 +269,7 @@ class MessageController extends Controller
 
         $message = Message::create([
             'conversation_id' => $conversation->id,
+            'user_id' => $request->user()->id,
             'whatsapp_number_id' => $number->id,
             'whatsapp_template_id' => $template->id,
             'whatsapp_message_id' => $waMessageId,
@@ -333,6 +335,7 @@ class MessageController extends Controller
 
         $message = Message::create([
             'conversation_id' => $conversation->id,
+            'user_id' => $request->user()->id,
             'content' => $request->content,
             'type' => 'text',
             'direction' => 'out',

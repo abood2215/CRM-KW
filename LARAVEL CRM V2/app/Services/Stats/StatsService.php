@@ -145,13 +145,18 @@ class StatsService
 
     public function agents(): array
     {
+        $convertedStages = [ContactPipelineStage::Booked->value, ContactPipelineStage::Active->value];
+
         $agents = User::where('is_active', true)
             ->withCount([
                 'contacts',
+                'contacts as converted_contacts_count' => fn ($q) => $q->whereIn('pipeline_stage', $convertedStages),
                 'tasks' => fn ($q) => $q->where('status', 'pending'),
                 'assignedConversations' => fn ($q) => $q->where('status', 'open'),
             ])
             ->get();
+
+        $avgResponseByAgent = $this->averageResponseMinutesByAgent();
 
         return $agents->map(fn ($u) => [
             'id' => $u->id,
@@ -161,6 +166,10 @@ class StatsService
             'clients_count' => $u->contacts_count,
             'pending_tasks_count' => $u->tasks_count,
             'open_conversations_count' => $u->assigned_conversations_count,
+            // Same "conversion" definition as campaigns()/sourceReport() — a contact that
+            // actually advanced in the pipeline, not just replied to something.
+            'conversion_rate' => $u->contacts_count > 0 ? round(($u->converted_contacts_count / $u->contacts_count) * 100, 1) : 0,
+            'avg_response_minutes' => $avgResponseByAgent[$u->id] ?? null,
         ])->all();
     }
 
@@ -285,19 +294,57 @@ class StatsService
         return [$growth, $messagesByDay];
     }
 
+    /**
+     * Diffs are computed in PHP rather than SQL's TIMESTAMPDIFF — that function is MySQL-only,
+     * which silently made this whole calculation unrunnable (and untestable) against SQLite.
+     */
     private function averageResponseMinutes(): ?int
     {
-        $avg = DB::table('messages as m1')
-            ->join('messages as m2', function ($j) {
+        $rows = $this->responseTimeRows();
+
+        if ($rows->isEmpty()) {
+            return null;
+        }
+
+        return (int) round($this->totalMinutes($rows) / $rows->count());
+    }
+
+    /**
+     * Same "first outbound reply after an inbound message" definition as averageResponseMinutes(),
+     * but attributed per agent via messages.user_id — automated campaign sends have no user_id
+     * and are correctly excluded, since they're not a human agent's response time.
+     *
+     * @return array<int, int> agent user_id => average minutes
+     */
+    private function averageResponseMinutesByAgent(): array
+    {
+        return $this->responseTimeRows(perAgent: true)
+            ->groupBy('user_id')
+            ->mapWithKeys(fn ($group, $userId) => [(int) $userId => (int) round($this->totalMinutes($group) / $group->count())])
+            ->all();
+    }
+
+    /** @return \Illuminate\Support\Collection<int, object{inbound_at: string, outbound_at: string}> */
+    private function responseTimeRows(bool $perAgent = false): \Illuminate\Support\Collection
+    {
+        return DB::table('messages as m1')
+            ->join('messages as m2', function ($j) use ($perAgent) {
                 $j->on('m1.conversation_id', '=', 'm2.conversation_id')
                     ->where('m1.direction', '=', 'in')
                     ->where('m2.direction', '=', 'out')
                     ->whereColumn('m2.created_at', '>', 'm1.created_at');
-            })
-            ->selectRaw('AVG(TIMESTAMPDIFF(MINUTE, m1.created_at, m2.created_at)) as avg_minutes')
-            ->where('m1.created_at', '>=', now()->subDays(7))
-            ->value('avg_minutes');
 
-        return $avg ? (int) round($avg) : null;
+                if ($perAgent) {
+                    $j->whereNotNull('m2.user_id');
+                }
+            })
+            ->where('m1.created_at', '>=', now()->subDays(7))
+            ->select('m2.user_id', 'm1.created_at as inbound_at', 'm2.created_at as outbound_at')
+            ->get();
+    }
+
+    private function totalMinutes(\Illuminate\Support\Collection $rows): int
+    {
+        return $rows->sum(fn ($row) => \Carbon\Carbon::parse($row->inbound_at)->diffInMinutes(\Carbon\Carbon::parse($row->outbound_at)));
     }
 }

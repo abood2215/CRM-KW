@@ -70,11 +70,16 @@ class ConversationService
         });
     }
 
-    /** Used by the campaign job: record an outbound send as a conversation message, tagged as campaign-originated. */
-    public function recordOutboundMessage(Conversation $conversation, string $content, ?string $waMessageId, string $senderName, ?string $mediaUrl = null, ?int $whatsappNumberId = null): void
+    /**
+     * Used by both a real agent's "start new conversation" send and the campaign job's
+     * automated send — $userId is only ever set for the former (campaigns have no human
+     * sender to attribute a message to, so per-agent stats correctly skip these).
+     */
+    public function recordOutboundMessage(Conversation $conversation, string $content, ?string $waMessageId, string $senderName, ?string $mediaUrl = null, ?int $whatsappNumberId = null, ?int $userId = null): void
     {
         \App\Models\Message::create([
             'conversation_id' => $conversation->id,
+            'user_id' => $userId,
             'whatsapp_number_id' => $whatsappNumberId,
             'whatsapp_message_id' => $waMessageId,
             'content' => $content,
