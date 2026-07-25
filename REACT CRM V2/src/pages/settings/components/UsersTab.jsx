@@ -5,11 +5,13 @@ import { Loader2, UserPlus, Pencil, Trash2, AlertTriangle } from 'lucide-react';
 import { users as usersApi } from '../../../api';
 import { useAuthStore } from '../../../store/useAuthStore';
 import { useConfirm } from '../../../hooks/useConfirm';
+import { useOnlinePresence } from '../../../hooks/useEcho';
 import UserFormModal from './UserFormModal';
 
 const UsersTab = () => {
   const queryClient = useQueryClient();
   const currentUser = useAuthStore((s) => s.user);
+  const onlineIds = useOnlinePresence();
   const { confirm, dialog: confirmDialog } = useConfirm();
   const [formOpen, setFormOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
@@ -51,8 +53,16 @@ const UsersTab = () => {
         <div className="divide-y divide-slate-50">
           {userList.map((u) => (
             <div key={u.id} className="flex items-center gap-4 px-6 py-4 hover:bg-slate-50/60 transition-colors group">
-              <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center text-indigo-600 font-black text-sm flex-shrink-0">
-                {u.name.charAt(0).toUpperCase()}
+              <div className="relative flex-shrink-0">
+                <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center text-indigo-600 font-black text-sm">
+                  {u.name.charAt(0).toUpperCase()}
+                </div>
+                {onlineIds.has(u.id) && (
+                  <span
+                    title="متصل الآن"
+                    className="absolute -bottom-0.5 -left-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white"
+                  />
+                )}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
@@ -60,6 +70,7 @@ const UsersTab = () => {
                   <span className="px-2 py-0.5 rounded-lg text-[10px] font-black bg-indigo-50 text-indigo-600">{u.role?.name}</span>
                   {u.specialty && <span className="px-2 py-0.5 rounded-lg text-[10px] font-black bg-emerald-50 text-emerald-600">{u.specialty}</span>}
                   {!u.is_active && <span className="px-2 py-0.5 rounded-lg text-[10px] font-black bg-slate-100 text-slate-400">معطل</span>}
+                  {onlineIds.has(u.id) && <span className="text-[10px] font-black text-emerald-600">متصل الآن</span>}
                 </div>
                 <p className="text-xs text-slate-400 mt-0.5 truncate">{u.email}</p>
               </div>

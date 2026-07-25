@@ -89,3 +89,42 @@ export function useEchoConnectionStatus() {
 
   return status;
 }
+
+/**
+ * Real-time "online now" via a presence channel — unlike users.is_online (driven by
+ * last_seen_at, a per-request timestamp only refreshed by middleware), this reflects who's
+ * actually connected right now, updating within seconds of someone opening/closing the app.
+ * Echo dedupes repeated .join() calls to the same channel name, so multiple components
+ * calling this hook share one underlying subscription, not one each.
+ *
+ * @returns {Set<number>} ids of currently-online users
+ */
+export function useOnlinePresence() {
+  const echo = useEcho();
+  const [onlineIds, setOnlineIds] = useState(() => new Set());
+
+  useEffect(() => {
+    if (!echo) {
+      setOnlineIds(new Set());
+
+      return undefined;
+    }
+
+    // Joined but deliberately never left on unmount — same reasoning as useEcho() itself:
+    // multiple components (Users tab, agent stats, ...) can call this hook independently,
+    // and one of them unmounting must not tear down presence tracking for the others still
+    // showing it. The channel only actually goes away when the socket itself disconnects
+    // (logout), same lifecycle as the rest of the shared connection.
+    echo.join('presence.online')
+      .here((users) => setOnlineIds(new Set(users.map((u) => u.id))))
+      .joining((user) => setOnlineIds((prev) => new Set(prev).add(user.id)))
+      .leaving((user) => setOnlineIds((prev) => {
+        const next = new Set(prev);
+        next.delete(user.id);
+
+        return next;
+      }));
+  }, [echo]);
+
+  return onlineIds;
+}
