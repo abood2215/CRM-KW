@@ -188,7 +188,7 @@ const MainLayout = () => {
   useEffect(() => {
     if (!echo) return undefined;
 
-    const channel = echo.channel('conversations');
+    const channel = echo.private('conversations');
     const onNewMessage = (payload) => {
       if (payload.direction !== 'in') return;
       if (document.visibilityState === 'visible' && location.pathname.startsWith('/messages')) return;
