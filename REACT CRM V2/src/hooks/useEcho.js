@@ -11,16 +11,7 @@ let echoToken = null;
 function buildEcho(token) {
   const useTLS = import.meta.env.VITE_PUSHER_SCHEME === 'https';
 
-  // TEMP DEBUG — remove once the production connection issue is diagnosed.
-  console.log('[echo-debug] buildEcho()', {
-    useTLS,
-    key: import.meta.env.VITE_PUSHER_APP_KEY,
-    wsHost: import.meta.env.VITE_PUSHER_HOST,
-    wsPort: import.meta.env.VITE_PUSHER_PORT,
-    authEndpoint: `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8001/api'}/broadcasting/auth`,
-  });
-
-  const echo = new Echo({
+  return new Echo({
     broadcaster: 'pusher',
     key: import.meta.env.VITE_PUSHER_APP_KEY || 'app-key',
     cluster: import.meta.env.VITE_PUSHER_APP_CLUSTER || 'mt1',
@@ -37,20 +28,6 @@ function buildEcho(token) {
     authEndpoint: `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8001/api'}/broadcasting/auth`,
     auth: { headers: { Authorization: `Bearer ${token}` } },
   });
-
-  // TEMP DEBUG — remove once the production connection issue is diagnosed.
-  try {
-    console.log('[echo-debug] echo created, pusher connection object:', echo.connector?.pusher?.connection);
-    echo.connector.pusher.connection.bind('state_change', (s) => console.log('[echo-debug] state_change', s));
-    echo.connector.pusher.connection.bind('error', (e) => console.log('[echo-debug] connection error', JSON.stringify(e)));
-    echo.connector.pusher.connection.bind('connecting_in', (delay) => console.log('[echo-debug] connecting_in', delay));
-    echo.connector.pusher.connection.bind('unavailable', () => console.log('[echo-debug] unavailable'));
-    echo.connector.pusher.connection.bind('failed', () => console.log('[echo-debug] failed (no ws/wss transport supported!)'));
-  } catch (e) {
-    console.log('[echo-debug] failed to bind debug listeners', e);
-  }
-
-  return echo;
 }
 
 // Module-level singleton (not React state) so every consumer shares one socket.
@@ -60,9 +37,6 @@ export function useEcho() {
   const [echo, setEcho] = useState(() => echoInstance);
 
   useEffect(() => {
-    // TEMP DEBUG — remove once the production connection issue is diagnosed.
-    console.log('[echo-debug] useEcho effect ran, token present:', !!token, 'existing echoInstance:', !!echoInstance);
-
     if (!token) {
       echoInstance?.disconnect();
       echoInstance = null;
