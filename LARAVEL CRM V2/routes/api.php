@@ -22,7 +22,6 @@ use App\Http\Controllers\Api\V1\TaskController;
 use App\Http\Controllers\Api\V1\TemplateController;
 use App\Http\Controllers\Api\V1\UserController;
 use App\Http\Controllers\Api\V1\WebhookController;
-use App\Http\Controllers\Api\V1\WebsiteDoctorRequestController;
 use App\Http\Controllers\Api\V1\WhatsappNumberController;
 use Illuminate\Support\Facades\Route;
 
@@ -45,9 +44,6 @@ Route::post('/webhooks/chatwoot', [WebhookController::class, 'chatwoot'])->middl
 // Public self-service booking — unauthenticated by design, so it gets its own strict throttle.
 Route::get('/public/booking/slots', [PublicBookingController::class, 'slots'])->middleware('throttle:30,1,booking-slots');
 Route::post('/public/booking', [PublicBookingController::class, 'store'])->middleware('throttle:10,1,booking-store');
-
-// From the public website (motmaina.com), protected by WEBSITE_API_TOKEN: Dr. Tariq appointment requests → call task + staff notification
-Route::post('/website/doctor-requests', [WebsiteDoctorRequestController::class, 'store'])->middleware('throttle:30,1,website-doctor-requests');
 
 // Default cap for every authenticated route below — most sensitive/costly
 // endpoints (password changes, WhatsApp sends) additionally get a stricter

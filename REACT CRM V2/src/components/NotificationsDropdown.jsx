@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { AnimatePresence, motion } from 'framer-motion';
 import { formatDistanceToNow } from 'date-fns';
 import { ar } from 'date-fns/locale';
-import { Bell, CheckCheck, Megaphone, PauseCircle, CalendarHeart } from 'lucide-react';
+import { Bell, CheckCheck, Megaphone, PauseCircle } from 'lucide-react';
 import { notifications as notificationsApi } from '../api';
 import { cn } from '../utils/cn';
 import { resolveNotificationLink } from '../utils/notifications';
@@ -12,7 +12,6 @@ import { resolveNotificationLink } from '../utils/notifications';
 const TYPE_ICONS = {
   campaign_completed: { icon: Megaphone, cls: 'bg-emerald-50 text-emerald-600' },
   campaign_paused: { icon: PauseCircle, cls: 'bg-amber-50 text-amber-600' },
-  doctor_request: { icon: CalendarHeart, cls: 'bg-rose-50 text-rose-600' },
 };
 
 const NotificationsDropdown = () => {

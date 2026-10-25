@@ -45,11 +45,6 @@ return [
         'base_url' => env('BAILEYS_BASE_URL', 'http://localhost:3001'),
     ],
 
-    // The public website (motmaina.com) — sends Dr. Tariq appointment requests to /api/website/doctor-requests
-    'website' => [
-        'token' => env('WEBSITE_API_TOKEN'),
-    ],
-
     'chatwoot' => [
         'base_url' => env('CHATWOOT_BASE_URL', 'http://localhost:3000'),
         'api_token' => env('CHATWOOT_API_TOKEN'),
