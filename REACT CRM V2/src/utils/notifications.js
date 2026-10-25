@@ -9,6 +9,8 @@ export const resolveNotificationLink = (notification) => {
       return data.campaign_id ? `/campaigns/${data.campaign_id}/report` : null;
     case 'task_reminder':
       return '/tasks';
+    case 'doctor_request':
+      return data.contact_id ? `/contacts/${data.contact_id}` : '/tasks';
     case 'whatsapp_quality_degraded':
       return '/whatsapp';
     default:
